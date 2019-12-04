@@ -14,7 +14,7 @@ async function main() {
     plejdApi.getCryptoKey((cryptoKey) => {
       const devices = plejdApi.getDevices();
 
-      client.once('connected', () => {
+      client.on('connected', () => {
         console.log('plejd-mqtt: connected to mqtt.');
         client.discover(devices);
       });

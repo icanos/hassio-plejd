@@ -39,6 +39,11 @@ class Controller extends EventEmitter {
     this.keepAlive = keepAlive;
     this.writeQueue = [];
     this.peripherals = [];
+
+    // Holds a reference to the connected peripheral from the peripheral list.
+    // In case the peripheral we're connecting to, disconnects us, we can then reinitiate the connection
+    // by increasing the connectedIndex and by that, connect to the next in line.
+    this.connectedIndex = 0;
   }
 
   async init() {
@@ -91,8 +96,7 @@ class Controller extends EventEmitter {
 
     this.isConnecting = true;
 
-    let idx = 0;
-    return await this._internalConnect(idx);
+    return await this._internalConnect(this.connectedIndex);
   }
 
   async _internalConnect(idx) {
@@ -107,19 +111,19 @@ class Controller extends EventEmitter {
     try {
       this.peripherals[idx].connect(async (err) => {
         if (err) {
-          logger('error: failed to connect to Plejd device: ' + err);
+          console.log('error: failed to connect to Plejd device: ' + err);
           return await self._internalConnect(idx + 1);
         }
 
         self.peripheral = self.peripherals[idx];
-        logger('connected to Plejd device with addr ' + self.peripheral.address);
+        console.log('connected to Plejd device with addr ' + self.peripheral.address);
 
         self.peripheral_address = self._reverseBuffer(Buffer.from(String(self.peripheral.address).replace(/\-/g, '').replace(/\:/g, ''), 'hex'));
 
         logger('discovering services and characteristics');
         await self.peripheral.discoverSomeServicesAndCharacteristics([PLEJD_SERVICE], [], async (err, services, characteristics) => {
           if (err) {
-            logger('error: failed to discover services: ' + err);
+            console.log('error: failed to discover services: ' + err);
             return;
           }
 
@@ -149,6 +153,7 @@ class Controller extends EventEmitter {
 
             this.on('authenticated', () => {
               logger('Plejd is connected and authenticated.');
+              this.connectedIndex = idx;
 
               if (self.keepAlive) {
                 self.startPing();
@@ -164,7 +169,7 @@ class Controller extends EventEmitter {
             }
             catch (error) {
               this.isConnecting = false;
-              logger('error: failed to authenticate: ' + error);
+              console.log('error: failed to authenticate: ' + error);
               return Promise.resolve(false);
             }
 
@@ -180,7 +185,7 @@ class Controller extends EventEmitter {
     catch (error) {
       this.isConnecting = false;
 
-      logger('error: failed to connect to Plejd device: ' + error);
+      console.log('error: failed to connect to Plejd device: ' + error);
     }
 
     return Promise.resolve(true);
@@ -191,7 +196,8 @@ class Controller extends EventEmitter {
 
     self.lastDataCharacteristic.subscribe((err) => {
       if (err) {
-        logger('error: couldnt subscribe to notification characteristic.');
+        console.log('error: couldnt subscribe to notification characteristic.');
+        return;
       }
 
       // subscribe to last data event
@@ -229,7 +235,7 @@ class Controller extends EventEmitter {
           await this.peripheral.disconnect();
         }
         catch (error) {
-          logger('error: unable to disconnect from Plejd: ' + error);
+          console.log('error: unable to disconnect from Plejd: ' + error);
           return Promise.resolve(false);
         }
 
@@ -250,7 +256,7 @@ class Controller extends EventEmitter {
 
   turnOn(id, brightness) {
     if (!this.isConnected) {
-      logger('error: not connected');
+      console.log('error: not connected');
       return;
     }
 
@@ -270,7 +276,7 @@ class Controller extends EventEmitter {
 
   turnOff(id) {
     if (!this.isConnected) {
-      logger('error: not connected');
+      console.log('error: not connected');
       return;
     }
 
@@ -312,13 +318,13 @@ class Controller extends EventEmitter {
 
     this.pingCharacteristic.write(ping, false, (err) => {
       if (err) {
-        logger('error: unable to send ping: ' + err);
+        console.log('error: unable to send ping: ' + err);
         callback(false);
       }
 
       this.pingCharacteristic.read((err, data) => {
         if (err) {
-          logger('error: unable to read ping: ' + err);
+          console.log('error: unable to read ping: ' + err);
           callback(false);
         }
 
@@ -338,13 +344,13 @@ class Controller extends EventEmitter {
     logger('authenticating connection');
     this.authCharacteristic.write(Buffer.from([0]), false, (err) => {
       if (err) {
-        logger('error: failed to authenticate: ' + err);
+        console.log('error: failed to authenticate: ' + err);
         return;
       }
 
       this.authCharacteristic.read(async (err2, data) => {
         if (err2) {
-          logger('error: challenge request failed: ' + err2);
+          console.log('error: challenge request failed: ' + err2);
           return;
         }
 
@@ -352,7 +358,7 @@ class Controller extends EventEmitter {
 
         this.authCharacteristic.write(resp, false, (err3) => {
           if (err3) {
-            logger('error: challenge failed: ' + err2);
+            console.log('error: challenge failed: ' + err2);
             return;
           }
 
@@ -367,11 +373,13 @@ class Controller extends EventEmitter {
 
     try {
       if (this.isConnecting) {
+        logger('adding message to queue.');
         this.writeQueue.push(data);
         return Promise.resolve(true);
       }
 
       if (!this.keepAlive) {
+        logger('not connected to Plejd. reconnecting.');
         await this.connect();
       }
 
@@ -390,7 +398,9 @@ class Controller extends EventEmitter {
       }
     }
     catch (error) {
-      logger('error when writing to plejd: ' + error);
+      console.log('error: writing to plejd: ' + error);
+      await self.disconnect();
+      await self.connect();
     }
   }
 

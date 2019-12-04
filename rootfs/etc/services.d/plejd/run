@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Community Hass.io Add-ons: Plejd
+# Runs the Plejd service
+# ==============================================================================
+
+bashio::log.info 'Starting the Plejd service...'
+
+# Change working directory
+cd /plejd || bashio::exit.nok 'Unable to change working directory'
+
+# Run the Plejd service
+chmod +x /usr/bin/plejd.sh
+exec /usr/bin/plejd.sh

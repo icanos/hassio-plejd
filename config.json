@@ -1,0 +1,41 @@
+{
+  "name": "Plejd",
+  "version": "2",
+  "slug": "plejd",
+  "description": "Adds support for the Swedish home automation devices from Plejd.",
+  "arch": [
+    "armhf",
+    "armv7",
+    "aarch64",
+    "amd64",
+    "i386"
+  ],
+  "startup": "application",
+  "boot": "auto",
+  "auto_uart": true,
+  "gpio": true,
+  "privileged": [
+    "SYS_RAWIO"
+  ],
+  "devices": [
+    "/dev/mem:/dev/mem:rwm"
+  ],
+  "apparmor": false,
+  "host_network": true,
+  "options": {
+    "site": "Default Site",
+    "username": "",
+    "password": "",
+    "mqttBroker": "mqtt://",
+    "mqttUsername": "",
+    "mqttPassword": ""
+  },
+  "schema": {
+    "site": "str",
+    "username": "str",
+    "password": "str",
+    "mqttBroker": "str",
+    "mqttUsername": "str",
+    "mqttPassword": "str"
+  }
+}

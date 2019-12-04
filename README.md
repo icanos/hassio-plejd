@@ -18,6 +18,13 @@ The add-on has been tested on the following platforms:
 * Mac OS Catalina 10.15.1 with Node v. 13.2.0
 * Raspberry Pi 4 with Hass.io
 
+#### Tested Plejd devices
+* DIM-01
+* LED-10
+* CTR-01
+
+Currently I do not own DIM-02 so I haven't been able to verify functionality.
+
 ### Installation
 Browse your Hass.io installation using a tool that allows you to manage files, for eg. SMB or an SFTP client etc.
 * Open the `/addon` directory

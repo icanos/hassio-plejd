@@ -2,6 +2,8 @@
 Hass.io add-on for Plejd home automation devices. Gives you the ability to control the Swedish Plejd home automation devices through Home Assistant.
 It uses MQTT to communicate with Home Assistant and supports auto discovery of the devices in range.
 
+It also supports notifications so that changed made in the Plejd app are propagated to Home Assistant.
+
 Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 
 ## Getting started
@@ -15,6 +17,13 @@ To get started, make sure that the following requirements are met:
 The add-on has been tested on the following platforms:
 * Mac OS Catalina 10.15.1 with Node v. 13.2.0
 * Raspberry Pi 4 with Hass.io
+
+#### Tested Plejd devices
+* DIM-01
+* LED-10
+* CTR-01
+
+Currently I do not own DIM-02 so I haven't been able to verify functionality.
 
 ### Installation
 Browse your Hass.io installation using a tool that allows you to manage files, for eg. SMB or an SFTP client etc.

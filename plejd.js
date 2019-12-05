@@ -294,7 +294,7 @@ class Controller extends EventEmitter {
     this.pingRef = setInterval(async () => {
       logger('ping');
       if (self.isConnected) {
-        self.plejdPing(async (pingOk) => {
+        await self.plejdPing(async (pingOk) => {
 
           if (!pingOk) {
             logger('ping failed');
@@ -313,29 +313,36 @@ class Controller extends EventEmitter {
     }, 3000);
   }
 
-  plejdPing(callback) {
+  async plejdPing(callback) {
     var ping = crypto.randomBytes(1);
 
-    this.pingCharacteristic.write(ping, false, (err) => {
-      if (err) {
-        console.log('error: unable to send ping: ' + err);
-        callback(false);
-      }
-
-      this.pingCharacteristic.read((err, data) => {
+    try {
+      this.pingCharacteristic.write(ping, false, (err) => {
         if (err) {
-          console.log('error: unable to read ping: ' + err);
+          console.log('error: unable to send ping: ' + err);
           callback(false);
         }
 
-        if (((ping[0] + 1) & 0xff) !== data[0]) {
-          callback(false);
-        }
-        else {
-          callback(true);
-        }
+        this.pingCharacteristic.read((err, data) => {
+          if (err) {
+            console.log('error: unable to read ping: ' + err);
+            callback(false);
+          }
+
+          if (((ping[0] + 1) & 0xff) !== data[0]) {
+            callback(false);
+          }
+          else {
+            callback(true);
+          }
+        });
       });
-    });
+    }
+    catch (error) {
+      console.log('error: writing to plejd: ' + error);
+      await self.disconnect();
+      await self.connect();
+    }
   }
 
   async authenticate() {
@@ -383,11 +390,11 @@ class Controller extends EventEmitter {
         await this.connect();
       }
 
-      await this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, data), false);
+      this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, data), false);
 
       let writeData;
       while ((writeData = this.writeQueue.shift()) !== undefined) {
-        await this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, writeData), false);
+        this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, writeData), false);
       }
 
       if (!this.keepAlive) {

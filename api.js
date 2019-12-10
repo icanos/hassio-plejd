@@ -84,6 +84,11 @@ class PlejdApi extends EventEmitter {
   getDevices() {
     let devices = [];
 
+    // Just log the devices if debug logging enabled
+    if (debug) {
+      logger(JSON.stringify(this.site));
+    }
+
     for (let i = 0; i < this.site.devices.length; i++) {
       let device = this.site.devices[i];
       let deviceId = device.deviceId;

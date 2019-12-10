@@ -90,14 +90,37 @@ class PlejdApi extends EventEmitter {
     }
 
     for (let i = 0; i < this.site.devices.length; i++) {
-      let device = this.site.devices[i];
-      let deviceId = device.deviceId;
+      const device = this.site.devices[i];
+      const deviceId = device.deviceId;
 
-      devices.push({
-        id: this.site.deviceAddress[deviceId],
+      const settings = this.site.outputSettings.find(x => x.deviceParseId == device.objectId);
+      let deviceNum = this.site.deviceAddress[deviceId];
+
+      if (settings) {
+        const outputs = this.site.outputAddress[deviceId];
+        deviceNum = outputs[settings.output];
+      }
+
+      // check if device is dimmable
+      let dimmable = false;
+      if (device.hardware) {
+        dimmable = device.hardware.name == 'DIM-01';
+      }
+
+      if (settings) {
+        dimmable = settings.dimCurve != 'NonDimmable';
+      }
+
+      const newDevice = {
+        id: deviceNum,
         name: device.title,
-        type: 'light'
-      });
+        type: 'light',
+        supportsDim: dimmable
+      };
+
+      logger(JSON.stringify(newDevice));
+
+      devices.push(newDevice);
     }
 
     return devices;

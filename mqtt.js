@@ -33,13 +33,23 @@ const getBrightnessCommandTopic = plug => `${getPath(plug)}/setBrightness`;
 const getBrightnessTopic = plug => `${getPath(plug)}/brightness`;
 const getCommandTopic = plug => `${getPath(plug)}/set`;
 
-const getDiscoveryPayload = device => ({
+const getDiscoveryDimmablePayload = device => ({
   name: device.name,
   unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
   brightness_command_topic: getBrightnessCommandTopic(device),
   brightness_state_topic: getBrightnessTopic(device),
+  payload_on: 1,
+  payload_off: 0,
+  optimistic: false
+});
+
+const getDiscoveryPayload = device => ({
+  name: device.name,
+  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
+  state_topic: getStateTopic(device),
+  command_topic: getCommandTopic(device),
   payload_on: 1,
   payload_off: 0,
   optimistic: false
@@ -124,7 +134,7 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger(`sending discovery for ${device.name}`);
 
-      const payload = getDiscoveryPayload(device);
+      const payload = device.supportsDim ? getDiscoveryDimmablePayload(device) : getDiscoveryPayload(device);
       self.deviceMap[device.id] = payload.unique_id;
 
       self.client.publish(

@@ -6,6 +6,9 @@ It also supports notifications so that changed made in the Plejd app are propaga
 
 Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 
+Disclaimer:
+I am in no way affiliated with Plejd and am solely doing this as a hobby project.
+
 ## Getting started
 To get started, make sure that the following requirements are met:
 

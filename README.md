@@ -20,10 +20,9 @@ The add-on has been tested on the following platforms:
 
 #### Tested Plejd devices
 * DIM-01
+* DIM-02
 * LED-10
 * CTR-01
-
-Currently I do not own DIM-02 so I haven't been able to verify functionality.
 
 ### Installation
 Browse your Hass.io installation using a tool that allows you to manage files, for eg. SMB or an SFTP client etc.
@@ -46,6 +45,9 @@ password | Password of your Plejd account, this is used to fetch the crypto key 
 mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
+
+## Things to do
+* I'm currently looking into adding support to import rooms, containing one or multiple devices, from Plejd as well.
 
 ## License
 

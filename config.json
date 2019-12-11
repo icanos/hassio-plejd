@@ -1,6 +1,6 @@
 {
   "name": "Plejd",
-  "version": "2",
+  "version": "3",
   "slug": "plejd",
   "description": "Adds support for the Swedish home automation devices from Plejd.",
   "arch": [

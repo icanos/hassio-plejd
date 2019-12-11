@@ -30,7 +30,7 @@ RUN \
   eudev-dev=3.2.8-r0 \
   \
   && apk add --no-cache \
-  git=2.22.0-r0 \
+  git \
   nodejs=10.16.3-r0 \
   npm=10.16.3-r0 \
   \

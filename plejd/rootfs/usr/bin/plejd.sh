@@ -8,6 +8,7 @@ PASSWORD=$(jq --raw-output ".password" $CONFIG_PATH)
 MQTTBROKER=$(jq --raw-output ".mqttBroker" $CONFIG_PATH)
 MQTTUSERNAME=$(jq --raw-output ".mqttUsername" $CONFIG_PATH)
 MQTTPASSWORD=$(jq --raw-output ".mqttPassword" $CONFIG_PATH)
+INCLUDEROOMSASLIGHTS=$(jq --raw-output ".includeRoomsAsLights" $CONFIG_PATH)
 
 PLEJD_PATH=/data/plejd.json
 PLEJD_CONFIG="{
@@ -16,7 +17,8 @@ PLEJD_CONFIG="{
   \"password\": \"$PASSWORD\",
   \"mqttBroker\": \"$MQTTBROKER\",
   \"mqttUsername\": \"$MQTTUSERNAME\",
-  \"mqttPassword\": \"$MQTTPASSWORD\"
+  \"mqttPassword\": \"$MQTTPASSWORD\",
+  \"includeRoomsAsLights\": \"$INCLUDEROOMSASLIGHTS\"
 }
 "
 

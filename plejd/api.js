@@ -22,9 +22,10 @@ const logger = getLogger();
 // #endregion
 
 class PlejdApi extends EventEmitter {
-  constructor(siteName, username, password) {
+  constructor(siteName, username, password, includeRoomsAsLights) {
     super();
 
+    this.includeRoomsAsLights = includeRoomsAsLights;
     this.siteName = siteName;
     this.username = username;
     this.password = password;
@@ -89,6 +90,8 @@ class PlejdApi extends EventEmitter {
       logger(JSON.stringify(this.site));
     }
 
+    const roomDevices = {};
+
     for (let i = 0; i < this.site.devices.length; i++) {
       const device = this.site.devices[i];
       const deviceId = device.deviceId;
@@ -119,7 +122,35 @@ class PlejdApi extends EventEmitter {
 
       logger(JSON.stringify(newDevice));
 
+      if (roomDevices[device.roomId]) {
+        roomDevices[device.roomId].push(newDevice);
+      }
+      else {
+        roomDevices[device.roomId] = [newDevice];
+      }
+
       devices.push(newDevice);
+    }
+
+    if (this.includeRoomsAsLights) {
+      logger('includeRoomsAsLights is set to true, adding rooms too.');
+      for (let i = 0; i < this.site.rooms.length; i++) {
+        const room = this.site.rooms[i];
+        const roomId = room.roomId;
+        const roomAddress = this.site.roomAddress[roomId];
+
+        const newDevice = {
+          id: roomAddress,
+          name: room.title,
+          type: 'light',
+          typeName: 'Room',
+          dimmable: roomDevices[roomId].find(x => x.dimmable).length > 0
+        };
+  
+        logger(JSON.stringify(newDevice));
+  
+        devices.push(newDevice);
+      }
     }
 
     return devices;

@@ -77,7 +77,7 @@ password | Password of your Plejd account, this is used to fetch the crypto key 
 mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
-includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. *Added in v. 5*.
+includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
 
 ## Changelog
 *0.1.4*:

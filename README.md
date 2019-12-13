@@ -48,7 +48,8 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * A new Local Add-on should appear named Plejd. Open that and install.
 * Enjoy!
 
-You also need to add the following to your `configuration.yaml` file:
+### Configuration
+You need to add the following to your `configuration.yaml` file:
 ```
 mqtt:
   broker: [point to your broker IP]
@@ -66,8 +67,7 @@ mqtt:
 ```
 The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing all devices).
 
-### Configuration
-The plugin needs you to configure some settings before working.
+The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 
 Parameter | Value
 --- | ---

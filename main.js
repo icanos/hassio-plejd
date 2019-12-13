@@ -41,20 +41,20 @@ async function main() {
       });
 
       // subscribe to changes from HA
-      client.on('stateChanged', (deviceId, state) => {
+      client.on('stateChanged', async (deviceId, state) => {
         if (state) {
-          controller.turnOn(deviceId);
+          await controller.turnOn(deviceId);
         }
         else {
-          controller.turnOff(deviceId);
+          await controller.turnOff(deviceId);
         }
       });
-      client.on('brightnessChanged', (deviceId, brightness) => {
+      client.on('brightnessChanged', async (deviceId, brightness) => {
         if (brightness > 0) {
-          controller.turnOn(deviceId, brightness);
+          await controller.turnOn(deviceId, brightness);
         }
         else {
-          controller.turnOff(deviceId);
+          await controller.turnOff(deviceId);
         }
       });
 

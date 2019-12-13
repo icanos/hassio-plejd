@@ -254,10 +254,10 @@ class Controller extends EventEmitter {
     }
   }
 
-  turnOn(id, brightness) {
+  async turnOn(id, brightness) {
     if (!this.isConnected) {
-      console.log('error: not connected');
-      return;
+      console.log('warning: not connected, will connect. might take a few seconds.');
+      await this.connect();
     }
 
     logger('turning on ' + id + ' at brightness ' + brightness);
@@ -274,10 +274,10 @@ class Controller extends EventEmitter {
     this.write(payload);
   }
 
-  turnOff(id) {
+  async turnOff(id) {
     if (!this.isConnected) {
-      console.log('error: not connected');
-      return;
+      console.log('warning: not connected, will connect. might take a few seconds.');
+      await this.connect();
     }
 
     logger('turning off ' + id);
@@ -317,6 +317,12 @@ class Controller extends EventEmitter {
     var ping = crypto.randomBytes(1);
 
     try {
+      // make sure we're connected, otherwise, return false and reconnect
+      if (this.peripheral.state !== 'connected') {
+        callback(false);
+        return;
+      }
+
       this.pingCharacteristic.write(ping, false, (err) => {
         if (err) {
           console.log('error: unable to send ping: ' + err);

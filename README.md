@@ -79,6 +79,14 @@ mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
 includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
 
+## I want voice control!
+With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:
+https://www.home-assistant.io/integrations/google_assistant/
+
+### I don't want voice, I want HomeKit!
+Check this out for more information on how you can get your Plejd lights controlled using HomeKit:
+https://www.home-assistant.io/integrations/homekit/
+
 ## Changelog
 *0.1.4*:
 * FIX: bug preventing add-on from building

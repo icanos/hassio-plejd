@@ -101,11 +101,9 @@ class PlejdApi extends EventEmitter {
         deviceNum = outputs[settings.output];
       }
 
-      // check if device is dimmable
-      let dimmable = false;
-      if (device.hardware) {
-        dimmable = device.hardware.name == 'DIM-01';
-      }
+      // check if device is dimmable     
+      const plejdDevice = this.site.plejdDevices.find(x => x.deviceId == deviceId);
+      let { name, type, dimmable } = this._getDeviceType(plejdDevice.hardwareId);
 
       if (settings) {
         dimmable = settings.dimCurve != 'NonDimmable';
@@ -114,8 +112,9 @@ class PlejdApi extends EventEmitter {
       const newDevice = {
         id: deviceNum,
         name: device.title,
-        type: 'light',
-        supportsDim: dimmable
+        type: type,
+        typeName: name,
+        dimmable: dimmable
       };
 
       logger(JSON.stringify(newDevice));
@@ -124,6 +123,51 @@ class PlejdApi extends EventEmitter {
     }
 
     return devices;
+  }
+
+  _getDeviceType(hardwareId) {
+    switch (parseInt(hardwareId)) {
+      case 1:
+      case 11:
+        return { name: "DIM-01", type: 'light', dimmable: true };
+      case 2:
+        return { name: "DIM-02", type: 'light', dimmable: true };
+      case 3:
+        return { name: "CTR-01", type: 'light', dimmable: false };
+      case 4:
+        return { name: "GWY-01", type: 'sensor', dimmable: false };
+      case 5:
+        return { name: "LED-10", type: 'light', dimmable: true };
+      case 6:
+        return { name: "WPH-01", type: 'switch', dimmable: false };
+      case 7:
+        return { name: "REL-01", type: 'switch', dimmable: false };
+      case 8:
+      case 9:
+        // Unknown
+        return { name: "-unknown-", type: 'light', dimmable: false };
+      case 10:
+          return { name: "-unknown-", type: 'light', dimmable: false };
+      case 12:
+        // Unknown
+        return { name: "-unknown-", type: 'light', dimmable: false };
+      case 13:
+        return { name: "Generic", type: 'light', dimmable: false };
+      case 14:
+      case 15:
+      case 16:
+        // Unknown
+        return { name: "-unknown-", type: 'light', dimmable: false };
+      case 17:
+        return { name: "REL-01", type: 'switch', dimmable: false };
+      case 18:
+        return { name: "REL-02", type: 'switch', dimmable: false };
+      case 19:
+        // Unknown
+        return { name: "-unknown-", type: 'light', dimmable: false };
+      case 20:
+        return { name: "SPR-01", type: 'switch', dimmable: false };
+    }
   }
 }
 

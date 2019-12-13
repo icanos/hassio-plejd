@@ -134,7 +134,17 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger(`sending discovery for ${device.name}`);
 
-      const payload = device.supportsDim ? getDiscoveryDimmablePayload(device) : getDiscoveryPayload(device);
+      let payload = null;
+      
+      if (device.type === 'switch') {
+        payload = getDiscoveryPayload(device);
+      }
+      else {
+        payload = device.dimmable ? getDiscoveryDimmablePayload(device) : getDiscoveryPayload(device);
+      }
+
+      console.log(`discovered ${device.name} with Plejd ID ${device.id}.`);
+
       self.deviceMap[device.id] = payload.unique_id;
 
       self.client.publish(

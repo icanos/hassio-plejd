@@ -86,9 +86,6 @@ includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/o
 *0.1.3*:
 * NEW: Added support for Plejd devices with multiple outputs (such as DIM-02)
 
-## Things to do
-* I'm currently looking into adding support to import rooms, containing one or multiple devices, from Plejd as well.
-
 ## License
 
 ```

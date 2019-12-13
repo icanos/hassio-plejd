@@ -1,5 +1,5 @@
 # Hass.io Plejd add-on
-Hass.io add-on for Plejd home automation devices. Gives you the ability to control the Swedish Plejd home automation devices through Home Assistant.
+Hass.io add-on for Plejd home automation devices. Gives you the ability to control the Plejd home automation devices through Home Assistant.
 It uses MQTT to communicate with Home Assistant and supports auto discovery of the devices in range.
 
 It also supports notifications so that changed made in the Plejd app are propagated to Home Assistant.
@@ -29,7 +29,15 @@ The add-on has been tested on the following platforms:
 * REL-01
 * REL-02
 
-### Installation
+### Easy Installation
+Browse to your Home Assistant installation in a web browser and click on `Hass.io` in the navigation bar to the left.
+* Open the Home Assistant web console and click `Hass.io` in the menu on the left side.
+* Click on `Add-on Store` in the top navigation bar of that page.
+* Paste the URL to this repo https://github.com/icanos/hassio-plejd/ in the `Add new repository by URL` field and hit `Add`.
+* Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
+* Enjoy!
+
+### Manual Installation
 Browse your Hass.io installation using a tool that allows you to manage files, for eg. SMB or an SFTP client etc.
 * Open the `/addon` directory
 * Create a new folder named `hassio-plejd`
@@ -38,6 +46,7 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * Click on `Add-on Store` in the top navigation bar of that page.
 * Click on the refresh button in the upper right corner.
 * A new Local Add-on should appear named Plejd. Open that and install.
+* Enjoy!
 
 You also need to add the following to your `configuration.yaml` file:
 ```
@@ -68,6 +77,7 @@ password | Password of your Plejd account, this is used to fetch the crypto key 
 mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
+includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. *Added in v. 5*.
 
 ## Changelog
 *0.1.4*:

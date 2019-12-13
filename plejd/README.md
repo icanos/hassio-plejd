@@ -48,7 +48,8 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * A new Local Add-on should appear named Plejd. Open that and install.
 * Enjoy!
 
-You also need to add the following to your `configuration.yaml` file:
+### Configuration
+You need to add the following to your `configuration.yaml` file:
 ```
 mqtt:
   broker: [point to your broker IP]
@@ -66,8 +67,7 @@ mqtt:
 ```
 The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing all devices).
 
-### Configuration
-The plugin needs you to configure some settings before working.
+The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 
 Parameter | Value
 --- | ---
@@ -77,7 +77,15 @@ password | Password of your Plejd account, this is used to fetch the crypto key 
 mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
-includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. *Added in v. 5*.
+includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
+
+## I want voice control!
+With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:
+https://www.home-assistant.io/integrations/google_assistant/
+
+### I don't want voice, I want HomeKit!
+Check this out for more information on how you can get your Plejd lights controlled using HomeKit:
+https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
 *0.1.4*:
@@ -85,9 +93,6 @@ includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/o
 
 *0.1.3*:
 * NEW: Added support for Plejd devices with multiple outputs (such as DIM-02)
-
-## Things to do
-* I'm currently looking into adding support to import rooms, containing one or multiple devices, from Plejd as well.
 
 ## License
 

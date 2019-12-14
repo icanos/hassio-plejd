@@ -52,7 +52,7 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 You need to add the following to your `configuration.yaml` file:
 ```
 mqtt:
-  broker: [point to your broker IP]
+  broker: [point to your broker IP eg. 'mqtt://localhost']
   username: [username of mqtt broker]
   password: !secret mqtt_password
   client_id: mqtt

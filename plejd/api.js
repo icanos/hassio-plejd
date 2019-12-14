@@ -35,6 +35,7 @@ class PlejdApi extends EventEmitter {
   }
 
   login() {
+    logger('login()');
     const self = this;
 
     const instance = axios.create({
@@ -45,6 +46,8 @@ class PlejdApi extends EventEmitter {
       }
     });
 
+    logger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
+
     instance.post(
       API_LOGIN_URL,
       {
@@ -52,12 +55,22 @@ class PlejdApi extends EventEmitter {
         'password': this.password
       })
       .then((response) => {
+        logger('got session token response');
         self.sessionToken = response.data.sessionToken;
         self.emit('loggedIn');
+      })
+      .catch((error) => {
+        if (error.response.status === 400) {
+          console.log('error: server returned status 400. probably invalid credentials, please verify.');  
+        }
+        else {
+          console.log('error: unable to retrieve session token response: ' + error);
+        }
       });
   }
 
   getCryptoKey(callback) {
+    logger('getCryptoKey()');
     const self = this;
 
     const instance = axios.create({
@@ -69,15 +82,18 @@ class PlejdApi extends EventEmitter {
       }
     });
 
+    logger('sending POST to ' + API_BASE_URL + API_SITES_URL);
+
     instance.post(API_SITES_URL)
       .then((response) => {
+        logger('got sites response');
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
         callback(self.cryptoKey);
       })
       .catch((error) => {
-        logger('unable to retrieve the crypto key. error: ' + error);
+        console.log('error: unable to retrieve the crypto key. error: ' + error);
         return Promise.reject('unable to retrieve the crypto key. error: ' + error);
       });
   }

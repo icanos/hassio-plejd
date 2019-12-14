@@ -137,8 +137,18 @@ class Controller extends EventEmitter {
 
         self.peripheral_address = self._reverseBuffer(Buffer.from(String(self.peripheral.address).replace(/\-/g, '').replace(/\:/g, ''), 'hex'));
 
+        let successfullyReadCharacteristics = false;
         logger('discovering services and characteristics');
+
+        setTimeout(async () => {
+          if (!successfullyReadCharacteristics) {
+            logger('error: timed out when reading characteristics. moving on to next device.');
+            return await self._internalConnect(idx + 1);
+          }
+        }, 10000);
+
         await self.peripheral.discoverSomeServicesAndCharacteristics([PLEJD_SERVICE], [], async (err, services, characteristics) => {
+        //await self.peripheral.discoverAllServicesAndCharacteristics(async (err, services, characteristics) => {
           if (err) {
             console.log('error: failed to discover services: ' + err);
             return;
@@ -167,6 +177,8 @@ class Controller extends EventEmitter {
             && this.lastDataCharacteristic
             && this.authCharacteristic
             && this.pingCharacteristic) {
+
+            successfullyReadCharacteristics = true;
 
             this.once('authenticated', () => {
               logger('Plejd is connected and authenticated.');
@@ -200,7 +212,6 @@ class Controller extends EventEmitter {
           }
 
           return Promise.resolve(true);
-          //});
         });
       });
     }
@@ -349,10 +360,10 @@ class Controller extends EventEmitter {
 
     try {
       // make sure we're connected, otherwise, return false and reconnect
-      if (this.peripheral.state != 'connected') {
-        callback(false);
-        return;
-      }
+      // if (this.peripheral.state != 'connected') {
+      //   callback(false);
+      //   return;
+      // }
 
       this.pingCharacteristic.write(ping, false, (err) => {
         if (err) {
@@ -426,6 +437,7 @@ class Controller extends EventEmitter {
         await this.connect();
       }
 
+      logger('writing ' + data + ' to ' + this.peripheral.address);
       this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, data), false);
       this.flush();
 

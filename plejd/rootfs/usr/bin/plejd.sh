@@ -22,6 +22,8 @@ PLEJD_CONFIG="{
 }
 "
 
+bashio::log.info 'Wrote plejd.json'
 echo "$PLEJD_CONFIG" > $PLEJD_PATH
-
+ 
+bashio::log.info 'Running add-on'
 exec node /plejd/main.js

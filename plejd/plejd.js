@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
 const EventEmitter = require('events');
+const sleep = require('sleep');
 
 let debug = '';
 
@@ -63,6 +64,24 @@ class Controller extends EventEmitter {
         self.peripherals.push(peripheral);
       }
     });
+
+    noble.on('disconnect', async () => {
+      if (self.peripherals.length) {
+        logger('peripherals already scanned.');
+        this.connectedIndex = 0;
+        await self.connect();
+      }
+    });
+  }
+
+  async reinit() {
+    console.log('reinitializing the Plejd add-on.');
+    this.once('scanComplete', async (peripherals) => {
+      console.log('found Plejd devices, reconnecting');
+      await this.connect();
+    });
+
+    await this.scan();
   }
 
   async scan() {
@@ -88,9 +107,9 @@ class Controller extends EventEmitter {
       return Promise.resolve(false);
     }
 
-    if (!this.peripherals.length) {
-      await this.scan();
-    }
+    // if (!this.peripherals.length) {
+    //   await this.scan();
+    // }
 
     this.isConnecting = true;
 
@@ -114,7 +133,7 @@ class Controller extends EventEmitter {
         }
 
         self.peripheral = self.peripherals[idx];
-        console.log('connected to Plejd device with addr ' + self.peripheral.address);
+        console.log('connected to Plejd device with addr ' + self.peripheral.address + ' with rssi ' + self.peripheral.rssi);
 
         self.peripheral_address = self._reverseBuffer(Buffer.from(String(self.peripheral.address).replace(/\-/g, '').replace(/\:/g, ''), 'hex'));
 
@@ -149,7 +168,7 @@ class Controller extends EventEmitter {
             && this.authCharacteristic
             && this.pingCharacteristic) {
 
-            this.on('authenticated', () => {
+            this.once('authenticated', () => {
               logger('Plejd is connected and authenticated.');
               this.connectedIndex = idx;
 
@@ -173,6 +192,11 @@ class Controller extends EventEmitter {
 
             this.isConnected = true;
             this.isConnecting = false;
+
+            // make sure to write any queued up messages to the Plejd devices
+            if (this.writeQueue && this.writeQueue.length > 0) {
+              this.flush();
+            }
           }
 
           return Promise.resolve(true);
@@ -230,7 +254,16 @@ class Controller extends EventEmitter {
 
       if (this.peripheral) {
         try {
+          // disconnect
           await this.peripheral.disconnect();
+
+          // we need to reset the ble adapter too
+          noble._bindings._hci.reset();
+
+          // wait 200 ms for reset command to take effect :)
+          sleep.msleep(200);
+
+          // now we're ready to connect again
         }
         catch (error) {
           console.log('error: unable to disconnect from Plejd: ' + error);
@@ -253,10 +286,10 @@ class Controller extends EventEmitter {
   }
 
   async turnOn(id, brightness) {
-    if (!this.isConnected) {
-      console.log('warning: not connected, will connect. might take a few seconds.');
-      await this.connect();
-    }
+    // if (this.peripheral.state !== 'connected') {
+    //   console.log('warning: not connected, will connect. might take a few seconds.');
+    //   await this.reinit();
+    // }
 
     logger('turning on ' + id + ' at brightness ' + brightness);
 
@@ -273,10 +306,10 @@ class Controller extends EventEmitter {
   }
 
   async turnOff(id) {
-    if (!this.isConnected) {
-      console.log('warning: not connected, will connect. might take a few seconds.');
-      await this.connect();
-    }
+    // if (this.peripheral.state !== 'connected') {
+    //   console.log('warning: not connected, will connect. might take a few seconds.');
+    //   await this.reinit();
+    // }
 
     logger('turning off ' + id);
 
@@ -291,13 +324,13 @@ class Controller extends EventEmitter {
     logger('starting ping');
     this.pingRef = setInterval(async () => {
       logger('ping');
-      if (self.isConnected) {
+      if (self.peripheral.state == 'connected') {
         await self.plejdPing(async (pingOk) => {
 
           if (!pingOk) {
-            logger('ping failed');
+            console.log('error: ping failed');
             await self.disconnect();
-            await self.connect();
+            // await self.reinit();
           }
           else {
             logger('pong');
@@ -306,7 +339,7 @@ class Controller extends EventEmitter {
       }
       else {
         await self.disconnect();
-        await self.connect();
+      //   await self.reinit();
       }
     }, 3000);
   }
@@ -316,7 +349,7 @@ class Controller extends EventEmitter {
 
     try {
       // make sure we're connected, otherwise, return false and reconnect
-      if (this.peripheral.state !== 'connected') {
+      if (this.peripheral.state != 'connected') {
         callback(false);
         return;
       }
@@ -344,8 +377,7 @@ class Controller extends EventEmitter {
     }
     catch (error) {
       console.log('error: writing to plejd: ' + error);
-      await self.disconnect();
-      await self.connect();
+      callback(false);
     }
   }
 
@@ -383,7 +415,7 @@ class Controller extends EventEmitter {
     const self = this;
 
     try {
-      if (this.isConnecting) {
+      if (this.peripheral.state !== 'connected') {
         logger('adding message to queue.');
         this.writeQueue.push(data);
         return Promise.resolve(true);
@@ -395,11 +427,7 @@ class Controller extends EventEmitter {
       }
 
       this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, data), false);
-
-      let writeData;
-      while ((writeData = this.writeQueue.shift()) !== undefined) {
-        this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, writeData), false);
-      }
+      this.flush();
 
       if (!this.keepAlive) {
         clearTimeout(this.disconnectIntervalRef);
@@ -411,7 +439,14 @@ class Controller extends EventEmitter {
     catch (error) {
       console.log('error: writing to plejd: ' + error);
       await self.disconnect();
-      await self.connect();
+      // await self.connect();
+    }
+  }
+
+  async flush() {
+    let writeData;
+    while ((writeData = this.writeQueue.shift()) !== undefined) {
+      this.dataCharacteristic.write(this._encryptDecrypt(this.cryptoKey, this.peripheral_address, writeData), false);
     }
   }
 

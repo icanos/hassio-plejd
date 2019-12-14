@@ -1,12 +1,13 @@
 {
   "dependencies": {
-    "@abandonware/noble": "^1.9.2-5",
     "@abandonware/bluetooth-hci-socket": "0.5.3-3",
+    "@abandonware/noble": "^1.9.2-5",
     "axios": "^0.19.0",
     "buffer-xor": "^2.0.2",
     "fs": "0.0.1-security",
     "jspack": "0.0.4",
     "lodash": "^4.17.15",
-    "mqtt": "^3.0.0"
+    "mqtt": "^3.0.0",
+    "sleep": "^6.1.0"
   }
 }

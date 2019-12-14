@@ -85,8 +85,6 @@ class Controller extends EventEmitter {
 
     if (this.isScanning) {
       logger('already scanning, waiting.');
-
-      setTimeout(this.connect(), 1000);
       return Promise.resolve(false);
     }
 

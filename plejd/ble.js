@@ -1,4 +1,4 @@
-const noble = require('@abandonware/noble');
+const noble = require('@icanos/noble');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
@@ -57,7 +57,7 @@ class PlejdService extends EventEmitter {
       ping: null
     };
 
-    this._wireEvents();
+    this.wireEvents();
   }
 
   scan() {
@@ -81,6 +81,11 @@ class PlejdService extends EventEmitter {
   }
 
   connect(uuid = null) {
+    if (this.state === STATE_CONNECTING) {
+      console.log('warning: currently connecting to a device, please wait...');
+      return;
+    }
+
     if (!uuid) {
       this.device = Object.values(this.devices)[0];
     }
@@ -92,7 +97,19 @@ class PlejdService extends EventEmitter {
       }
     }
 
+    logger('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
+
+    this.state = STATE_CONNECTING;
     this.device.connect(this.onDeviceConnected);
+  }
+
+  disconnect() {
+    logger('disconnect()');
+    if (this.state !== STATE_CONNECTED) {
+      return;
+    }
+
+    this.device.disconnect();
   }
 
   authenticate() {
@@ -337,3 +354,5 @@ class PlejdService extends EventEmitter {
     return buffer
   }
 }
+
+module.exports = PlejdService;

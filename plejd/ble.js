@@ -47,6 +47,7 @@ class PlejdService extends EventEmitter {
     this.devices = {};
     // Keeps track of the currently connected device
     this.device = null;
+    this.deviceIdx = 0;
 
     // Holds a reference to all characteristics
     this.characteristicState = STATE_UNINITIALIZED;
@@ -57,6 +58,7 @@ class PlejdService extends EventEmitter {
       ping: null
     };
 
+    logger('wiring events and waiting for BLE interface to power up.');
     this.wireEvents();
   }
 
@@ -69,25 +71,33 @@ class PlejdService extends EventEmitter {
     }
 
     this.state = STATE_SCANNING;
-    noble.startScanning();
+    noble.startScanning([PLEJD_SERVICE]);
     
     setTimeout(() => {
       noble.stopScanning();
       this.state = STATE_IDLE;
 
-      this.devices.sort((a, b) => (a.rssi > b.rssi) ? 1 : -1)
-      this.emit('scanComplete', this.devices);
+      const foundDeviceCount = Object.values(this.devices).length;
+      logger('scan completed, found ' + foundDeviceCount + ' device(s).');
+
+      if (foundDeviceCount == 0) {
+        console.log('warning: no devices found. will not do anything else.');
+      }
+      else {
+        this.emit('scanComplete', this.devices);
+      }
     }, 5000);
   }
 
   connect(uuid = null) {
+    const self = this;
     if (this.state === STATE_CONNECTING) {
       console.log('warning: currently connecting to a device, please wait...');
       return;
     }
 
     if (!uuid) {
-      this.device = Object.values(this.devices)[0];
+      this.device = Object.values(this.devices)[this.deviceIdx];
     }
     else {
       this.device = this.devices[uuid];
@@ -97,10 +107,32 @@ class PlejdService extends EventEmitter {
       }
     }
 
+    if (!this.device) {
+      console.log('error: reached end of device list. cannot continue.');
+      return;
+    }
+
     logger('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
+    setTimeout(() => {
+      if (self.state !== STATE_CONNECTED && self.state !== STATE_AUTHENTICATED) {
+        if (self.deviceIdx < Object.keys(self.devices).length) {
+          logger('connection timed out after 10 s. trying next.');
+
+          self.deviceIdx++;
+          self.connect();
+        }
+      }
+    }, 10 * 1000);
 
     this.state = STATE_CONNECTING;
-    this.device.connect(this.onDeviceConnected);
+    this.device.connect((err) => {
+      self.onDeviceConnected(err);
+    });
+  }
+
+  reset() {
+    logger('reset()');
+    this.state = STATE_IDLE;
   }
 
   disconnect() {
@@ -201,7 +233,7 @@ class PlejdService extends EventEmitter {
           return;
         }
 
-        this.pingCharacteristic.read((err, data) => {
+        this.characteristics.ping.read((err, data) => {
           if (err) {
             console.log('error: unable to read ping: ' + err);
             self.emit('pingFailed');
@@ -228,15 +260,42 @@ class PlejdService extends EventEmitter {
     logger('onDeviceConnected()');
     const self = this;
 
+    if (err) {
+      console.log('error: failed to connect to device: ' + err + '. picking next.');
+      this.deviceIdx++;
+      this.reset();
+      this.connect();
+      return;
+    }
+
     this.state = STATE_CONNECTED;
 
     if (this.characteristicState === STATE_UNINITIALIZED) {
       // We need to discover the characteristics
+      logger('discovering services and characteristics');
+
+      setTimeout(() => {
+        if (this.characteristicState === STATE_UNINITIALIZED) {
+          console.log('error: discovering characteristics timed out. trying next device.');
+          self.deviceIdx++;
+          self.disconnect();
+          self.connect();
+        }
+      }, 5000);
+
       this.device.discoverSomeServicesAndCharacteristics([PLEJD_SERVICE], [], async (err, services, characteristics) => {
         if (err) {
           console.log('error: failed to discover services: ' + err);
           return;
         }
+
+        if (self.state !== STATE_CONNECTED || self.characteristicState !== STATE_UNINITIALIZED) {
+          // in case our time out triggered before we got here.
+          console.log('warning: found characteristics in invalid state. ignoring.');
+          return;
+        }
+
+        logger('found ' + characteristics.length + ' characteristic(s).');
 
         characteristics.forEach((ch) => {
           if (DATA_UUID == ch.uuid) {
@@ -257,10 +316,10 @@ class PlejdService extends EventEmitter {
           }
         });
 
-        if (self.dataCharacteristic
-          && self.lastDataCharacteristic
-          && self.authCharacteristic
-          && self.pingCharacteristic) {
+        if (self.characteristics.data
+          && self.characteristics.lastData
+          && self.characteristics.auth
+          && self.characteristics.ping) {
 
           self.characteristicState = STATE_INITIALIZED;
           self.emit('deviceCharacteristicsComplete', self.device);
@@ -276,7 +335,10 @@ class PlejdService extends EventEmitter {
 
   onDeviceDiscovered(device) {
     logger('onDeviceDiscovered(' + device.id + ')');
-    this.devices[device.id] = device;
+    if (device.advertisement.localName === 'P mesh') {
+      logger('device is P mesh');
+      this.devices[device.id] = device;
+    }
   }
 
   onDeviceDisconnected() {
@@ -293,6 +355,8 @@ class PlejdService extends EventEmitter {
 
   onDeviceScanComplete() {
     logger('onDeviceScanComplete()');
+    console.log('trying to connect to the mesh network.');
+    this.connect();
   }
 
   onInterfaceStateChanged(state) {
@@ -304,15 +368,19 @@ class PlejdService extends EventEmitter {
   }
 
   wireEvents() {
-    noble.on('stateChanged', this.onInterfaceStateChanged);
-    noble.on('scanStop', this.onDeviceScanComplete);
-    noble.on('discover', this.onDeviceDiscovered);
-    noble.on('disconnect', this.onDeviceDisconnected);
+    logger('wireEvents()');
+    const self = this;
 
-    this.on('deviceCharacteristicsComplete', this.onDeviceCharacteristicsComplete);
-    this.on('authenticated', this.onAuthenticated);
-    this.on('pingFailed', this.onPingFailed);
-    this.on('pingSuccess', this.onPingSuccess);
+    noble.on('stateChange', this.onInterfaceStateChanged.bind(self));
+    //noble.on('scanStop', this.onDeviceScanComplete.bind(self));
+    noble.on('discover', this.onDeviceDiscovered.bind(self));
+    noble.on('disconnect', this.onDeviceDisconnected.bind(self));
+
+    this.on('scanComplete', this.onDeviceScanComplete.bind(this));
+    this.on('deviceCharacteristicsComplete', this.onDeviceCharacteristicsComplete.bind(self));
+    this.on('authenticated', this.onAuthenticated.bind(self));
+    this.on('pingFailed', this.onPingFailed.bind(self));
+    this.on('pingSuccess', this.onPingSuccess.bind(self));
   }
 
   _createChallengeResponse(key, challenge) {

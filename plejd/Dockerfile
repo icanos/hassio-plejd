@@ -12,7 +12,7 @@ COPY ./config.json /plejd/
 COPY ./main.js /plejd/
 COPY ./mqtt.js /plejd/
 COPY ./package.json /plejd/
-COPY ./plejd.js /plejd/
+COPY ./ble.js /plejd/
 
 ARG BUILD_ARCH
 

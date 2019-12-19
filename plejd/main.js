@@ -1,4 +1,3 @@
-const plejd = require('./plejd');
 const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');

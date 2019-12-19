@@ -33,7 +33,7 @@ The add-on has been tested on the following platforms:
 Browse to your Home Assistant installation in a web browser and click on `Hass.io` in the navigation bar to the left.
 * Open the Home Assistant web console and click `Hass.io` in the menu on the left side.
 * Click on `Add-on Store` in the top navigation bar of that page.
-* Paste the URL to this repo https://github.com/icanos/hassio-plejd/ in the `Add new repository by URL` field and hit `Add`.
+* Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add new repository by URL` field and hit `Add`.
 * Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
 * Enjoy!
 

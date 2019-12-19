@@ -3,7 +3,6 @@ const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
 const EventEmitter = require('events');
-const sleep = require('sleep');
 
 let debug = 'console';
 
@@ -47,7 +46,10 @@ class PlejdService extends EventEmitter {
     this.devices = {};
     // Keeps track of the currently connected device
     this.device = null;
+    this.deviceAddress = null;
     this.deviceIdx = 0;
+
+    this.writeQueue = [];
 
     // Holds a reference to all characteristics
     this.characteristicState = STATE_UNINITIALIZED;
@@ -62,6 +64,27 @@ class PlejdService extends EventEmitter {
     this.wireEvents();
   }
 
+  turnOn(id, brightness) {
+    logger('turning on ' + id + ' at brightness ' + brightness);
+
+    var payload;
+    if (!brightness) {
+      payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
+    } else {
+      brightness = brightness << 8 | brightness;
+      payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
+    }
+
+    this.write(payload);
+  }
+
+  turnOff(id) {
+    logger('turning off ' + id);
+
+    var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009700', 'hex');
+    this.write(payload);
+  }
+
   scan() {
     logger('scan()');
 
@@ -72,7 +95,7 @@ class PlejdService extends EventEmitter {
 
     this.state = STATE_SCANNING;
     noble.startScanning([PLEJD_SERVICE]);
-    
+
     setTimeout(() => {
       noble.stopScanning();
       this.state = STATE_IDLE;
@@ -112,6 +135,14 @@ class PlejdService extends EventEmitter {
       return;
     }
 
+    this.deviceAddress = this._reverseBuffer(
+      Buffer.from(
+        String(this.device.address)
+          .replace(/\-/g, '')
+          .replace(/\:/g, ''), 'hex'
+      )
+    );
+
     logger('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
     setTimeout(() => {
       if (self.state !== STATE_CONNECTED && self.state !== STATE_AUTHENTICATED) {
@@ -141,7 +172,12 @@ class PlejdService extends EventEmitter {
       return;
     }
 
+    clearInterval(this.pingRef);
+
+    this.unsubscribeCharacteristics();
     this.device.disconnect();
+
+    this.state = STATE_DISCONNECTED;
   }
 
   authenticate() {
@@ -179,6 +215,22 @@ class PlejdService extends EventEmitter {
     });
   }
 
+  write(data) {
+    if (this.state !== STATE_AUTHENTICATED) {
+      logger('error: not connected.');
+      this.writeQueue.push(data);
+      return false;
+    }
+
+    const encryptedData = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
+    this.characteristics.data.write(encryptedData, false);
+
+    let writeData;
+    while ((writeData = this.writeQueue.shift()) !== undefined) {
+      this.characteristics.data.write(this._encryptDecrypt(this.cryptoKey, this.deviceAddress, writeData), false);
+    }
+  }
+
   onAuthenticated() {
     // Start ping
     logger('onAuthenticated()');
@@ -193,6 +245,9 @@ class PlejdService extends EventEmitter {
       if (this.state === STATE_AUTHENTICATED) {
         logger('ping');
         this.ping();
+      }
+      else if (this.state === STATE_DISCONNECTED) {
+        console.log('warning: device disconnected, stop ping.');
       }
       else {
         console.log('error: ping failed, not connected.');
@@ -210,7 +265,9 @@ class PlejdService extends EventEmitter {
     logger('stopping ping and reconnecting.');
     clearInterval(this.pingRef);
 
+    this.unsubscribeCharacteristics();
     this.state = STATE_DISCONNECTED;
+
     this.connect(this.device.id);
   }
 
@@ -322,6 +379,10 @@ class PlejdService extends EventEmitter {
           && self.characteristics.ping) {
 
           self.characteristicState = STATE_INITIALIZED;
+
+          // subscribe to notifications
+          this.subscribeCharacteristics();
+
           self.emit('deviceCharacteristicsComplete', self.device);
         }
       });
@@ -367,6 +428,28 @@ class PlejdService extends EventEmitter {
     }
   }
 
+  onLastDataUpdated(data, isNotification) {
+    const decoded = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
+
+    let state = 0;
+    let dim = 0;
+    let device = parseInt(decoded[0], 10);
+
+    if (decoded.toString('hex', 3, 5) === '00c8' || decoded.toString('hex', 3, 5) === '0098') {
+      state = parseInt(decoded.toString('hex', 5, 6), 10);
+      dim = parseInt(decoded.toString('hex', 6, 8), 16) >> 8;
+
+      logger('d: ' + device + ' got state+dim update: ' + state + ' - ' + dim);
+      this.emit('dimChanged', device, state, dim);
+    }
+    else if (decoded.toString('hex', 3, 5) === '0097') {
+      state = parseInt(decoded.toString('hex', 5, 6), 10);
+
+      logger('d: ' + device + ' got state update: ' + state);
+      this.emit('stateChanged', device, state);
+    }
+  }
+
   wireEvents() {
     logger('wireEvents()');
     const self = this;
@@ -381,6 +464,27 @@ class PlejdService extends EventEmitter {
     this.on('authenticated', this.onAuthenticated.bind(self));
     this.on('pingFailed', this.onPingFailed.bind(self));
     this.on('pingSuccess', this.onPingSuccess.bind(self));
+  }
+
+  subscribeCharacteristics() {
+    if (this.characteristics.lastData) {
+      this.characteristics.lastData.subscribe((err) => {
+        if (err) {
+          console.log('error: could not subscribe to event.');
+        }
+      });
+      this.characteristics.lastData.on('data', this.onLastDataUpdated.bind(this));
+    }
+  }
+
+  unsubscribeCharacteristics() {
+    if (this.characteristics.lastData) {
+      this.characteristics.lastData.unsubscribe((err) => {
+        if (err) {
+          console.log('error: could not unsubscribe from event.');
+        }
+      });
+    }
   }
 
   _createChallengeResponse(key, challenge) {

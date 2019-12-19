@@ -4,7 +4,7 @@ const xor = require('buffer-xor');
 const _ = require('lodash');
 const EventEmitter = require('events');
 
-let debug = 'console';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd', msg);

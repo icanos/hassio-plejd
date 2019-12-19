@@ -88,10 +88,12 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
-*0.1.4*:
-* FIX: bug preventing add-on from building
+*v 0.1.0*:
+* NEW: Rewrote the BLE integration for more stability
+* FIX: discovery wasn't always sent
 
-*0.1.3*:
+*previous*:
+* FIX: bug preventing add-on from building
 * NEW: Added support for Plejd devices with multiple outputs (such as DIM-02)
 
 ## License

@@ -90,6 +90,7 @@ https://www.home-assistant.io/integrations/homekit/
 ## Changelog
 *v 0.1.1*:
 * FIX: Fixed missing reference on startup, preventing add-on from starting
+
 *v 0.1.0*:
 * NEW: Rewrote the BLE integration for more stability
 * FIX: discovery wasn't always sent

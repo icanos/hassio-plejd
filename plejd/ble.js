@@ -133,13 +133,20 @@ class PlejdService extends EventEmitter {
 
         if (i >= steps) {
           clearInterval(transitionRef);
+
+          // finally, we turn it off
+          this._turnOff(id);
         }
 
         i++;
       }, 500);
     }
+    else {
+      this._turnOff(id);
+    }
+  }
 
-    // finally, we turn it off
+  _turnOff(id) {
     var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009700', 'hex');
     this.write(payload);
   }

@@ -1,11 +1,11 @@
-const plejd = require('./plejd');
 const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');
 const PlejdService = require('./ble');
 
 async function main() {
-  const rawData = fs.readFileSync('/data/plejd.json');
+  //const rawData = fs.readFileSync('/data/plejd.json');
+  const rawData = fs.readFileSync('plejd.json');
   const config = JSON.parse(rawData);
 
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);
@@ -29,29 +29,17 @@ async function main() {
       });
 
       // subscribe to changes from Plejd
-      plejd.on('stateChanged', (deviceId, state) => {
-        client.updateState(deviceId, state);
-      });
-      plejd.on('dimChanged', (deviceId, state, dim) => {
-        client.updateState(deviceId, state);
-        client.updateBrightness(deviceId, dim);
+      plejd.on('stateChanged', (deviceId, command) => {
+        client.updateState(deviceId, command);
       });
 
       // subscribe to changes from HA
-      client.on('stateChanged', (deviceId, state) => {
-        if (state) {
-          plejd.turnOn(deviceId);
+      client.on('stateChanged', (deviceId, command) => {
+        if (command.state === 'ON') {
+          plejd.turnOn(deviceId, command);
         }
         else {
-          plejd.turnOff(deviceId);
-        }
-      });
-      client.on('brightnessChanged', (deviceId, brightness) => {
-        if (brightness > 0) {
-          plejd.turnOn(deviceId, brightness);
-        }
-        else {
-          plejd.turnOff(deviceId);
+          plejd.turnOff(deviceId, command);
         }
       });
     });

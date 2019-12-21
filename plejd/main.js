@@ -4,8 +4,7 @@ const fs = require('fs');
 const PlejdService = require('./ble');
 
 async function main() {
-  //const rawData = fs.readFileSync('/data/plejd.json');
-  const rawData = fs.readFileSync('plejd.json');
+  const rawData = fs.readFileSync('/data/plejd.json');
   const config = JSON.parse(rawData);
 
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);

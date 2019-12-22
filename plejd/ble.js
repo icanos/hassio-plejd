@@ -117,7 +117,7 @@ class PlejdService extends EventEmitter {
     if (command.transition) {
       // we have a transition time, split the target brightness (which will be 0)
       // into pieces spread of the transition time
-      const initialBrightness = this.plejdDevices[id].dim;
+      const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : 250;
       const steps = command.transition * 2;
       const brightnessStep = initialBrightness / steps;
       let currentBrightness = initialBrightness;

@@ -45,6 +45,18 @@ async function main() {
           plejd.turnOff(deviceId, command);
         }
       });
+
+      client.on('settingsChanged', (settings) => {
+        if (settings.module === 'mqtt') {
+          client.updateSettings(settings);
+        }
+        else if (settings.module === 'ble') {
+          plejd.updateSettings(settings);
+        }
+        else if (settings.module === 'api') {
+          plejdApi.updateSettings(settings);
+        }
+      }); 
     });
   });
 

@@ -8,7 +8,7 @@ API_LOGIN_URL = 'login';
 API_SITES_URL = 'functions/getSites';
 
 // #region logging
-const debug = '';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd-api', msg);
@@ -32,6 +32,15 @@ class PlejdApi extends EventEmitter {
 
     this.sessionToken = '';
     this.site = null;
+  }
+
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
   }
 
   login() {

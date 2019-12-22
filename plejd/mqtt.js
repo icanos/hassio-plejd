@@ -5,7 +5,7 @@ const _ = require('lodash');
 const startTopic = 'hass/status';
 
 // #region logging
-const debug = '';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd-mqtt', msg);
@@ -30,6 +30,7 @@ const getConfigPath = plug => `${getPath(plug)}/config`;
 const getStateTopic = plug => `${getPath(plug)}/state`;
 const getCommandTopic = plug => `${getPath(plug)}/set`;
 const getSceneEventTopic = () => `plejd/event/scene`;
+const getSettingsTopic = () => `plejd/settings`;
 
 const getDiscoveryPayload = device => ({
   schema: 'json',
@@ -78,6 +79,12 @@ class MqttClient extends EventEmitter {
           logger('error: unable to subscribe to control topics');
         }
       });
+
+      this.client.subscribe(getSettingsTopic(), (err) => {
+        if (err) {
+          console.log('error: could not subscribe to settings topic');
+        }
+      });
     });
 
     this.client.on('close', () => {
@@ -92,12 +99,24 @@ class MqttClient extends EventEmitter {
         logger('home assistant has started. lets do discovery.');
         self.emit('connected');
       }
+      else if (topic === getSettingsTopic()) {
+        self.emit('settingsChanged', command);
+      }
 
       if (_.includes(topic, 'set')) {
         const device = self.devices.find(x => getCommandTopic(x) === topic);
         self.emit('stateChanged', device.id, command);
       }
     });
+  }
+
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
   }
 
   reconnect() {

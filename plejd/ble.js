@@ -71,6 +71,15 @@ class PlejdService extends EventEmitter {
     this.wireEvents();
   }
 
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
+  }
+
   turnOn(id, command) {
     logger('turning on ' + id + ' at brightness ' + (!command.brightness ? 255 : command.brightness));
     const brightness = command.brightness ? command.brightness : 0;
@@ -83,7 +92,7 @@ class PlejdService extends EventEmitter {
 
       let i = 0;
       const transitionRef = setInterval(() => {
-        this._turnOn(id, (brightnessStep * i) + 1);
+        this._turnOn(id, parseInt((brightnessStep * i) + 1));
 
         if (i >= steps) {
           clearInterval(transitionRef);
@@ -124,19 +133,16 @@ class PlejdService extends EventEmitter {
 
       let i = 0;
       const transitionRef = setInterval(() => {
-        currentBrightness = initialBrightness - (brightnessStep * i);
-        if (currentBrightness <= 0) {
-          clearInterval(transitionRef);
-        }
-        
-        this._turnOn(id, currentBrightness);
-
-        if (i >= steps) {
+        currentBrightness = parseInt(initialBrightness - (brightnessStep * i));
+        if (currentBrightness <= 0 || i >= steps) {
           clearInterval(transitionRef);
 
           // finally, we turn it off
           this._turnOff(id);
+          return;
         }
+        
+        this._turnOn(id, currentBrightness);
 
         i++;
       }, 500);

@@ -55,7 +55,6 @@ mqtt:
   broker: [point to your broker IP eg. 'mqtt://localhost']
   username: [username of mqtt broker]
   password: !secret mqtt_password
-  client_id: mqtt
   discovery: true
   discovery_prefix: homeassistant
   birth_message: 

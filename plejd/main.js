@@ -32,6 +32,10 @@ async function main() {
         client.updateState(deviceId, command);
       });
 
+      plejd.on('sceneTriggered', (scene) => {
+        client.sceneTriggered(scene);
+      });
+
       // subscribe to changes from HA
       client.on('stateChanged', (deviceId, command) => {
         if (command.state === 'ON') {

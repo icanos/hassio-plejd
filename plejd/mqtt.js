@@ -29,6 +29,7 @@ const getPath = ({ id, type }) =>
 const getConfigPath = plug => `${getPath(plug)}/config`;
 const getStateTopic = plug => `${getPath(plug)}/state`;
 const getCommandTopic = plug => `${getPath(plug)}/set`;
+const getSceneEventTopic = () => `plejd/event/scene`;
 
 const getDiscoveryPayload = device => ({
   schema: 'json',
@@ -147,11 +148,16 @@ class MqttClient extends EventEmitter {
       }
     }
 
-    logger(JSON.stringify(payload));
-
     this.client.publish(
       getStateTopic(device),
       JSON.stringify(payload)
+    );
+  }
+
+  sceneTriggered(scene) {
+    this.client.publish(
+      getSceneEventTopic(),
+      JSON.stringify({ scene: scene })
     );
   }
 }

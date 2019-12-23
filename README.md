@@ -48,6 +48,14 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * A new Local Add-on should appear named Plejd. Open that and install.
 * Enjoy!
 
+### NOTE
+When starting the add-on, the log displays this message:
+```
+parse error: Expected string key before ':' at line 1, column 4
+[08:56:24] ERROR: Unknown HTTP error occured
+```
+However, the add-on still works as expected and this is something I'm looking into, but not with that much effort yet though.
+
 ### Configuration
 You need to add the following to your `configuration.yaml` file:
 ```

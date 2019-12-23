@@ -33,7 +33,7 @@ The add-on has been tested on the following platforms:
 Browse to your Home Assistant installation in a web browser and click on `Hass.io` in the navigation bar to the left.
 * Open the Home Assistant web console and click `Hass.io` in the menu on the left side.
 * Click on `Add-on Store` in the top navigation bar of that page.
-* Paste the URL to this repo https://github.com/icanos/hassio-plejd/ in the `Add new repository by URL` field and hit `Add`.
+* Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add new repository by URL` field and hit `Add`.
 * Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
 * Enjoy!
 
@@ -52,10 +52,9 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 You need to add the following to your `configuration.yaml` file:
 ```
 mqtt:
-  broker: [point to your broker IP]
+  broker: [point to your broker IP eg. 'mqtt://localhost']
   username: [username of mqtt broker]
   password: !secret mqtt_password
-  client_id: mqtt
   discovery: true
   discovery_prefix: homeassistant
   birth_message: 
@@ -88,10 +87,15 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
-*0.1.4*:
-* FIX: bug preventing add-on from building
+*v 0.1.1*:
+* FIX: Fixed missing reference on startup, preventing add-on from starting
 
-*0.1.3*:
+*v 0.1.0*:
+* NEW: Rewrote the BLE integration for more stability
+* FIX: discovery wasn't always sent
+
+*previous*:
+* FIX: bug preventing add-on from building
 * NEW: Added support for Plejd devices with multiple outputs (such as DIM-02)
 
 ## License

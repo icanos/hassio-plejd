@@ -92,7 +92,12 @@ class PlejdService extends EventEmitter {
 
       let i = 0;
       const transitionRef = setInterval(() => {
-        this._turnOn(id, parseInt((brightnessStep * i) + 1));
+        let currentBrightness = parseInt((brightnessStep * i) + 1);
+        if (currentBrightness > 254) {
+          currentBrightness = 254;
+        }
+
+        this._turnOn(id, currentBrightness);
 
         if (i >= steps) {
           clearInterval(transitionRef);

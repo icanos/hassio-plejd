@@ -9,6 +9,9 @@ Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 Disclaimer:
 I am in no way affiliated with Plejd and am solely doing this as a hobby project.
 
+**Did you like this? Consider helping me continue the development:**  
+[Buy me a coffee](https://www.buymeacoffee.com/w1ANTUb)
+
 ## Getting started
 To get started, make sure that the following requirements are met:
 

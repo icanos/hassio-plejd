@@ -9,6 +9,9 @@ Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 Disclaimer:
 I am in no way affiliated with Plejd and am solely doing this as a hobby project.
 
+**Did you like this? Consider helping me continue the development:**  
+[Buy me a coffee](https://www.buymeacoffee.com/w1ANTUb)
+
 ## Getting started
 To get started, make sure that the following requirements are met:
 
@@ -47,6 +50,14 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * Click on the refresh button in the upper right corner.
 * A new Local Add-on should appear named Plejd. Open that and install.
 * Enjoy!
+
+### NOTE
+When starting the add-on, the log displays this message:
+```
+parse error: Expected string key before ':' at line 1, column 4
+[08:56:24] ERROR: Unknown HTTP error occured
+```
+However, the add-on still works as expected and this is something I'm looking into, but not with that much effort yet though.
 
 ### Configuration
 You need to add the following to your `configuration.yaml` file:

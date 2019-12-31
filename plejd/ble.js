@@ -219,7 +219,11 @@ class PlejdService extends EventEmitter {
     setTimeout(() => {
       if (self.state !== STATE_CONNECTED && self.state !== STATE_AUTHENTICATED) {
         if (self.deviceIdx < Object.keys(self.devices).length) {
-          logger('connection timed out after 10 s. trying next.');
+          logger('connection timed out after 10 s. cleaning up and trying next.');
+
+          self.device.removeAllListeners('servicesDiscover');
+          self.device.removeAllListeners('connect');
+          self.device.removeAllListeners('disconnect');
 
           self.deviceIdx++;
           self.connect();
@@ -240,11 +244,15 @@ class PlejdService extends EventEmitter {
 
   disconnect() {
     logger('disconnect()');
-    if (this.state !== STATE_CONNECTED) {
+    if (this.state !== STATE_CONNECTED && this.state !== STATE_AUTHENTICATED) {
       return;
     }
 
     clearInterval(this.pingRef);
+
+    this.device.removeAllListeners('servicesDiscover');
+    this.device.removeAllListeners('connect');
+    this.device.removeAllListeners('disconnect');
 
     this.unsubscribeCharacteristics();
     this.device.disconnect();

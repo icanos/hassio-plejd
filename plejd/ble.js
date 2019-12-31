@@ -34,6 +34,11 @@ const STATE_DISCONNECTED = 'disconnected';
 const STATE_UNINITIALIZED = 'uninitialized';
 const STATE_INITIALIZED = 'initialized';
 
+const BLE_CMD_DIM_CHANGE = '00c8';
+const BLE_CMD_DIM2_CHANGE = '0098';
+const BLE_CMD_STATE_CHANGE = '0097';
+const BLE_CMD_SCENE_TRIG = '0021';
+
 class PlejdService extends EventEmitter {
   constructor(cryptoKey, keepAlive = false) {
     super();
@@ -51,6 +56,8 @@ class PlejdService extends EventEmitter {
 
     this.writeQueue = [];
 
+    this.plejdDevices = {};
+
     // Holds a reference to all characteristics
     this.characteristicState = STATE_UNINITIALIZED;
     this.characteristics = {
@@ -64,13 +71,53 @@ class PlejdService extends EventEmitter {
     this.wireEvents();
   }
 
-  turnOn(id, brightness) {
-    logger('turning on ' + id + ' at brightness ' + brightness);
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
+  }
 
+  turnOn(id, command) {
+    logger('turning on ' + id + ' at brightness ' + (!command.brightness ? 255 : command.brightness));
+    const brightness = command.brightness ? command.brightness : 0;
+
+    if (command.transition) {
+      // we have a transition time, split the target brightness
+      // into pieces spread of the transition time
+      const steps = command.transition * 2;
+      const brightnessStep = brightness / steps;
+
+      let i = 0;
+      const transitionRef = setInterval(() => {
+        let currentBrightness = parseInt((brightnessStep * i) + 1);
+        if (currentBrightness > 254) {
+          currentBrightness = 254;
+        }
+
+        this._turnOn(id, currentBrightness);
+
+        if (i >= steps) {
+          clearInterval(transitionRef);
+        }
+
+        i++;
+      }, 500);
+    }
+    else {
+      this._turnOn(id, brightness);
+    }
+  }
+
+  _turnOn(id, brightness) {
     var payload;
-    if (!brightness) {
+    if (!brightness || brightness === 0) {
+      logger('no brightness specified, setting to previous known.');
       payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
     } else {
+      logger('brightness is ' + brightness);
       brightness = brightness << 8 | brightness;
       payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
     }
@@ -78,9 +125,39 @@ class PlejdService extends EventEmitter {
     this.write(payload);
   }
 
-  turnOff(id) {
+  turnOff(id, command) {
     logger('turning off ' + id);
 
+    if (command.transition) {
+      // we have a transition time, split the target brightness (which will be 0)
+      // into pieces spread of the transition time
+      const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : 250;
+      const steps = command.transition * 2;
+      const brightnessStep = initialBrightness / steps;
+      let currentBrightness = initialBrightness;
+
+      let i = 0;
+      const transitionRef = setInterval(() => {
+        currentBrightness = parseInt(initialBrightness - (brightnessStep * i));
+        if (currentBrightness <= 0 || i >= steps) {
+          clearInterval(transitionRef);
+
+          // finally, we turn it off
+          this._turnOff(id);
+          return;
+        }
+        
+        this._turnOn(id, currentBrightness);
+
+        i++;
+      }, 500);
+    }
+    else {
+      this._turnOff(id);
+    }
+  }
+
+  _turnOff(id) {
     var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009700', 'hex');
     this.write(payload);
   }
@@ -143,11 +220,15 @@ class PlejdService extends EventEmitter {
       )
     );
 
-    logger('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
+    console.log('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
     setTimeout(() => {
       if (self.state !== STATE_CONNECTED && self.state !== STATE_AUTHENTICATED) {
         if (self.deviceIdx < Object.keys(self.devices).length) {
-          logger('connection timed out after 10 s. trying next.');
+          logger('connection timed out after 10 s. cleaning up and trying next.');
+
+          self.device.removeAllListeners('servicesDiscover');
+          self.device.removeAllListeners('connect');
+          self.device.removeAllListeners('disconnect');
 
           self.deviceIdx++;
           self.connect();
@@ -168,11 +249,15 @@ class PlejdService extends EventEmitter {
 
   disconnect() {
     logger('disconnect()');
-    if (this.state !== STATE_CONNECTED) {
+    if (this.state !== STATE_CONNECTED && this.state !== STATE_AUTHENTICATED) {
       return;
     }
 
     clearInterval(this.pingRef);
+
+    this.device.removeAllListeners('servicesDiscover');
+    this.device.removeAllListeners('connect');
+    this.device.removeAllListeners('disconnect');
 
     this.unsubscribeCharacteristics();
     this.device.disconnect();
@@ -435,19 +520,39 @@ class PlejdService extends EventEmitter {
     let dim = 0;
     let device = parseInt(decoded[0], 10);
 
-    if (decoded.toString('hex', 3, 5) === '00c8' || decoded.toString('hex', 3, 5) === '0098') {
+    if (decoded.length < 5) {
+      // ignore the notification since too small
+      return;
+    }
+
+    const cmd = decoded.toString('hex', 3, 5);
+
+    if (debug) {
+      logger('raw event received: ' + decoded.toString('hex'));
+    }
+
+    if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
       state = parseInt(decoded.toString('hex', 5, 6), 10);
       dim = parseInt(decoded.toString('hex', 6, 8), 16) >> 8;
 
       logger('d: ' + device + ' got state+dim update: ' + state + ' - ' + dim);
-      this.emit('dimChanged', device, state, dim);
+      this.emit('stateChanged', device, { state: state, brightness: dim });
     }
-    else if (decoded.toString('hex', 3, 5) === '0097') {
+    else if (cmd === BLE_CMD_STATE_CHANGE) {
       state = parseInt(decoded.toString('hex', 5, 6), 10);
 
       logger('d: ' + device + ' got state update: ' + state);
-      this.emit('stateChanged', device, state);
+      this.emit('stateChanged', device, { state: state });
     }
+    else if (cmd === BLE_CMD_SCENE_TRIG) {
+      const scene = parseInt(decoded.toString('hex', 5, 6), 10);
+      this.emit('sceneTriggered', device, scene);
+    }
+
+    this.plejdDevices[device] = {
+      state: state,
+      dim: dim
+    };
   }
 
   wireEvents() {

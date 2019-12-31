@@ -8,7 +8,7 @@ API_LOGIN_URL = 'login';
 API_SITES_URL = 'functions/getSites';
 
 // #region logging
-const debug = '';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd-api', msg);
@@ -34,6 +34,15 @@ class PlejdApi extends EventEmitter {
     this.site = null;
   }
 
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
+  }
+
   login() {
     logger('login()');
     const self = this;
@@ -55,7 +64,7 @@ class PlejdApi extends EventEmitter {
         'password': this.password
       })
       .then((response) => {
-        logger('got session token response');
+        console.log('plejd-api: got session token response');
         self.sessionToken = response.data.sessionToken;
         self.emit('loggedIn');
       })
@@ -86,14 +95,14 @@ class PlejdApi extends EventEmitter {
 
     instance.post(API_SITES_URL)
       .then((response) => {
-        logger('got sites response');
+        console.log('plejd-api: got sites response');
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
         callback(self.cryptoKey);
       })
       .catch((error) => {
-        console.log('error: unable to retrieve the crypto key. error: ' + error);
+        console.log('error: unable to retrieve the crypto key. error: ' + error + ' (code: ' + error.response.status + ')');
         return Promise.reject('unable to retrieve the crypto key. error: ' + error);
       });
   }

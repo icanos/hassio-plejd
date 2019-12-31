@@ -5,7 +5,7 @@ const _ = require('lodash');
 const startTopic = 'hass/status';
 
 // #region logging
-const debug = '';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd-mqtt', msg);
@@ -27,32 +27,19 @@ const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 const getPath = ({ id, type }) =>
   `${discoveryPrefix}/${type}/${nodeId}/${id}`;
 const getConfigPath = plug => `${getPath(plug)}/config`;
-const getAvailabilityTopic = plug => `${getPath(plug)}/availability`;
 const getStateTopic = plug => `${getPath(plug)}/state`;
-const getBrightnessCommandTopic = plug => `${getPath(plug)}/setBrightness`;
-const getBrightnessTopic = plug => `${getPath(plug)}/brightness`;
 const getCommandTopic = plug => `${getPath(plug)}/set`;
-
-const getDiscoveryDimmablePayload = device => ({
-  name: device.name,
-  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
-  state_topic: getStateTopic(device),
-  command_topic: getCommandTopic(device),
-  brightness_command_topic: getBrightnessCommandTopic(device),
-  brightness_state_topic: getBrightnessTopic(device),
-  payload_on: 1,
-  payload_off: 0,
-  optimistic: false
-});
+const getSceneEventTopic = () => `plejd/event/scene`;
+const getSettingsTopic = () => `plejd/settings`;
 
 const getDiscoveryPayload = device => ({
+  schema: 'json',
   name: device.name,
   unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
-  payload_on: 1,
-  payload_off: 0,
-  optimistic: false
+  optimistic: false,
+  brightness: `${device.dimmable}`
 });
 
 // #endregion
@@ -92,6 +79,12 @@ class MqttClient extends EventEmitter {
           logger('error: unable to subscribe to control topics');
         }
       });
+
+      this.client.subscribe(getSettingsTopic(), (err) => {
+        if (err) {
+          console.log('error: could not subscribe to settings topic');
+        }
+      });
     });
 
     this.client.on('close', () => {
@@ -99,26 +92,31 @@ class MqttClient extends EventEmitter {
     });
 
     this.client.on('message', (topic, message) => {
-      const command = message.toString();
+      //const command = message.toString();
+      const command = JSON.parse(message.toString());
 
       if (topic === startTopic) {
         logger('home assistant has started. lets do discovery.');
         self.emit('connected');
       }
-
-      if (_.includes(topic, 'setBrightness')) {
-        const device = self.devices.find(x => getBrightnessCommandTopic(x) === topic);
-        logger('got brightness update for ' + device.name + ' with brightness: ' + command);
-
-        self.emit('brightnessChanged', device.id, parseInt(command));
+      else if (topic === getSettingsTopic()) {
+        self.emit('settingsChanged', command);
       }
-      else if (_.includes(topic, 'set') && _.includes(['0', '1'], command)) {
-        const device = self.devices.find(x => getCommandTopic(x) === topic);
-        logger('got state update for ' + device.name + ' with state: ' + command);
 
-        self.emit('stateChanged', device.id, parseInt(command));
+      if (_.includes(topic, 'set')) {
+        const device = self.devices.find(x => getCommandTopic(x) === topic);
+        self.emit('stateChanged', device.id, command);
       }
     });
+  }
+
+  updateSettings(settings) {
+    if (settings.debug) {
+      debug = 'console';
+    }
+    else {
+      debug = '';
+    }
   }
 
   reconnect() {
@@ -134,16 +132,8 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger(`sending discovery for ${device.name}`);
 
-      let payload = null;
-      
-      if (device.type === 'switch') {
-        payload = getDiscoveryPayload(device);
-      }
-      else {
-        payload = device.dimmable ? getDiscoveryDimmablePayload(device) : getDiscoveryPayload(device);
-      }
-
-      console.log(`discovered ${device.name} with Plejd ID ${device.id}.`);
+      let payload = getDiscoveryPayload(device);
+      console.log(`discovered ${device.type}: ${device.name} with Plejd ID ${device.id}.`);
 
       self.deviceMap[device.id] = payload.unique_id;
 
@@ -154,7 +144,7 @@ class MqttClient extends EventEmitter {
     });
   }
 
-  updateState(deviceId, state) {
+  updateState(deviceId, data) {
     const device = this.devices.find(x => x.id === deviceId);
 
     if (!device) {
@@ -162,27 +152,31 @@ class MqttClient extends EventEmitter {
       return;
     }
 
-    logger('updating state for ' + device.name + ': ' + state);
+    logger('updating state for ' + device.name + ': ' + data.state);
+    let payload = null;
+
+    if (device.dimmable) {
+      payload = {
+        state: data.state === 1 ? 'ON' : 'OFF',
+        brightness: data.brightness
+      }
+    }
+    else {
+      payload = {
+        state: data.state === 1 ? 'ON' : 'OFF'
+      }
+    }
 
     this.client.publish(
       getStateTopic(device),
-      state.toString()
+      JSON.stringify(payload)
     );
   }
 
-  updateBrightness(deviceId, brightness) {
-    const device = this.devices.find(x => x.id === deviceId);
-
-    if (!device) {
-      logger('error: ' + deviceId + ' is not handled by us.');
-      return;
-    }
-
-    logger('updating brightness for ' + device.name + ': ' + brightness);
-
+  sceneTriggered(scene) {
     this.client.publish(
-      getBrightnessTopic(device),
-      brightness.toString()
+      getSceneEventTopic(),
+      JSON.stringify({ scene: scene })
     );
   }
 }

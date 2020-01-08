@@ -163,7 +163,7 @@ class PlejdService extends EventEmitter {
   }
 
   scan() {
-    logger('scan()');
+    console.log('scan()');
 
     if (this.state === STATE_SCANNING) {
       console.log('error: already scanning, please wait.');
@@ -178,7 +178,7 @@ class PlejdService extends EventEmitter {
       this.state = STATE_IDLE;
 
       const foundDeviceCount = Object.values(this.devices).length;
-      logger('scan completed, found ' + foundDeviceCount + ' device(s).');
+      console.log('scan completed, found ' + foundDeviceCount + ' device(s).');
 
       if (foundDeviceCount == 0) {
         console.log('warning: no devices found. will not do anything else.');
@@ -243,12 +243,12 @@ class PlejdService extends EventEmitter {
   }
 
   reset() {
-    logger('reset()');
+    console.log('reset()');
     this.state = STATE_IDLE;
   }
 
   disconnect() {
-    logger('disconnect()');
+    console.log('disconnect()');
     if (this.state !== STATE_CONNECTED && this.state !== STATE_AUTHENTICATED) {
       return;
     }
@@ -266,7 +266,7 @@ class PlejdService extends EventEmitter {
   }
 
   authenticate() {
-    logger('authenticate()');
+    console.log('authenticate()');
     const self = this;
 
     if (this.state !== STATE_CONNECTED) {
@@ -323,7 +323,7 @@ class PlejdService extends EventEmitter {
   }
 
   startPing() {
-    logger('startPing()');
+    console.log('startPing()');
     clearInterval(this.pingRef);
 
     this.pingRef = setInterval(async () => {
@@ -399,7 +399,7 @@ class PlejdService extends EventEmitter {
   }
 
   onDeviceConnected(err) {
-    logger('onDeviceConnected()');
+    console.log('onDeviceConnected()');
     const self = this;
 
     if (err) {
@@ -500,16 +500,19 @@ class PlejdService extends EventEmitter {
   }
 
   onDeviceScanComplete() {
-    logger('onDeviceScanComplete()');
+    console.log('onDeviceScanComplete()');
     console.log('trying to connect to the mesh network.');
     this.connect();
   }
 
   onInterfaceStateChanged(state) {
-    logger('onInterfaceStateChanged(' + state + ')');
+    console.log('onInterfaceStateChanged(' + state + ')');
 
     if (state === 'poweredOn') {
       this.scan();
+    }
+    else {
+      noble.stopScanning();
     }
   }
 
@@ -556,7 +559,7 @@ class PlejdService extends EventEmitter {
   }
 
   wireEvents() {
-    logger('wireEvents()');
+    console.log('wireEvents()');
     const self = this;
 
     noble.on('stateChange', this.onInterfaceStateChanged.bind(self));

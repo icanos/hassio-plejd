@@ -57,6 +57,7 @@ class PlejdService extends EventEmitter {
     this.writeQueue = [];
 
     this.plejdDevices = {};
+    this.connectEventHooked = false;
 
     // Holds a reference to all characteristics
     this.characteristicState = STATE_UNINITIALIZED;
@@ -226,9 +227,7 @@ class PlejdService extends EventEmitter {
         if (self.deviceIdx < Object.keys(self.devices).length) {
           logger('connection timed out after 10 s. cleaning up and trying next.');
 
-          self.device.removeAllListeners('servicesDiscover');
-          self.device.removeAllListeners('connect');
-          self.device.removeAllListeners('disconnect');
+          self.disconnect();
 
           self.deviceIdx++;
           self.connect();
@@ -237,27 +236,36 @@ class PlejdService extends EventEmitter {
     }, 10 * 1000);
 
     this.state = STATE_CONNECTING;
-    this.device.connect((err) => {
-      self.onDeviceConnected(err);
-    });
-  }
 
-  reset() {
-    console.log('reset()');
-    this.state = STATE_IDLE;
+    if (!this.connectEventHooked) {
+      this.device.once('connect', (state) => {
+        self.onDeviceConnected(state);
+        this.connectEventHooked = false;
+      });
+      this.connectEventHooked = true;
+    }
+
+    this.device.connect();
   }
 
   disconnect() {
     console.log('disconnect()');
-    if (this.state !== STATE_CONNECTED && this.state !== STATE_AUTHENTICATED) {
-      return;
-    }
 
     clearInterval(this.pingRef);
 
     this.device.removeAllListeners('servicesDiscover');
     this.device.removeAllListeners('connect');
     this.device.removeAllListeners('disconnect');
+    this.characteristics.auth.removeAllListeners('read');
+    this.characteristics.auth.removeAllListeners('write');
+    this.characteristics.data.removeAllListeners('read');
+    this.characteristics.data.removeAllListeners('write');
+    this.characteristics.lastData.removeAllListeners('read');
+    this.characteristics.lastData.removeAllListeners('write');
+    this.characteristics.ping.removeAllListeners('read');
+    this.characteristics.ping.removeAllListeners('write');
+
+    this.connectEventHooked = false;
 
     this.unsubscribeCharacteristics();
     this.device.disconnect();
@@ -405,7 +413,7 @@ class PlejdService extends EventEmitter {
     if (err) {
       console.log('error: failed to connect to device: ' + err + '. picking next.');
       this.deviceIdx++;
-      this.reset();
+      this.disconnect();
       this.connect();
       return;
     }
@@ -489,6 +497,7 @@ class PlejdService extends EventEmitter {
 
   onDeviceDisconnected() {
     logger('onDeviceDisconnected()');
+    this.disconnect();
 
     if (!this.device) {
       console.log('warning: reconnect will not be performed.');

@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@abandonware/bluetooth-hci-socket": "0.5.3-3",
-    "@icanos/noble": "^1.9.2-6",
+    "@icanos/noble": "^1.9.2-9",
     "axios": "^0.19.0",
     "buffer-xor": "^2.0.2",
     "fs": "0.0.1-security",

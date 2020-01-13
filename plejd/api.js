@@ -44,7 +44,8 @@ class PlejdApi extends EventEmitter {
   }
 
   login() {
-    logger('login()');
+    console.log('plejd-api: login()');
+    console.log('logging into ' + this.siteName);
     const self = this;
 
     const instance = axios.create({
@@ -79,7 +80,7 @@ class PlejdApi extends EventEmitter {
   }
 
   getCryptoKey(callback) {
-    logger('getCryptoKey()');
+    console.log('plejd-api: getCryptoKey()');
     const self = this;
 
     const instance = axios.create({

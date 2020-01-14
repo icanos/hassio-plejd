@@ -315,12 +315,22 @@ class PlejdService extends EventEmitter {
       return false;
     }
 
-    const encryptedData = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
-    this.characteristics.data.write(encryptedData, false);
+    try {
+      const encryptedData = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
+      this.characteristics.data.write(encryptedData, false);
 
-    let writeData;
-    while ((writeData = this.writeQueue.shift()) !== undefined) {
-      this.characteristics.data.write(this._encryptDecrypt(this.cryptoKey, this.deviceAddress, writeData), false);
+      let writeData;
+      while ((writeData = this.writeQueue.shift()) !== undefined) {
+        this.characteristics.data.write(this._encryptDecrypt(this.cryptoKey, this.deviceAddress, writeData), false);
+      }
+    }
+    catch (error) {
+      console.log('error: writing to plejd: ' + error);
+      console.log('will reconnect and try again.');
+      this.writeQueue.push(data);
+
+      this.disconnect();
+      this.connect();
     }
   }
 

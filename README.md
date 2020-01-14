@@ -98,6 +98,25 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.2.5*:
+* FIX: Invalid scene id in events/scene message
+
+*v 0.2.4*:
+* Stability improvements
+
+*v 0.2.3*:
+* FIX: Container build error fix
+
+*v 0.2.2*:
+* Stability improvements
+
+*v 0.2.1*:
+* Stability improvements
+
+*v 0.2.0*:
+* Stability improvements
+* Bugfixes
+
 *v 0.1.1*:
 * FIX: Fixed missing reference on startup, preventing add-on from starting
 

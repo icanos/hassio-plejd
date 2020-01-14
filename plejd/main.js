@@ -3,7 +3,7 @@ const mqtt = require('./mqtt');
 const fs = require('fs');
 const PlejdService = require('./ble');
 
-const version = "0.2.4";
+const version = "0.2.5";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);

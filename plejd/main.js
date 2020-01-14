@@ -36,7 +36,7 @@ async function main() {
         client.updateState(deviceId, command);
       });
 
-      plejd.on('sceneTriggered', (scene) => {
+      plejd.on('sceneTriggered', (deviceId, scene) => {
         client.sceneTriggered(scene);
       });
 

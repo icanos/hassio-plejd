@@ -147,7 +147,7 @@ class PlejdService extends EventEmitter {
           this._turnOff(id);
           return;
         }
-        
+
         this._turnOn(id, currentBrightness);
 
         i++;
@@ -253,17 +253,28 @@ class PlejdService extends EventEmitter {
 
     clearInterval(this.pingRef);
 
-    this.device.removeAllListeners('servicesDiscover');
-    this.device.removeAllListeners('connect');
-    this.device.removeAllListeners('disconnect');
-    this.characteristics.auth.removeAllListeners('read');
-    this.characteristics.auth.removeAllListeners('write');
-    this.characteristics.data.removeAllListeners('read');
-    this.characteristics.data.removeAllListeners('write');
-    this.characteristics.lastData.removeAllListeners('read');
-    this.characteristics.lastData.removeAllListeners('write');
-    this.characteristics.ping.removeAllListeners('read');
-    this.characteristics.ping.removeAllListeners('write');
+    if (this.device) {
+      this.device.removeAllListeners('servicesDiscover');
+      this.device.removeAllListeners('connect');
+      this.device.removeAllListeners('disconnect');
+    }
+    if (this.characteristics.auth) {
+      this.characteristics.auth.removeAllListeners('read');
+      this.characteristics.auth.removeAllListeners('write');
+    }
+    if (this.characteristics.data) {
+      this.characteristics.data.removeAllListeners('read');
+      this.characteristics.data.removeAllListeners('write');
+    }
+    if (this.characteristics.lastData) {
+      this.characteristics.lastData.removeAllListeners('read');
+      this.characteristics.lastData.removeAllListeners('write');
+    }
+    if (this.characteristics.ping) {
+      this.characteristics.ping.removeAllListeners('read');
+      this.characteristics.ping.removeAllListeners('write');
+    }
+
 
     this.connectEventHooked = false;
 

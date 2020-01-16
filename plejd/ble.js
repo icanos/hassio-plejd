@@ -617,11 +617,16 @@ class PlejdService extends EventEmitter {
 
   unsubscribeCharacteristics() {
     if (this.characteristics.lastData) {
-      this.characteristics.lastData.unsubscribe((err) => {
-        if (err) {
-          console.log('error: could not unsubscribe from event.');
-        }
-      });
+      try {
+        this.characteristics.lastData.unsubscribe((err) => {
+          if (err) {
+            console.log('error: could not unsubscribe from event.');
+          }
+        });
+      }
+      catch (error) {
+        console.log('warning: could not unsubscribe from lastData, probably already disconnected: ' + error);
+      }
     }
   }
 

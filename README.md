@@ -98,6 +98,12 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.2.7*:
+* FIX: Added exception handling to unsubscribing lastData characteristic if already disconnected
+
+*v 0.2.6*:
+* FIX: Added null check to remove listeners for characteristics
+
 *v 0.2.5*:
 * FIX: Invalid scene id in events/scene message
 

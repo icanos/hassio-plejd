@@ -282,6 +282,7 @@ class PlejdService extends EventEmitter {
     this.device.disconnect();
 
     this.state = STATE_DISCONNECTED;
+    this.characteristicState = STATE_UNINITIALIZED;
   }
 
   authenticate() {
@@ -381,6 +382,7 @@ class PlejdService extends EventEmitter {
 
     this.unsubscribeCharacteristics();
     this.state = STATE_DISCONNECTED;
+    this.characteristicState = STATE_UNINITIALIZED;
 
     this.connect(this.device.id);
   }

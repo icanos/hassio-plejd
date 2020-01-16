@@ -98,6 +98,9 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.2.8*:
+* FIX: Reset characteristic state on disconnect
+
 *v 0.2.7*:
 * FIX: Added exception handling to unsubscribing lastData characteristic if already disconnected
 

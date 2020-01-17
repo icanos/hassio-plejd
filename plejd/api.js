@@ -71,7 +71,7 @@ class PlejdApi extends EventEmitter {
       })
       .catch((error) => {
         if (error.response.status === 400) {
-          console.log('error: server returned status 400. probably invalid credentials, please verify.');  
+          console.log('error: server returned status 400. probably invalid credentials, please verify.');
         }
         else {
           console.log('error: unable to retrieve session token response: ' + error);
@@ -100,10 +100,11 @@ class PlejdApi extends EventEmitter {
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
-        callback(self.cryptoKey);
+        //callback(self.cryptoKey);
+        this.emit('ready', self.cryptoKey);
       })
       .catch((error) => {
-        console.log('error: unable to retrieve the crypto key. error: ' + error + ' (code: ' + error.response.status + ')');
+        console.log('error: unable to retrieve the crypto key. error: ' + error);
         return Promise.reject('unable to retrieve the crypto key. error: ' + error);
       });
   }
@@ -172,9 +173,9 @@ class PlejdApi extends EventEmitter {
           typeName: 'Room',
           dimmable: roomDevices[roomId].find(x => x.dimmable).length > 0
         };
-  
+
         logger(JSON.stringify(newDevice));
-  
+
         devices.push(newDevice);
       }
     }
@@ -204,7 +205,7 @@ class PlejdApi extends EventEmitter {
         // Unknown
         return { name: "-unknown-", type: 'light', dimmable: false };
       case 10:
-          return { name: "-unknown-", type: 'light', dimmable: false };
+        return { name: "-unknown-", type: 'light', dimmable: false };
       case 12:
         // Unknown
         return { name: "-unknown-", type: 'light', dimmable: false };

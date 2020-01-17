@@ -1,21 +1,22 @@
 const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');
-const PlejdService = require('./ble');
+const PlejdService = require('./ble.bluez');
 
 const version = "0.2.8";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
 
-  const rawData = fs.readFileSync('/data/plejd.json');
+  const rawData = fs.readFileSync('plejd.json');
   const config = JSON.parse(rawData);
 
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.once('loggedIn', () => {
-    plejdApi.getCryptoKey((cryptoKey) => {
+    plejdApi.getCryptoKey();//(cryptoKey) => {
+    plejdApi.on('ready', (cryptoKey) => {
       const devices = plejdApi.getDevices();
 
       client.on('connected', () => {

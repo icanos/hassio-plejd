@@ -45,7 +45,7 @@ class PlejdApi extends EventEmitter {
 
   login() {
     console.log('plejd-api: login()');
-    console.log('logging into ' + this.siteName);
+    console.log('plejd-api: logging into ' + this.siteName);
     const self = this;
 
     const instance = axios.create({
@@ -100,7 +100,8 @@ class PlejdApi extends EventEmitter {
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
-        callback(self.cryptoKey);
+        this.emit('ready', self.cryptoKey);
+        //callback(self.cryptoKey);
       })
       .catch((error) => {
         console.log('error: unable to retrieve the crypto key. error: ' + error + ' (code: ' + error.response.status + ')');

@@ -3,7 +3,7 @@ const mqtt = require('./mqtt');
 const fs = require('fs');
 const PlejdService = require('./ble');
 
-const version = "0.2.8";
+const version = "0.2.9";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
@@ -15,7 +15,7 @@ async function main() {
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.once('loggedIn', () => {
-    plejdApi.getCryptoKey((cryptoKey) => {
+    plejdApi.on('ready', (cryptoKey) => {
       const devices = plejdApi.getDevices();
 
       client.on('connected', () => {
@@ -62,6 +62,8 @@ async function main() {
         }
       });
     });
+
+    plejdApi.getCryptoKey();
   });
 
   plejdApi.login();

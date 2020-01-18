@@ -28,6 +28,8 @@ async function main() {
 
       // init the BLE interface
       const plejd = new PlejdService(cryptoKey, true);
+      plejd.init();
+      
       plejd.on('authenticated', () => {
         console.log('plejd: connected via bluetooth.');
       });

@@ -1,4 +1,4 @@
-const dbus = require('dbus');
+const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
@@ -40,8 +40,8 @@ const BLE_CMD_STATE_CHANGE = '0097';
 const BLE_CMD_SCENE_TRIG = '0021';
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
-const DBUS_OBJECT_MANAGER = 'org.freedesktop.DBus.ObjectManager';
-const DBUS_PROPERTIES = 'org.freedesktop.DBus.Properties';
+const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
+const DBUS_PROP_INTERFACE = 'org.freedesktop.DBus.Properties';
 
 const BLUEZ_ADAPTER_ID = 'org.bluez.Adapter1';
 const BLUEZ_DEVICE_ID = 'org.bluez.Device1';
@@ -76,7 +76,7 @@ class PlejdService extends EventEmitter {
       ping: null
     };
 
-    this.bus = dbus.registerService('system', null);
+    this.bus = dbus.systemBus();
 
     logger('wiring events and waiting for BLE interface to power up.');
     this.wireEvents();
@@ -87,13 +87,11 @@ class PlejdService extends EventEmitter {
       this.objectManager.removeAllListeners();
     }
 
-    this.objectManager = await this.bus.getInterface(BLUEZ_SERVICE_NAME, '/', DBUS_OBJECT_MANAGER);
+    const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
+    this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
 
-    this.objectManager.on('InterfacesAdded', this.onInterfacesAdded.bind(this));
-    this.objectManager.on('InterfacesRemoved', this.onInterfacesRemoved.bind(this));
-    this.objectManager.GetManagedObjects((err, objs) => {
-      Object.keys(objs).forEach((k) => this.onInterfacesAdded(k, objs[k]))
-    });
+    let objs = await this.objectManager.GetManagedObjects();
+    console.log(objs);
   }
 
   async onInterfacesAdded(path, interfaces) {

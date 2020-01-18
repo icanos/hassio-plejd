@@ -133,7 +133,7 @@ class MqttClient extends EventEmitter {
       logger(`sending discovery for ${device.name}`);
 
       let payload = getDiscoveryPayload(device);
-      console.log(`discovered ${device.type}: ${device.name} with Plejd ID ${device.id}.`);
+      console.log(`plejd-mqtt: discovered ${device.type} named ${device.name} with PID ${device.id}.`);
 
       self.deviceMap[device.id] = payload.unique_id;
 

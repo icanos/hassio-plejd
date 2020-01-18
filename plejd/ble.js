@@ -198,7 +198,7 @@ class PlejdService extends EventEmitter {
     }
 
     if (!uuid) {
-      this.sortedDevices = Object.values(this.devices).sort((a, b) => b.rssi - a.rssi);
+      sortedDevices = Object.values(this.devices).sort((a, b) => b.rssi - a.rssi);
       this.device = sortedDevices[this.deviceIdx];
     }
     else {

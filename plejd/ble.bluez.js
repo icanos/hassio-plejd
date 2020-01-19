@@ -3,11 +3,12 @@ const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
 const EventEmitter = require('events');
+const sleep = require('sleep');
 
-let debug = '';
+let debug = 'console';
 
 const getLogger = () => {
-  const consoleLogger = msg => console.log('plejd', msg);
+  const consoleLogger = msg => console.log('plejd-ble', msg);
   if (debug === 'console') {
     return consoleLogger;
   }
@@ -19,11 +20,11 @@ const getLogger = () => {
 const logger = getLogger();
 
 // UUIDs
-const PLEJD_SERVICE = "31ba000160854726be45040c957391b5"
-const DATA_UUID = "31ba000460854726be45040c957391b5"
-const LAST_DATA_UUID = "31ba000560854726be45040c957391b5"
-const AUTH_UUID = "31ba000960854726be45040c957391b5"
-const PING_UUID = "31ba000a60854726be45040c957391b5"
+const PLEJD_SERVICE = '31ba0001-6085-4726-be45-040c957391b5';
+const DATA_UUID = '31ba0004-6085-4726-be45-040c957391b5';
+const LAST_DATA_UUID = '31ba0005-6085-4726-be45-040c957391b5';
+const AUTH_UUID = '31ba0009-6085-4726-be45-040c957391b5';
+const PING_UUID = '31ba000a-6085-4726-be45-040c957391b5';
 
 const STATE_IDLE = 'idle';
 const STATE_SCANNING = 'scanning';
@@ -56,15 +57,10 @@ class PlejdService extends EventEmitter {
 
     // Keeps track of the current state
     this.state = STATE_IDLE;
-    // Keeps track of discovered devices
-    this.devices = {};
-    // Keeps track of the currently connected device
-    this.device = null;
-    this.deviceAddress = null;
-    this.deviceIdx = 0;
-
     this.writeQueue = [];
 
+    this.plejdService = null;
+    this.bleDevices = [];
     this.plejdDevices = {};
     this.connectEventHooked = false;
 
@@ -72,11 +68,13 @@ class PlejdService extends EventEmitter {
     this.characteristics = {
       data: null,
       lastData: null,
+      lastDataProperties: null,
       auth: null,
       ping: null
     };
 
     this.bus = dbus.systemBus();
+    this.adapter = null;
 
     logger('wiring events and waiting for BLE interface to power up.');
     this.wireEvents();
@@ -90,70 +88,126 @@ class PlejdService extends EventEmitter {
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
 
-    let objs = await this.objectManager.GetManagedObjects();
-    console.log(objs);
+    // We need to find the ble interface which implements the Adapter1 interface
+    const managedObjects = await this.objectManager.GetManagedObjects();
+    let result = await this._getInterface(managedObjects, BLUEZ_ADAPTER_ID);    
+
+    if (result) {
+      this.adapter = result[1];
+    }
+
+    if (!this.adapter) {
+      console.log('plejd-ble: error: unable to find a bluetooth adapter that is compatible.');
+      return;
+    }
+
+    for (let path of Object.keys(managedObjects)) {
+      const interfaces = Object.keys(managedObjects[path]);
+      
+      if (interfaces.indexOf(BLUEZ_DEVICE_ID) > -1) {
+        const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
+        const device = await proxyObject.getInterface(BLUEZ_DEVICE_ID);
+
+        const connected = managedObjects[path][BLUEZ_DEVICE_ID].Connected.value;
+
+        if (connected) {
+          console.log('plejd-ble: disconnecting ' + path);
+          await device.Disconnect();
+        }
+
+        await this.adapter.RemoveDevice(path);
+      }
+    }
+
+    this.objectManager.on('InterfacesAdded', this.onInterfacesAdded.bind(this));
+    this.objectManager.on('InterfacesRemoved', this.onInterfacesRemoved.bind(this));
+
+    this.adapter.SetDiscoveryFilter({
+      'UUIDs': new dbus.Variant('as', [PLEJD_SERVICE]),
+      'Transport': new dbus.Variant('s', 'le')
+    });
+
+    await this.adapter.StartDiscovery();
+    
+    setTimeout(async () => {
+      await this._internalInit();
+    }, 2000);
+  }
+
+  async _internalInit() {
+    console.log('plejd-ble: got ' + this.bleDevices.length + ' device(s).');
+
+    for (const plejd of this.bleDevices) {
+      console.log('inspecting ' + plejd['path']);
+
+      try {
+        const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, plejd['path']);
+        const device = await proxyObject.getInterface(BLUEZ_DEVICE_ID);
+        const properties = await proxyObject.getInterface(DBUS_PROP_INTERFACE);
+        
+        plejd['rssi'] = (await properties.Get(BLUEZ_DEVICE_ID, 'RSSI')).value;
+        plejd['instance'] = device;
+
+        console.log('plejd-ble: discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
+      }
+      catch (err) {
+        console.log('plejd-ble: failed inspecting ' + plejd['path'] + ' error: ' + err);
+      }
+    }
+
+    const sortedDevices = this.bleDevices.sort((a, b) => b['rssi'] - a['rssi']);
+    let connectedDevice = null;
+
+    for (const plejd of sortedDevices) {
+      try {
+        logger('connecting to ' + plejd['path']);
+        await plejd['instance'].Connect();
+        connectedDevice = plejd;
+        break
+      }
+      catch (err) {
+        console.log('plejd-ble: failed connecting to plejd, error: ' + err);
+      }
+    }
+
+    setTimeout(async () => {
+      await this.onDeviceConnected(connectedDevice);
+
+      await this.adapter.StopDiscovery();
+    }, 2000);
+  }
+
+  async _getInterface(managedObjects, iface) {
+    const managedPaths = Object.keys(managedObjects);
+
+    for (let path of managedPaths) {
+      const pathInterfaces = Object.keys(managedObjects[path]);
+      if (pathInterfaces.indexOf(iface) > -1) {
+        console.log('plejd-ble: found ble interface \'' + iface + '\' at ' + path);
+        try {
+          const adapterObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
+          return [path, adapterObject.getInterface(iface), adapterObject];
+        }
+        catch (err) {
+          console.log('plejd-ble: error: failed to get interface \'' + iface + '\': ' + err);
+        }
+      }
+    }
+
+    return null;
   }
 
   async onInterfacesAdded(path, interfaces) {
     const [adapter, dev, service, characteristic] = path.split('/').slice(3);
+    const interfaceKeys = Object.keys(interfaces);
 
-    if ('org.bluez.Adapter1' in interfaces) {
-      console.log('has org.bluez.Adapter1');
-
-      const props = interfaces['org.bluez.Adapter1'];
-      console.log(props);
-      this.adapter_props = props;
-    }
-
-    if ('org.bluez.Device1' in interfaces) {
-      console.log('has org.bluez.Device1');
-
-      const props = interfaces['org.bluez.Device1'];
-      console.log(props);
-      this.devices[props.Address] = path;
-      this.emit('device', props.Address, props);
-    }
-
-    if ('org.bluez.GattService1' in interfaces) {
-      console.log('has org.bluez.GattService1');
-
-      const props = interfaces['org.bluez.GattService1'];
-      console.log(props);
-
-      const iface = await this.getInterface('org.bluez', path, 'org.bluez.GattService1');
-      const service = new Service(iface);
-
-      const dev = await this.getDevice(props.Device);
-
-      if (this._path[path]) {
-        // Characteristic was registered before service, copy them over
-        service.characteristics = this._path[path].characteristics || {};
+    if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
+      if (interfaces[BLUEZ_DEVICE_ID]['UUIDs'].value.indexOf(PLEJD_SERVICE) > -1) {
+        console.log('found ' + path);
+        this.bleDevices.push({ 'path': path });
+      } else {
+        console.log('uh oh, no Plejd device.');
       }
-
-      dev.services[props.UUID] = service;
-      this._path[path] = service;
-    }
-
-    if ('org.bluez.GattCharacteristic1' in interfaces) {
-      console.log('has org.bluez.GattCharacteristic1');
-      const props = interfaces['org.bluez.GattCharacteristic1'];
-      console.log(props);
-
-      const iface = await this.getInterface('org.bluez', path, 'org.bluez.GattCharacteristic1');
-      const changed = await this.getInterface('org.bluez', path, 'org.freedesktop.DBus.Properties');
-      const characteristic = new Characteristic(iface, changed);
-
-      if (this._path[path]) {
-        // Descriptor was registered before characteristic, copy them over
-        characteristic.descriptors = this._path[path].descriptors || {};
-      }
-
-      if (!this._path[props.Service]) {
-        // service not jet created
-        this._path[props.Service] = { characteristics: {} };
-      }
-      this._path[props.Service].characteristics[props.UUID] = characteristic;
-      this._path[path] = characteristic;
     }
   }
 
@@ -252,186 +306,45 @@ class PlejdService extends EventEmitter {
     this.write(payload);
   }
 
-  scan() {
-    console.log('scan()');
-
-    if (this.state === STATE_SCANNING) {
-      console.log('error: already scanning, please wait.');
-      return;
-    }
-
-    // this.state = STATE_SCANNING;
-    // noble.startScanning([PLEJD_SERVICE]);
-
-    // setTimeout(() => {
-    //   noble.stopScanning();
-    //   this.state = STATE_IDLE;
-
-    //   const foundDeviceCount = Object.values(this.devices).length;
-    //   console.log('scan completed, found ' + foundDeviceCount + ' device(s).');
-
-    //   if (foundDeviceCount == 0) {
-    //     console.log('warning: no devices found. will not do anything else.');
-    //   }
-    //   else {
-    //     this.emit('scanComplete', this.devices);
-    //   }
-    // }, 5000);
-  }
-
-  connect(uuid = null) {
-    const self = this;
-    if (this.state === STATE_CONNECTING) {
-      console.log('warning: currently connecting to a device, please wait...');
-      return;
-    }
-
-    // if (!uuid) {
-    //   this.device = Object.values(this.devices)[this.deviceIdx];
-    // }
-    // else {
-    //   this.device = this.devices[uuid];
-    //   if (!this.device) {
-    //     console.log('error: could not find a device with uuid: ' + uuid);
-    //     return;
-    //   }
-    // }
-
-    // if (!this.device) {
-    //   console.log('error: reached end of device list. cannot continue.');
-    //   return;
-    // }
-
-    // this.deviceAddress = this._reverseBuffer(
-    //   Buffer.from(
-    //     String(this.device.address)
-    //       .replace(/\-/g, '')
-    //       .replace(/\:/g, ''), 'hex'
-    //   )
-    // );
-
-    // console.log('connecting to ' + this.device.id + ' with addr ' + this.device.address + ' and rssi ' + this.device.rssi);
-    // setTimeout(() => {
-    //   if (self.state !== STATE_CONNECTED && self.state !== STATE_AUTHENTICATED) {
-    //     if (self.deviceIdx < Object.keys(self.devices).length) {
-    //       logger('connection timed out after 10 s. cleaning up and trying next.');
-
-    //       self.disconnect();
-
-    //       self.deviceIdx++;
-    //       self.connect();
-    //     }
-    //   }
-    // }, 10 * 1000);
-
-    // this.state = STATE_CONNECTING;
-
-    // if (!this.connectEventHooked) {
-    //   this.device.once('connect', (state) => {
-    //     self.onDeviceConnected(state);
-    //     this.connectEventHooked = false;
-    //   });
-    //   this.connectEventHooked = true;
-    // }
-
-    // this.device.connect();
-  }
-
   disconnect() {
     console.log('disconnect()');
 
     clearInterval(this.pingRef);
 
-    // if (this.device) {
-    //   this.device.removeAllListeners('servicesDiscover');
-    //   this.device.removeAllListeners('connect');
-    //   this.device.removeAllListeners('disconnect');
-    // }
-    // if (this.characteristics.auth) {
-    //   this.characteristics.auth.removeAllListeners('read');
-    //   this.characteristics.auth.removeAllListeners('write');
-    // }
-    // if (this.characteristics.data) {
-    //   this.characteristics.data.removeAllListeners('read');
-    //   this.characteristics.data.removeAllListeners('write');
-    // }
-    // if (this.characteristics.lastData) {
-    //   this.characteristics.lastData.removeAllListeners('read');
-    //   this.characteristics.lastData.removeAllListeners('write');
-    // }
-    // if (this.characteristics.ping) {
-    //   this.characteristics.ping.removeAllListeners('read');
-    //   this.characteristics.ping.removeAllListeners('write');
-    // }
-
-
-    this.connectEventHooked = false;
-
-    // this.unsubscribeCharacteristics();
-    // this.device.disconnect();
-
-    this.state = STATE_DISCONNECTED;
   }
 
-  authenticate() {
+  async authenticate() {
     console.log('authenticate()');
     const self = this;
 
-    if (this.state !== STATE_CONNECTED) {
-      console.log('error: need to be connected and not previously authenticated (new connection).');
-      return;
+    try {
+      console.log('sending challenge');
+      await this.characteristics.auth.WriteValue([0], {});
+      console.log('reading response');
+      const challenge = await this.characteristics.auth.ReadValue({});
+      const response = this._createChallengeResponse(this.cryptoKey, challenge);
+      await this.characteristics.auth.WriteValue([...response], {});
+
+      this.emit('authenticated');
     }
-
-    // this.characteristics.auth.write(Buffer.from([0]), false, (err) => {
-    //   if (err) {
-    //     console.log('error: failed to authenticate: ' + err);
-    //     return;
-    //   }
-
-    //   self.characteristics.auth.read((err, data) => {
-    //     if (err) {
-    //       console.log('error: failed to read auth response: ' + err);
-    //       return;
-    //     }
-
-    //     var resp = self._createChallengeResponse(self.cryptoKey, data);
-    //     self.characteristics.auth.write(resp, false, (err) => {
-    //       if (err) {
-    //         console.log('error: failed to challenge: ' + err);
-    //         return;
-    //       }
-
-    //       self.state = STATE_AUTHENTICATED;
-    //       self.emit('authenticated');
-    //     });
-    //   })
-    // });
+    catch (err) {
+      console.log('plejd-ble: error: failed to authenticate: ' + err);
+    }
   }
 
-  write(data) {
-    if (this.state !== STATE_AUTHENTICATED) {
-      logger('error: not connected.');
-      this.writeQueue.push(data);
-      return false;
+  async write(data, retry = true) {
+    try {
+      const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
+      await this.characteristics.data.WriteValue([...encryptedData], {});
     }
+    catch (err) {
+      console.log('plejd-ble: write failed ' + err);
+      await this.init();
 
-    // try {
-    //   const encryptedData = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
-    //   this.characteristics.data.write(encryptedData, false);
-
-    //   let writeData;
-    //   while ((writeData = this.writeQueue.shift()) !== undefined) {
-    //     this.characteristics.data.write(this._encryptDecrypt(this.cryptoKey, this.deviceAddress, writeData), false);
-    //   }
-    // }
-    // catch (error) {
-    //   console.log('error: writing to plejd: ' + error);
-    //   console.log('will reconnect and try again.');
-    //   this.writeQueue.push(data);
-
-    //   this.disconnect();
-    //   this.connect();
-    // }
+      if (retry) {
+        await this.write(data, false);
+      }
+    }
   }
 
   onAuthenticated() {
@@ -440,21 +353,13 @@ class PlejdService extends EventEmitter {
     this.startPing();
   }
 
-  startPing() {
+  async startPing() {
     console.log('startPing()');
     clearInterval(this.pingRef);
 
     this.pingRef = setInterval(async () => {
-      if (this.state === STATE_AUTHENTICATED) {
-        logger('ping');
-        this.ping();
-      }
-      else if (this.state === STATE_DISCONNECTED) {
-        console.log('warning: device disconnected, stop ping.');
-      }
-      else {
-        console.log('error: ping failed, not connected.');
-      }
+      logger('ping');
+      await this.ping();
     }, 3000);
   }
 
@@ -462,184 +367,144 @@ class PlejdService extends EventEmitter {
     logger('pong: ' + nr);
   }
 
-  onPingFailed(error) {
+  async onPingFailed(error) {
     logger('onPingFailed(' + error + ')');
+    console.log('plejd-ble: ping failed, reconnecting.');
 
-    logger('ping failed, reconnecting.');
-    this.disconnect();
-    this.connect();
-    // clearInterval(this.pingRef);
-
-    // this.unsubscribeCharacteristics();
-    // this.state = STATE_DISCONNECTED;
-    // this.characteristicState = STATE_UNINITIALIZED;
-
-    // this.connect(this.device.id);
+    clearInterval(this.pingRef);
+    await this.init();
   }
 
-  ping() {
+  async ping() {
     logger('ping()');
 
-    if (this.state !== STATE_AUTHENTICATED) {
-      console.log('error: needs to be authenticated before pinging.');
+    var ping = crypto.randomBytes(1);
+    let pong = null;
+
+    try {
+      await this.characteristics.ping.WriteValue([...ping], {});
+      pong = await this.characteristics.ping.ReadValue({});
+    }
+    catch (err) {
+      console.log('error: writing to plejd: ' + err);
+      this.emit('pingFailed', 'write error');
       return;
     }
 
-    const self = this;
-    var ping = crypto.randomBytes(1);
+    if (((ping[0] + 1) & 0xff) !== pong[0]) {
+      console.log('error: plejd ping failed');
+      this.emit('pingFailed', 'plejd ping failed ' + ping[0] + ' - ' + pong[0]);
+      return;
+    }
 
-    // try {
-    //   this.characteristics.ping.write(ping, false, (err) => {
-    //     if (err) {
-    //       console.log('error: unable to send ping: ' + err);
-    //       self.emit('pingFailed');
-    //       return;
-    //     }
-
-    //     this.characteristics.ping.read((err, data) => {
-    //       if (err) {
-    //         console.log('error: unable to read ping: ' + err);
-    //         self.emit('pingFailed');
-    //         return;
-    //       }
-
-    //       if (((ping[0] + 1) & 0xff) !== data[0]) {
-    //         self.emit('pingFailed');
-    //         return;
-    //       }
-    //       else {
-    //         self.emit('pingSuccess', data[0]);
-    //       }
-    //     });
-    //   });
-    // }
-    // catch (error) {
-    //   console.log('error: writing to plejd: ' + error);
-    //   self.emit('pingFailed', error);
-    // }
+    this.emit('pingSuccess', pong[0]);
   }
 
-  onDeviceConnected(err) {
+  async _processPlejdService(path, characteristics) {
+    const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
+    const service = await proxyObject.getInterface(GATT_SERVICE_ID);
+    const properties = await proxyObject.getInterface(DBUS_PROP_INTERFACE);
+
+    const uuid = (await properties.Get(GATT_SERVICE_ID, 'UUID')).value;
+    if (uuid !== PLEJD_SERVICE) {
+      console.log('plejd-ble: not a Plejd device.');
+      return null;
+    }
+
+    const dev = (await properties.Get(GATT_SERVICE_ID, 'Device')).value;
+    const regex = /dev_([0-9A-F_]+)$/;
+    const dirtyAddr = regex.exec(dev);
+    const addr = this._reverseBuffer(
+      Buffer.from(
+        String(dirtyAddr[1])
+          .replace(/\-/g, '')
+          .replace(/\:/g, ''), 'hex'
+      )
+    );
+
+    for (const chPath of characteristics) {
+      const chProxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, chPath);
+      const ch = await chProxyObject.getInterface(GATT_CHRC_ID);
+      const prop = await chProxyObject.getInterface(DBUS_PROP_INTERFACE);
+
+      const chUuid = (await prop.Get(GATT_CHRC_ID, 'UUID')).value;
+
+      if (chUuid === DATA_UUID) {
+        logger('found DATA characteristic.');
+        this.characteristics.data = ch;
+      }
+      else if (chUuid === LAST_DATA_UUID) {
+        logger('found LAST_DATA characteristic.');
+        this.characteristics.lastData = ch;
+        this.characteristics.lastDataProperties = prop;
+      }
+      else if (chUuid === AUTH_UUID) {
+        logger('found AUTH characteristic.');
+        this.characteristics.auth = ch;
+      }
+      else if (chUuid === PING_UUID) {
+        logger('found PING characteristic.');
+        this.characteristics.ping = ch;
+      }
+    }
+
+    return {
+      addr: [...addr]
+    };
+  }
+
+  async onDeviceConnected(device) {
     console.log('onDeviceConnected()');
-    const self = this;
 
-    // if (err) {
-    //   console.log('error: failed to connect to device: ' + err + '. picking next.');
-    //   this.deviceIdx++;
-    //   this.disconnect();
-    //   this.connect();
-    //   return;
-    // }
+    const objects = await this.objectManager.GetManagedObjects();
+    let characteristics = [];
 
-    // this.state = STATE_CONNECTED;
+    console.log(objects);
 
-    // if (this.characteristicState === STATE_UNINITIALIZED) {
-    //   // We need to discover the characteristics
-    //   logger('discovering services and characteristics');
+    for (const path of Object.keys(objects)) {
+      const interfaces = Object.keys(objects[path]);
+      if (interfaces.indexOf(GATT_CHRC_ID) > -1) {
+        characteristics.push(path);
+      }
+    }
 
-    //   setTimeout(() => {
-    //     if (this.characteristicState === STATE_UNINITIALIZED) {
-    //       console.log('error: discovering characteristics timed out. trying next device.');
-    //       self.deviceIdx++;
-    //       self.disconnect();
-    //       self.connect();
-    //     }
-    //   }, 5000);
+    for (const path of Object.keys(objects)) {
+      const interfaces = Object.keys(objects[path]);
+      console.log(interfaces);
+      if (interfaces.indexOf(GATT_SERVICE_ID) > -1) {
+        let chPaths = [];
+        for (const c of characteristics) {
+          if (c[0] === '/') {
+            chPaths.push(c);
+          }
+        }
 
-    //   this.device.discoverSomeServicesAndCharacteristics([PLEJD_SERVICE], [], async (err, services, characteristics) => {
-    //     if (err) {
-    //       console.log('error: failed to discover services: ' + err);
-    //       return;
-    //     }
+        console.log('trying ' + chPaths.length + ' characteristics');
 
-    //     if (self.state !== STATE_CONNECTED || self.characteristicState !== STATE_UNINITIALIZED) {
-    //       // in case our time out triggered before we got here.
-    //       console.log('warning: found characteristics in invalid state. ignoring.');
-    //       return;
-    //     }
+        this.plejdService = await this._processPlejdService(path, chPaths);
+        if (this.plejdService) {
+          break;
+        }
+      }
+    }
 
-    //     logger('found ' + characteristics.length + ' characteristic(s).');
+    console.log(this.plejdService);
 
-    //     characteristics.forEach((ch) => {
-    //       if (DATA_UUID == ch.uuid) {
-    //         logger('found DATA characteristic.');
-    //         self.characteristics.data = ch;
-    //       }
-    //       else if (LAST_DATA_UUID == ch.uuid) {
-    //         logger('found LAST_DATA characteristic.');
-    //         self.characteristics.lastData = ch;
-    //       }
-    //       else if (AUTH_UUID == ch.uuid) {
-    //         logger('found AUTH characteristic.');
-    //         self.characteristics.auth = ch;
-    //       }
-    //       else if (PING_UUID == ch.uuid) {
-    //         logger('found PING characteristic.');
-    //         self.characteristics.ping = ch;
-    //       }
-    //     });
+    if (!this.plejdService) {
+      console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
+      return;
+    }
 
-    //     if (self.characteristics.data
-    //       && self.characteristics.lastData
-    //       && self.characteristics.auth
-    //       && self.characteristics.ping) {
-
-    //       self.characteristicState = STATE_INITIALIZED;
-
-    //       // subscribe to notifications
-    //       this.subscribeCharacteristics();
-
-    //       self.emit('deviceCharacteristicsComplete', self.device);
-    //     }
-    //   });
-    // }
+    this.emit('deviceCharacteristicsComplete');
   }
 
-  onDeviceCharacteristicsComplete(device) {
-    logger('onDeviceCharacteristicsComplete(' + device.id + ')');
+  onDeviceCharacteristicsComplete() {
+    logger('onDeviceCharacteristicsComplete()');
     this.authenticate();
   }
 
-  onDeviceDiscovered(device) {
-    logger('onDeviceDiscovered(' + device.id + ')');
-    if (device.advertisement.localName === 'P mesh') {
-      logger('device is P mesh');
-      this.devices[device.id] = device;
-    }
-  }
-
-  onDeviceDisconnected() {
-    logger('onDeviceDisconnected()');
-    this.disconnect();
-
-    if (!this.device) {
-      console.log('warning: reconnect will not be performed.');
-      return;
-    }
-
-    // we just want to reconnect
-    // this.connect(this.device.id);
-  }
-
-  onDeviceScanComplete() {
-    console.log('onDeviceScanComplete()');
-    console.log('trying to connect to the mesh network.');
-    this.connect();
-  }
-
-  // onInterfaceStateChanged(state) {
-  //   console.log('onInterfaceStateChanged(' + state + ')');
-
-  //   if (state === 'poweredOn') {
-  //     this.scan();
-  //   }
-  //   else {
-  //     noble.stopScanning();
-  //   }
-  // }
-
   onLastDataUpdated(data, isNotification) {
-    const decoded = this._encryptDecrypt(this.cryptoKey, this.deviceAddress, data);
+    const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
 
     let state = 0;
     let dim = 0;
@@ -684,41 +549,10 @@ class PlejdService extends EventEmitter {
     console.log('wireEvents()');
     const self = this;
 
-    // noble.on('stateChange', this.onInterfaceStateChanged.bind(self));
-    // noble.on('discover', this.onDeviceDiscovered.bind(self));
-    // noble.on('disconnect', this.onDeviceDisconnected.bind(self));
-
-    this.on('scanComplete', this.onDeviceScanComplete.bind(this));
     this.on('deviceCharacteristicsComplete', this.onDeviceCharacteristicsComplete.bind(self));
     this.on('authenticated', this.onAuthenticated.bind(self));
     this.on('pingFailed', this.onPingFailed.bind(self));
     this.on('pingSuccess', this.onPingSuccess.bind(self));
-  }
-
-  subscribeCharacteristics() {
-    // if (this.characteristics.lastData) {
-    //   this.characteristics.lastData.subscribe((err) => {
-    //     if (err) {
-    //       console.log('error: could not subscribe to event.');
-    //     }
-    //   });
-    //   this.characteristics.lastData.on('data', this.onLastDataUpdated.bind(this));
-    // }
-  }
-
-  unsubscribeCharacteristics() {
-    // if (this.characteristics.lastData) {
-    //   try {
-    //     this.characteristics.lastData.unsubscribe((err) => {
-    //       if (err) {
-    //         console.log('error: could not unsubscribe from event.');
-    //       }
-    //     });
-    //   }
-    //   catch (error) {
-    //     console.log('warning: could not unsubscribe from lastData, probably already disconnected: ' + error);
-    //   }
-    // }
   }
 
   _createChallengeResponse(key, challenge) {

@@ -13,6 +13,7 @@ COPY ./main.js /plejd/
 COPY ./mqtt.js /plejd/
 COPY ./package.json /plejd/
 COPY ./ble.js /plejd/
+COPY ./ble.bluez.js /plejd/
 
 ARG BUILD_ARCH
 
@@ -33,6 +34,8 @@ RUN \
   git \
   nodejs=10.16.3-r0 \
   npm=10.16.3-r0 \
+  dbus-dev \
+  glib-dev \
   \
   && npm config set unsafe-perm true
 

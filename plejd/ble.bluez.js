@@ -161,11 +161,6 @@ class PlejdService extends EventEmitter {
     setTimeout(async () => {
       await this.onDeviceConnected(connectedDevice);
       await this.adapter.StopDiscovery();
-
-      // After we've authenticated, we need to hook up the event listener
-      // for changes to lastData.
-      this.characteristics.lastDataProperties.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
-      this.characteristics.lastData.StartNotify();
     }, 2000);
   }
 
@@ -337,6 +332,11 @@ class PlejdService extends EventEmitter {
     // Start ping
     logger('onAuthenticated()');
     this.startPing();
+
+    // After we've authenticated, we need to hook up the event listener
+    // for changes to lastData.
+    this.characteristics.lastDataProperties.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
+    this.characteristics.lastData.StartNotify();
   }
 
   async startPing() {

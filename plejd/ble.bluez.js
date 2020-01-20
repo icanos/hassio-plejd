@@ -498,8 +498,6 @@ class PlejdService extends EventEmitter {
       return;
     }
 
-    console.log(properties);
-
     const value = await properties['Value'];
     if (!value) {
       return;

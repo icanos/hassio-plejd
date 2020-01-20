@@ -3,9 +3,8 @@ const crypto = require('crypto');
 const xor = require('buffer-xor');
 const _ = require('lodash');
 const EventEmitter = require('events');
-const sleep = require('sleep');
 
-let debug = 'console';
+let debug = '';
 
 const getLogger = () => {
   const consoleLogger = msg => console.log('plejd-ble', msg);
@@ -347,7 +346,7 @@ class PlejdService extends EventEmitter {
     this.pingRef = setInterval(async () => {
       logger('ping');
       await this.ping();
-    }, 3000);
+    }, 5000);
 
     await this.ping();
   }

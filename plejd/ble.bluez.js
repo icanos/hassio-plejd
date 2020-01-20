@@ -26,15 +26,6 @@ const LAST_DATA_UUID = '31ba0005-6085-4726-be45-040c957391b5';
 const AUTH_UUID = '31ba0009-6085-4726-be45-040c957391b5';
 const PING_UUID = '31ba000a-6085-4726-be45-040c957391b5';
 
-const STATE_IDLE = 'idle';
-const STATE_SCANNING = 'scanning';
-const STATE_CONNECTING = 'connecting';
-const STATE_CONNECTED = 'connected';
-const STATE_AUTHENTICATED = 'authenticated';
-const STATE_DISCONNECTED = 'disconnected';
-const STATE_UNINITIALIZED = 'uninitialized';
-const STATE_INITIALIZED = 'initialized';
-
 const BLE_CMD_DIM_CHANGE = '00c8';
 const BLE_CMD_DIM2_CHANGE = '0098';
 const BLE_CMD_STATE_CHANGE = '0097';
@@ -54,10 +45,6 @@ class PlejdService extends EventEmitter {
     super();
 
     this.cryptoKey = Buffer.from(cryptoKey.replace(/-/g, ''), 'hex');
-
-    // Keeps track of the current state
-    this.state = STATE_IDLE;
-    this.writeQueue = [];
 
     this.plejdService = null;
     this.bleDevices = [];
@@ -90,7 +77,7 @@ class PlejdService extends EventEmitter {
 
     // We need to find the ble interface which implements the Adapter1 interface
     const managedObjects = await this.objectManager.GetManagedObjects();
-    let result = await this._getInterface(managedObjects, BLUEZ_ADAPTER_ID);    
+    let result = await this._getInterface(managedObjects, BLUEZ_ADAPTER_ID);
 
     if (result) {
       this.adapter = result[1];
@@ -103,7 +90,7 @@ class PlejdService extends EventEmitter {
 
     for (let path of Object.keys(managedObjects)) {
       const interfaces = Object.keys(managedObjects[path]);
-      
+
       if (interfaces.indexOf(BLUEZ_DEVICE_ID) > -1) {
         const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
         const device = await proxyObject.getInterface(BLUEZ_DEVICE_ID);
@@ -128,27 +115,27 @@ class PlejdService extends EventEmitter {
     });
 
     await this.adapter.StartDiscovery();
-    
+
     setTimeout(async () => {
       await this._internalInit();
     }, 2000);
   }
 
   async _internalInit() {
-    console.log('plejd-ble: got ' + this.bleDevices.length + ' device(s).');
+    logger('got ' + this.bleDevices.length + ' device(s).');
 
     for (const plejd of this.bleDevices) {
-      console.log('inspecting ' + plejd['path']);
+      logger('inspecting ' + plejd['path']);
 
       try {
         const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, plejd['path']);
         const device = await proxyObject.getInterface(BLUEZ_DEVICE_ID);
         const properties = await proxyObject.getInterface(DBUS_PROP_INTERFACE);
-        
+
         plejd['rssi'] = (await properties.Get(BLUEZ_DEVICE_ID, 'RSSI')).value;
         plejd['instance'] = device;
 
-        console.log('plejd-ble: discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
+        logger('discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
       }
       catch (err) {
         console.log('plejd-ble: failed inspecting ' + plejd['path'] + ' error: ' + err);
@@ -160,7 +147,7 @@ class PlejdService extends EventEmitter {
 
     for (const plejd of sortedDevices) {
       try {
-        logger('connecting to ' + plejd['path']);
+        console.log('plejd-ble: connecting to ' + plejd['path']);
         await plejd['instance'].Connect();
         connectedDevice = plejd;
         break
@@ -183,7 +170,7 @@ class PlejdService extends EventEmitter {
     for (let path of managedPaths) {
       const pathInterfaces = Object.keys(managedObjects[path]);
       if (pathInterfaces.indexOf(iface) > -1) {
-        console.log('plejd-ble: found ble interface \'' + iface + '\' at ' + path);
+        logger('found ble interface \'' + iface + '\' at ' + path);
         try {
           const adapterObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
           return [path, adapterObject.getInterface(iface), adapterObject];
@@ -203,7 +190,7 @@ class PlejdService extends EventEmitter {
 
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID]['UUIDs'].value.indexOf(PLEJD_SERVICE) > -1) {
-        console.log('found ' + path);
+        logger('found Plejd service on ' + path);
         this.bleDevices.push({ 'path': path });
       } else {
         console.log('uh oh, no Plejd device.');
@@ -318,11 +305,12 @@ class PlejdService extends EventEmitter {
     const self = this;
 
     try {
-      console.log('sending challenge');
+      logger('sending challenge to device');
       await this.characteristics.auth.WriteValue([0], {});
-      console.log('reading response');
+      logger('reading response from device');
       const challenge = await this.characteristics.auth.ReadValue({});
       const response = this._createChallengeResponse(this.cryptoKey, challenge);
+      logger('responding to authenticate');
       await this.characteristics.auth.WriteValue([...response], {});
 
       this.emit('authenticated');
@@ -342,6 +330,7 @@ class PlejdService extends EventEmitter {
       await this.init();
 
       if (retry) {
+        logger('reconnected and retrying to write');
         await this.write(data, false);
       }
     }
@@ -488,10 +477,9 @@ class PlejdService extends EventEmitter {
       }
     }
 
-    console.log(this.plejdService);
-
     if (!this.plejdService) {
       console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
+      this.emit('connectFailed');
       return;
     }
 
@@ -501,9 +489,27 @@ class PlejdService extends EventEmitter {
   onDeviceCharacteristicsComplete() {
     logger('onDeviceCharacteristicsComplete()');
     this.authenticate();
+
+    // After we've authenticated, we need to hook up the event listener
+    // for changes to lastData.
+    this.characteristics.lastData.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
   }
 
-  onLastDataUpdated(data, isNotification) {
+  //onLastDataUpdated(data, isNotification) {
+  onLastDataUpdated(iface, properties, invalidated) {
+    if (iface !== GATT_CHRC_ID) {
+      return;
+    }
+    const changedKeys = Object.keys(properties);
+    if (changedKeys.length === 0) {
+      return;
+    }
+
+    console.log(properties);
+
+    const value = await properties.Get('Value');
+    const data = value.value;
+    return;
     const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
 
     let state = 0;

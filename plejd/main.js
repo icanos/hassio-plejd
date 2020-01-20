@@ -8,7 +8,7 @@ const version = "0.3.0";
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
 
-  const rawData = fs.readFileSync('plejd.json');
+  const rawData = fs.readFileSync('/data/plejd.json');
   const config = JSON.parse(rawData);
 
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);

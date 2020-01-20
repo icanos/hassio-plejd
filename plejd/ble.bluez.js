@@ -72,6 +72,8 @@ class PlejdService extends EventEmitter {
       this.objectManager.removeAllListeners();
     }
 
+    clearInterval(this.pingRef);
+
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
 
@@ -293,13 +295,6 @@ class PlejdService extends EventEmitter {
     this.write(payload);
   }
 
-  disconnect() {
-    console.log('disconnect()');
-
-    clearInterval(this.pingRef);
-
-  }
-
   async authenticate() {
     console.log('authenticate()');
     const self = this;
@@ -322,17 +317,20 @@ class PlejdService extends EventEmitter {
 
   async write(data, retry = true) {
     try {
+      console.log('plejd-ble: sending ' + data.length + ' byte(s) of data to Plejd');
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
       await this.characteristics.data.WriteValue([...encryptedData], {});
     }
     catch (err) {
       console.log('plejd-ble: write failed ' + err);
-      await this.init();
+      setTimeout(async () => {
+        await this.init();
 
-      if (retry) {
-        logger('reconnected and retrying to write');
-        await this.write(data, false);
-      }
+        if (retry) {
+          logger('reconnected and retrying to write');
+          await this.write(data, false);
+        }
+      }, 2000);
     }
   }
 
@@ -350,6 +348,8 @@ class PlejdService extends EventEmitter {
       logger('ping');
       await this.ping();
     }, 3000);
+
+    await this.ping();
   }
 
   onPingSuccess(nr) {
@@ -407,6 +407,7 @@ class PlejdService extends EventEmitter {
       Buffer.from(
         String(dirtyAddr[1])
           .replace(/\-/g, '')
+          .replace(/\_/g, '')
           .replace(/\:/g, ''), 'hex'
       )
     );
@@ -438,7 +439,7 @@ class PlejdService extends EventEmitter {
     }
 
     return {
-      addr: [...addr]
+      addr: addr
     };
   }
 
@@ -447,8 +448,6 @@ class PlejdService extends EventEmitter {
 
     const objects = await this.objectManager.GetManagedObjects();
     let characteristics = [];
-
-    console.log(objects);
 
     for (const path of Object.keys(objects)) {
       const interfaces = Object.keys(objects[path]);
@@ -459,7 +458,6 @@ class PlejdService extends EventEmitter {
 
     for (const path of Object.keys(objects)) {
       const interfaces = Object.keys(objects[path]);
-      console.log(interfaces);
       if (interfaces.indexOf(GATT_SERVICE_ID) > -1) {
         let chPaths = [];
         for (const c of characteristics) {
@@ -492,14 +490,15 @@ class PlejdService extends EventEmitter {
 
     // After we've authenticated, we need to hook up the event listener
     // for changes to lastData.
-    this.characteristics.lastData.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
+    this.characteristics.lastDataProperties.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
+    this.characteristics.lastData.StartNotify();
   }
 
-  //onLastDataUpdated(data, isNotification) {
-  onLastDataUpdated(iface, properties, invalidated) {
+  async onLastDataUpdated(iface, properties, invalidated) {
     if (iface !== GATT_CHRC_ID) {
       return;
     }
+
     const changedKeys = Object.keys(properties);
     if (changedKeys.length === 0) {
       return;
@@ -507,9 +506,12 @@ class PlejdService extends EventEmitter {
 
     console.log(properties);
 
-    const value = await properties.Get('Value');
+    const value = await properties['Value'];
+    if (!value) {
+      return;
+    }
+
     const data = value.value;
-    return;
     const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
 
     let state = 0;

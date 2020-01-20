@@ -29,8 +29,8 @@ async function main() {
       // init the BLE interface
       const plejd = new PlejdService(cryptoKey, true);
       plejd.on('connectFailed', () => {
+        console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
         setTimeout(() => {
-          console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
           plejd.init();
         }, 10000);
       });

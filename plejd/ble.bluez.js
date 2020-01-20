@@ -294,12 +294,12 @@ class PlejdService extends EventEmitter {
     const self = this;
 
     try {
-      logger('sending challenge to device');
+      //logger('sending challenge to device');
       await this.characteristics.auth.WriteValue([0], {});
-      logger('reading response from device');
+      //logger('reading response from device');
       const challenge = await this.characteristics.auth.ReadValue({});
-      const response = this._createChallengeResponse(this.cryptoKey, challenge);
-      logger('responding to authenticate');
+      const response = this._createChallengeResponse(this.cryptoKey, Buffer.from(challenge));
+      //logger('responding to authenticate');
       await this.characteristics.auth.WriteValue([...response], {});
 
       this.emit('authenticated');
@@ -346,7 +346,7 @@ class PlejdService extends EventEmitter {
     this.pingRef = setInterval(async () => {
       logger('ping');
       await this.ping();
-    }, 5000);
+    }, 3000);
 
     await this.ping();
   }

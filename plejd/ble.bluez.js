@@ -109,7 +109,6 @@ class PlejdService extends EventEmitter {
     }
 
     this.objectManager.on('InterfacesAdded', this.onInterfacesAdded.bind(this));
-    this.objectManager.on('InterfacesRemoved', this.onInterfacesRemoved.bind(this));
 
     this.adapter.SetDiscoveryFilter({
       'UUIDs': new dbus.Variant('as', [PLEJD_SERVICE]),
@@ -198,10 +197,6 @@ class PlejdService extends EventEmitter {
         console.log('uh oh, no Plejd device.');
       }
     }
-  }
-
-  async onInterfacesRemoved(path, interfaces) {
-    const [adapter, dev, service, characteristic] = path.split('/').slice(3);
   }
 
   updateSettings(settings) {

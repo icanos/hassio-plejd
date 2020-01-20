@@ -72,6 +72,7 @@ class PlejdService extends EventEmitter {
       this.objectManager.removeAllListeners();
     }
 
+    this.bleDevices = [];
     clearInterval(this.pingRef);
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');

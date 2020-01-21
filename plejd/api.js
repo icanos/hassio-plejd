@@ -144,7 +144,9 @@ class PlejdApi extends EventEmitter {
         name: device.title,
         type: type,
         typeName: name,
-        dimmable: dimmable
+        dimmable: dimmable,
+        version: plejdDevice.firmware.version,
+        serialNumber: plejdDevice.deviceId
       };
 
       logger(JSON.stringify(newDevice));

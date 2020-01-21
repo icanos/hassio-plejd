@@ -72,6 +72,13 @@ class PlejdService extends EventEmitter {
     }
 
     this.bleDevices = [];
+    this.characteristics = {
+      data: null,
+      lastData: null,
+      lastDataProperties: null,
+      auth: null,
+      ping: null
+    };
     clearInterval(this.pingRef);
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
@@ -301,12 +308,18 @@ class PlejdService extends EventEmitter {
       const response = this._createChallengeResponse(this.cryptoKey, Buffer.from(challenge));
       //logger('responding to authenticate');
       await this.characteristics.auth.WriteValue([...response], {});
-
-      this.emit('authenticated');
     }
     catch (err) {
       console.log('plejd-ble: error: failed to authenticate: ' + err);
     }
+
+    // auth done, start ping
+    await this.startPing();
+
+    // After we've authenticated, we need to hook up the event listener
+    // for changes to lastData.
+    this.characteristics.lastDataProperties.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
+    this.characteristics.lastData.StartNotify();
   }
 
   async write(data, retry = true) {
@@ -328,17 +341,6 @@ class PlejdService extends EventEmitter {
     }
   }
 
-  onAuthenticated() {
-    // Start ping
-    logger('onAuthenticated()');
-    this.startPing();
-
-    // After we've authenticated, we need to hook up the event listener
-    // for changes to lastData.
-    this.characteristics.lastDataProperties.on('PropertiesChanged', this.onLastDataUpdated.bind(this));
-    this.characteristics.lastData.StartNotify();
-  }
-
   async startPing() {
     console.log('startPing()');
     clearInterval(this.pingRef);
@@ -347,8 +349,6 @@ class PlejdService extends EventEmitter {
       logger('ping');
       await this.ping();
     }, 3000);
-
-    await this.ping();
   }
 
   onPingSuccess(nr) {
@@ -480,12 +480,7 @@ class PlejdService extends EventEmitter {
       return;
     }
 
-    this.emit('deviceCharacteristicsComplete');
-  }
-
-  onDeviceCharacteristicsComplete() {
-    logger('onDeviceCharacteristicsComplete()');
-    this.authenticate();
+    await this.authenticate();
   }
 
   async onLastDataUpdated(iface, properties, invalidated) {
@@ -549,8 +544,6 @@ class PlejdService extends EventEmitter {
     console.log('wireEvents()');
     const self = this;
 
-    this.on('deviceCharacteristicsComplete', this.onDeviceCharacteristicsComplete.bind(self));
-    this.on('authenticated', this.onAuthenticated.bind(self));
     this.on('pingFailed', this.onPingFailed.bind(self));
     this.on('pingSuccess', this.onPingSuccess.bind(self));
   }

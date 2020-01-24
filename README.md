@@ -98,6 +98,11 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.3.0*:
+* NEW: New BLE manager, DBus instead of noble
+* FIX: Adding entities as devices now as well
+* FIX: Bug fixes
+
 *v 0.2.8*:
 * FIX: Reset characteristic state on disconnect
 

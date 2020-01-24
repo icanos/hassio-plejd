@@ -39,7 +39,6 @@ const getDiscoveryPayload = device => ({
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
   optimistic: false,
-  retain: true,
   brightness: `${device.dimmable}`,
   device: {
     identifiers: device.serialNumber,

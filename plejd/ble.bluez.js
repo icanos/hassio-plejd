@@ -323,6 +323,10 @@ class PlejdService extends EventEmitter {
   }
 
   async write(data, retry = true) {
+    if (!this.plejdService || !this.characteristics.data) {
+      return;
+    }
+
     try {
       console.log('plejd-ble: sending ' + data.length + ' byte(s) of data to Plejd');
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
@@ -475,6 +479,12 @@ class PlejdService extends EventEmitter {
     }
 
     if (!this.plejdService) {
+      console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
+      this.emit('connectFailed');
+      return;
+    }
+
+    if (!this.characteristics.auth) {
       console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
       this.emit('connectFailed');
       return;

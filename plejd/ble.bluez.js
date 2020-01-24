@@ -450,21 +450,22 @@ class PlejdService extends EventEmitter {
     console.log('onDeviceConnected()');
 
     const objects = await this.objectManager.GetManagedObjects();
+    const paths = Object.keys(objects);
     let characteristics = [];
 
-    for (const path of Object.keys(objects)) {
+    for (const path of paths) {
       const interfaces = Object.keys(objects[path]);
       if (interfaces.indexOf(GATT_CHRC_ID) > -1) {
         characteristics.push(path);
       }
     }
 
-    for (const path of Object.keys(objects)) {
+    for (const path of paths) {
       const interfaces = Object.keys(objects[path]);
       if (interfaces.indexOf(GATT_SERVICE_ID) > -1) {
         let chPaths = [];
         for (const c of characteristics) {
-          if (c[0] === '/') {
+          if (c.startsWith(path + '/')) {
             chPaths.push(c);
           }
         }
@@ -485,7 +486,7 @@ class PlejdService extends EventEmitter {
     }
 
     if (!this.characteristics.auth) {
-      console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
+      console.log('plejd-ble: error: unable to enumerate characteristics.');
       this.emit('connectFailed');
       return;
     }

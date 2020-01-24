@@ -45,7 +45,7 @@ class PlejdApi extends EventEmitter {
 
   login() {
     console.log('plejd-api: login()');
-    console.log('logging into ' + this.siteName);
+    console.log('plejd-api: logging into ' + this.siteName);
     const self = this;
 
     const instance = axios.create({

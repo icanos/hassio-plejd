@@ -15,7 +15,6 @@ async function main() {
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.once('loggedIn', () => {
-    plejdApi.getCryptoKey();
     plejdApi.on('ready', (cryptoKey) => {
       const devices = plejdApi.getDevices();
 
@@ -72,6 +71,8 @@ async function main() {
         }
       });
     });
+
+    plejdApi.getCryptoKey();
   });
 
   plejdApi.login();

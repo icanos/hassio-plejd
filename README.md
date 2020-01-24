@@ -12,6 +12,8 @@ I am in no way affiliated with Plejd and am solely doing this as a hobby project
 **Did you like this? Consider helping me continue the development:**  
 [Buy me a coffee](https://www.buymeacoffee.com/w1ANTUb)
 
+[![Gitter](https://badges.gitter.im/hassio-plejd/community.svg)](https://gitter.im/hassio-plejd/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 ## Getting started
 To get started, make sure that the following requirements are met:
 

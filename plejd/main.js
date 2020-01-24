@@ -1,9 +1,9 @@
 const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');
-const PlejdService = require('./ble');
+const PlejdService = require('./ble.bluez');
 
-const version = "0.2.10";
+const version = "0.3.0";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
@@ -27,6 +27,15 @@ async function main() {
 
       // init the BLE interface
       const plejd = new PlejdService(cryptoKey, true);
+      plejd.on('connectFailed', () => {
+        console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
+        setTimeout(() => {
+          plejd.init();
+        }, 10000);
+      });
+
+      plejd.init();
+
       plejd.on('authenticated', () => {
         console.log('plejd: connected via bluetooth.');
       });

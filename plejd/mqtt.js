@@ -35,11 +35,18 @@ const getSettingsTopic = () => `plejd/settings`;
 const getDiscoveryPayload = device => ({
   schema: 'json',
   name: device.name,
-  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
+  unique_id: device.serialNumber,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
   optimistic: false,
-  brightness: `${device.dimmable}`
+  brightness: `${device.dimmable}`,
+  device: {
+    identifiers: device.serialNumber,
+    manufacturer: 'Plejd',
+    model: device.typeName,
+    name: device.name,
+    sw_version: device.version
+  }
 });
 
 // #endregion

@@ -22,6 +22,7 @@ RUN apt-get update \
     #
     # Verify git and needed tools are installed
     && apt-get -y install git iproute2 procps \
+    && apt-get -y install libdbus-1-dev libglib2.0-dev \
     #
     # Remove outdated yarn from /opt and install via package 
     # so it can be easily updated via apt-get upgrade yarn
@@ -52,6 +53,8 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g node-gyp
 
 # Switch back to dialog for any ad-hoc use of apt-get
 ENV DEBIAN_FRONTEND=dialog

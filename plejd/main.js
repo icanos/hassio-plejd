@@ -11,6 +11,10 @@ async function main() {
   const rawData = fs.readFileSync('/data/plejd.json');
   const config = JSON.parse(rawData);
 
+  if (!config.connectionTimeout) {
+    config.connectionTimeout = 2;
+  }
+
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 

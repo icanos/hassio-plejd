@@ -3,13 +3,17 @@ const mqtt = require('./mqtt');
 const fs = require('fs');
 const PlejdService = require('./ble.bluez');
 
-const version = "0.3.3";
+const version = "0.3.4";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
 
   const rawData = fs.readFileSync('/data/plejd.json');
   const config = JSON.parse(rawData);
+
+  if (!config.connectionTimeout) {
+    config.connectionTimeout = 2;
+  }
 
   const plejdApi = new api.PlejdApi(config.site, config.username, config.password);
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
@@ -26,7 +30,7 @@ async function main() {
       client.init();
 
       // init the BLE interface
-      const plejd = new PlejdService(cryptoKey, true);
+      const plejd = new PlejdService(cryptoKey, config.connectionTimeout, true);
       plejd.on('connectFailed', () => {
         console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
         setTimeout(() => {

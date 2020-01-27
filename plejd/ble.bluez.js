@@ -40,7 +40,7 @@ const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
 class PlejdService extends EventEmitter {
-  constructor(cryptoKey, keepAlive = false) {
+  constructor(cryptoKey, connectionTimeout, keepAlive = false) {
     super();
 
     this.cryptoKey = Buffer.from(cryptoKey.replace(/-/g, ''), 'hex');
@@ -49,6 +49,7 @@ class PlejdService extends EventEmitter {
     this.bleDevices = [];
     this.plejdDevices = {};
     this.connectEventHooked = false;
+    this.connectionTimeout = connectionTimeout;
 
     // Holds a reference to all characteristics
     this.characteristics = {
@@ -79,7 +80,9 @@ class PlejdService extends EventEmitter {
       auth: null,
       ping: null
     };
+
     clearInterval(this.pingRef);
+    console.log('init()');
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
@@ -122,11 +125,17 @@ class PlejdService extends EventEmitter {
       'Transport': new dbus.Variant('s', 'le')
     });
 
-    await this.adapter.StartDiscovery();
+    try {
+      await this.adapter.StartDiscovery();
+    }
+    catch (err) {
+      console.log('plejd-ble: error: failed to start discovery. Make sure no other add-on is currently scanning.');
+      return;
+    }
 
     setTimeout(async () => {
       await this._internalInit();
-    }, 2000);
+    }, this.connectionTimeout * 1000);
   }
 
   async _internalInit() {
@@ -155,20 +164,22 @@ class PlejdService extends EventEmitter {
 
     for (const plejd of sortedDevices) {
       try {
-        console.log('plejd-ble: connecting to ' + plejd['path']);
-        await plejd['instance'].Connect();
-        connectedDevice = plejd;
-        break
+        if (plejd['instance']) {
+          console.log('plejd-ble: connecting to ' + plejd['path']);
+          await plejd['instance'].Connect();
+          connectedDevice = plejd;
+          break
+        }
       }
       catch (err) {
-        console.log('plejd-ble: failed connecting to plejd, error: ' + err);
+        console.log('plejd-ble: warning: unable to connect, will retry. ' + err);
       }
     }
 
     setTimeout(async () => {
       await this.onDeviceConnected(connectedDevice);
       await this.adapter.StopDiscovery();
-    }, 2000);
+    }, this.connectionTimeout * 1000);
   }
 
   async _getInterface(managedObjects, iface) {
@@ -238,7 +249,7 @@ class PlejdService extends EventEmitter {
         }
 
         i++;
-      }, 500);
+      }, 400);
     }
     else {
       this._turnOn(id, brightness);
@@ -341,7 +352,7 @@ class PlejdService extends EventEmitter {
           logger('reconnected and retrying to write');
           await this.write(data, false);
         }
-      }, 2000);
+      }, this.connectionTimeout * 1000);
     }
   }
 
@@ -480,7 +491,7 @@ class PlejdService extends EventEmitter {
     }
 
     if (!this.plejdService) {
-      console.log('plejd-ble: error: unable to connect to the Plejd mesh.');
+      console.log('plejd-ble: warning: wasn\'t able to connect to Plejd, will retry.');
       this.emit('connectFailed');
       return;
     }

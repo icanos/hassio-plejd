@@ -90,6 +90,7 @@ mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
 includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
+connectionTimeout | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.
 
 ## I want voice control!
 With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:
@@ -100,6 +101,10 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.3.4*:
+* NEW: `connectionTimeout` configuration parameter to enable tweaking of wait time on connection, usable for RPi 3B+.
+* FIX: Reworked some logging to get better understanding of what happens.
+
 *v 0.3.0*:
 * NEW: New BLE manager, DBus instead of noble
 * FIX: Adding entities as devices now as well

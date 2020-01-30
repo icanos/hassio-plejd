@@ -53,13 +53,22 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 * A new Local Add-on should appear named Plejd. Open that and install.
 * Enjoy!
 
-### NOTE
+### IMPORTANT INFORMATION
+#### Startup error message
 When starting the add-on, the log displays this message:
 ```
 parse error: Expected string key before ':' at line 1, column 4
 [08:56:24] ERROR: Unknown HTTP error occured
 ```
 However, the add-on still works as expected and this is something I'm looking into, but not with that much effort yet though.
+
+#### Running the Plejd add-on outside of HassOS
+If you're planning on running this add-on outside of HassOS, you might need to turn off AppArmor in the `config.json` file. This is due to missing AppArmor configuration that is performed in HassOS (if you've manually done it, ignore this).
+
+Open the `config.json` file and locate `host_dbus`, after that line, insert: `"apparmor": "no",` and then restart the add-on.
+
+More information about available parameters can be found here:
+https://developers.home-assistant.io/docs/en/hassio_addon_config.html
 
 ### Configuration
 You need to add the following to your `configuration.yaml` file:

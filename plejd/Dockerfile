@@ -32,8 +32,8 @@ RUN \
   \
   && apk add --no-cache \
   git \
-  nodejs=10.16.3-r0 \
-  npm=10.16.3-r0 \
+  nodejs \
+  npm \
   dbus-dev \
   glib-dev \
   \

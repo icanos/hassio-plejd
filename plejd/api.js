@@ -149,13 +149,42 @@ class PlejdApi extends EventEmitter {
         serialNumber: plejdDevice.deviceId
       };
 
-      logger(JSON.stringify(newDevice));
+      if (newDevice.typeName === 'WPH-01') {
+        // WPH-01 is special, it has two buttons which needs to be
+        // registered separately.
+        const inputs = this.site.inputAddress[deviceId];
+        const first = inputs[0];
+        const second = inputs[1];
 
-      if (roomDevices[device.roomId]) {
-        roomDevices[device.roomId].push(newDevice);
+        newDevice.id = first;
+        newDevice.name += ' knapp vä';
+
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(newDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [newDevice];
+        }
+        devices.push(newDevice);
+
+        newDevice.id = second;
+        newDevice.name = device.title + ' knapp hö';
+
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(newDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [newDevice];
+        }
+        devices.push(newDevice);
       }
       else {
-        roomDevices[device.roomId] = [newDevice];
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(newDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [newDevice];
+        }
       }
 
       devices.push(newDevice);

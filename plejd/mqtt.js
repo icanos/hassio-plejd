@@ -49,6 +49,20 @@ const getDiscoveryPayload = device => ({
   }
 });
 
+const getSwitchPayload = device => ({
+  name: device.name,
+  state_topic: getStateTopic(device),
+  command_topic: getCommandTopic(device),
+  optimistic: false,
+  device: {
+    identifiers: device.serialNumber + '_' + device.id,
+    manufacturer: 'Plejd',
+    model: device.typeName,
+    name: device.name,
+    sw_version: device.version
+  }
+});
+
 // #endregion
 
 class MqttClient extends EventEmitter {
@@ -139,7 +153,7 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger(`sending discovery for ${device.name}`);
 
-      let payload = getDiscoveryPayload(device);
+      let payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
       console.log(`plejd-mqtt: discovered ${device.type} named ${device.name} with PID ${device.id}.`);
 
       self.deviceMap[device.id] = payload.unique_id;

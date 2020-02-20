@@ -156,27 +156,41 @@ class PlejdApi extends EventEmitter {
         const first = inputs[0];
         const second = inputs[1];
 
-        newDevice.id = first;
-        newDevice.name += ' knapp vä';
+        let switchDevice = {
+          id: first,
+          name: device.title + ' knapp vä',
+          type: type,
+          typeName: name,
+          dimmable: dimmable,
+          version: plejdDevice.firmware.version,
+          serialNumber: plejdDevice.deviceId
+        };
 
         if (roomDevices[device.roomId]) {
-          roomDevices[device.roomId].push(newDevice);
+          roomDevices[device.roomId].push(switchDevice);
         }
         else {
-          roomDevices[device.roomId] = [newDevice];
+          roomDevices[device.roomId] = [switchDevice];
         }
-        devices.push(newDevice);
+        devices.push(switchDevice);
 
-        newDevice.id = second;
-        newDevice.name = device.title + ' knapp hö';
+        switchDevice = {
+          id: second,
+          name: device.title + ' knapp hö',
+          type: type,
+          typeName: name,
+          dimmable: dimmable,
+          version: plejdDevice.firmware.version,
+          serialNumber: plejdDevice.deviceId
+        };
 
         if (roomDevices[device.roomId]) {
-          roomDevices[device.roomId].push(newDevice);
+          roomDevices[device.roomId].push(switchDevice);
         }
         else {
-          roomDevices[device.roomId] = [newDevice];
+          roomDevices[device.roomId] = [switchDevice];
         }
-        devices.push(newDevice);
+        devices.push(switchDevice);
       }
       else {
         if (roomDevices[device.roomId]) {
@@ -185,9 +199,9 @@ class PlejdApi extends EventEmitter {
         else {
           roomDevices[device.roomId] = [newDevice];
         }
-      }
 
-      devices.push(newDevice);
+        devices.push(newDevice);
+      }
     }
 
     if (this.includeRoomsAsLights) {

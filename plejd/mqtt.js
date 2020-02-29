@@ -49,6 +49,20 @@ const getDiscoveryPayload = device => ({
   }
 });
 
+const getSwitchPayload = device => ({
+  name: device.name,
+  state_topic: getStateTopic(device),
+  command_topic: getCommandTopic(device),
+  optimistic: false,
+  device: {
+    identifiers: device.serialNumber + '_' + device.id,
+    manufacturer: 'Plejd',
+    model: device.typeName,
+    name: device.name,
+    sw_version: device.version
+  }
+});
+
 // #endregion
 
 class MqttClient extends EventEmitter {
@@ -100,7 +114,9 @@ class MqttClient extends EventEmitter {
 
     this.client.on('message', (topic, message) => {
       //const command = message.toString();
-      const command = JSON.parse(message.toString());
+      const command = message.toString().substring(0, 1) === '{' 
+        ? JSON.parse(message.toString())
+        : message.toString();
 
       if (topic === startTopic) {
         logger('home assistant has started. lets do discovery.');
@@ -112,7 +128,7 @@ class MqttClient extends EventEmitter {
 
       if (_.includes(topic, 'set')) {
         const device = self.devices.find(x => getCommandTopic(x) === topic);
-        self.emit('stateChanged', device.id, command);
+        self.emit('stateChanged', device, command);
       }
     });
   }
@@ -139,8 +155,8 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger(`sending discovery for ${device.name}`);
 
-      let payload = getDiscoveryPayload(device);
-      console.log(`plejd-mqtt: discovered ${device.type} named ${device.name} with PID ${device.id}.`);
+      let payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
+      console.log(`plejd-mqtt: discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`);
 
       self.deviceMap[device.id] = payload.unique_id;
 
@@ -162,21 +178,28 @@ class MqttClient extends EventEmitter {
     logger('updating state for ' + device.name + ': ' + data.state);
     let payload = null;
 
-    if (device.dimmable) {
-      payload = {
-        state: data.state === 1 ? 'ON' : 'OFF',
-        brightness: data.brightness
-      }
+    if (device.type === 'switch') {
+      payload = data.state === 1 ? 'ON' : 'OFF';
     }
     else {
-      payload = {
-        state: data.state === 1 ? 'ON' : 'OFF'
+      if (device.dimmable) {
+        payload = {
+          state: data.state === 1 ? 'ON' : 'OFF',
+          brightness: data.brightness
+        }
       }
+      else {
+        payload = {
+          state: data.state === 1 ? 'ON' : 'OFF'
+        }
+      }
+
+      payload = JSON.stringify(payload);
     }
 
     this.client.publish(
       getStateTopic(device),
-      JSON.stringify(payload)
+      payload
     );
   }
 

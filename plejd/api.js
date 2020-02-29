@@ -100,8 +100,7 @@ class PlejdApi extends EventEmitter {
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
-        //callback(self.cryptoKey);
-        this.emit('ready', self.cryptoKey);
+        this.emit('ready', self.cryptoKey, self.site);
       })
       .catch((error) => {
         console.log('error: unable to retrieve the crypto key. error: ' + error);
@@ -149,16 +148,59 @@ class PlejdApi extends EventEmitter {
         serialNumber: plejdDevice.deviceId
       };
 
-      logger(JSON.stringify(newDevice));
+      if (newDevice.typeName === 'WPH-01') {
+        // WPH-01 is special, it has two buttons which needs to be
+        // registered separately.
+        const inputs = this.site.inputAddress[deviceId];
+        const first = inputs[0];
+        const second = inputs[1];
 
-      if (roomDevices[device.roomId]) {
-        roomDevices[device.roomId].push(newDevice);
+        let switchDevice = {
+          id: first,
+          name: device.title + ' knapp vä',
+          type: type,
+          typeName: name,
+          dimmable: dimmable,
+          version: plejdDevice.firmware.version,
+          serialNumber: plejdDevice.deviceId
+        };
+
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(switchDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [switchDevice];
+        }
+        devices.push(switchDevice);
+
+        switchDevice = {
+          id: second,
+          name: device.title + ' knapp hö',
+          type: type,
+          typeName: name,
+          dimmable: dimmable,
+          version: plejdDevice.firmware.version,
+          serialNumber: plejdDevice.deviceId
+        };
+
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(switchDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [switchDevice];
+        }
+        devices.push(switchDevice);
       }
       else {
-        roomDevices[device.roomId] = [newDevice];
-      }
+        if (roomDevices[device.roomId]) {
+          roomDevices[device.roomId].push(newDevice);
+        }
+        else {
+          roomDevices[device.roomId] = [newDevice];
+        }
 
-      devices.push(newDevice);
+        devices.push(newDevice);
+      }
     }
 
     if (this.includeRoomsAsLights) {
@@ -176,10 +218,26 @@ class PlejdApi extends EventEmitter {
           dimmable: roomDevices[roomId].find(x => x.dimmable).length > 0
         };
 
-        logger(JSON.stringify(newDevice));
-
         devices.push(newDevice);
       }
+    }
+
+    // add scenes as switches
+    const scenes = this.site.scenes.filter(x => x.hiddenFromSceneList == false);
+
+    for (const scene of scenes) {
+      const sceneNum = this.site.sceneIndex[scene.sceneId];
+      const newScene = {
+        id: sceneNum,
+        name: scene.title,
+        type: 'switch',
+        typeName: 'Scene',
+        dimmable: false,
+        version: '1.0',
+        serialNumber: scene.objectId
+      };
+
+      devices.push(newScene);
     }
 
     return devices;

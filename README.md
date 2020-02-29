@@ -33,6 +33,7 @@ The add-on has been tested on the following platforms:
 * CTR-01
 * REL-01
 * REL-02
+* WPH-01
 
 ### Easy Installation
 Browse to your Home Assistant installation in a web browser and click on `Hass.io` in the navigation bar to the left.
@@ -110,6 +111,11 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.4.0*:
+* NEW: Implemented support for Plejd scenes, each scene appears as a switch in Home Assistant.
+* NEW: *WPH-01* is supported and generates two switches (left and right button).
+* NEW: Write queues, finally able to incorporate Plejd devices in HA automations/scenes etc.
+
 *v 0.3.4*:
 * NEW: `connectionTimeout` configuration parameter to enable tweaking of wait time on connection, usable for RPi 3B+.
 * FIX: Reworked some logging to get better understanding of what happens.

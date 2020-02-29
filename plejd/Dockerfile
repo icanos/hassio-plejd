@@ -14,6 +14,7 @@ COPY ./mqtt.js /plejd/
 COPY ./package.json /plejd/
 COPY ./ble.js /plejd/
 COPY ./ble.bluez.js /plejd/
+COPY ./scene.manager.js /plejd/
 
 ARG BUILD_ARCH
 
@@ -68,3 +69,4 @@ LABEL \
   org.label-schema.usage="https://github.com/icanos/hassio-plejd/tree/master/README.md" \
   org.label-schema.vcs-ref=${BUILD_REF} \
   org.label-schema.vcs-url="https://github.com/icanos/hassio-plejd"
+  

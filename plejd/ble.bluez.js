@@ -40,16 +40,21 @@ const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
 class PlejdService extends EventEmitter {
-  constructor(cryptoKey, connectionTimeout, keepAlive = false) {
+  constructor(cryptoKey, devices, sceneManager, connectionTimeout, keepAlive = false) {
     super();
 
     this.cryptoKey = Buffer.from(cryptoKey.replace(/-/g, ''), 'hex');
 
+    this.sceneManager = sceneManager;
+    this.connectedDevice = null;
     this.plejdService = null;
     this.bleDevices = [];
     this.plejdDevices = {};
+    this.devices = devices;
     this.connectEventHooked = false;
     this.connectionTimeout = connectionTimeout;
+    this.writeQueue = [];
+    this.writeQueueRef = null;
 
     // Holds a reference to all characteristics
     this.characteristics = {
@@ -72,6 +77,7 @@ class PlejdService extends EventEmitter {
       this.objectManager.removeAllListeners();
     }
 
+    this.connectedDevice = null;
     this.bleDevices = [];
     this.characteristics = {
       data: null,
@@ -82,6 +88,7 @@ class PlejdService extends EventEmitter {
     };
 
     clearInterval(this.pingRef);
+    clearInterval(this.writeQueueRef);
     console.log('init()');
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
@@ -151,6 +158,11 @@ class PlejdService extends EventEmitter {
 
         plejd['rssi'] = (await properties.Get(BLUEZ_DEVICE_ID, 'RSSI')).value;
         plejd['instance'] = device;
+
+        const segments = plejd['path'].split('/');
+        let fixedPlejdPath = segments[segments.length - 1].replace('dev_', '');
+        fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
+        plejd['device'] = this.devices.find(x => x.serialNumber === fixedPlejdPath);
 
         logger('discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
       }
@@ -267,7 +279,7 @@ class PlejdService extends EventEmitter {
       payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
     }
 
-    this.write(payload);
+    this.writeQueue.unshift(payload);
   }
 
   turnOff(id, command) {
@@ -304,7 +316,12 @@ class PlejdService extends EventEmitter {
 
   _turnOff(id) {
     var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009700', 'hex');
-    this.write(payload);
+    this.writeQueue.unshift(payload);
+  }
+
+  triggerScene(sceneIndex) {
+    console.log('triggering scene with ID ' + sceneIndex);
+    this.sceneManager.executeScene(sceneIndex, this);
   }
 
   async authenticate() {
@@ -326,6 +343,7 @@ class PlejdService extends EventEmitter {
 
     // auth done, start ping
     await this.startPing();
+    await this.startWriteQueue();
 
     // After we've authenticated, we need to hook up the event listener
     // for changes to lastData.
@@ -401,6 +419,18 @@ class PlejdService extends EventEmitter {
     }
 
     this.emit('pingSuccess', pong[0]);
+  }
+
+  async startWriteQueue() {
+    console.log('startWriteQueue()');
+    clearInterval(this.writeQueueRef);
+
+    this.writeQueueRef = setInterval(async () => {
+      while (this.writeQueue.length > 0) {
+        const data = this.writeQueue.pop();
+        await this.write(data);
+      }
+    }, 400);
   }
 
   async _processPlejdService(path, characteristics) {
@@ -502,6 +532,7 @@ class PlejdService extends EventEmitter {
       return;
     }
 
+    this.connectedDevice = device['device'];
     await this.authenticate();
   }
 

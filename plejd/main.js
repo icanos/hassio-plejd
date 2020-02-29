@@ -2,8 +2,9 @@ const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');
 const PlejdService = require('./ble.bluez');
+const SceneManager = require('./scene.manager');
 
-const version = "0.3.5";
+const version = "0.4.0";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
@@ -19,7 +20,7 @@ async function main() {
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.once('loggedIn', () => {
-    plejdApi.on('ready', (cryptoKey) => {
+    plejdApi.on('ready', (cryptoKey, site) => {
       const devices = plejdApi.getDevices();
 
       client.on('connected', () => {
@@ -30,7 +31,8 @@ async function main() {
       client.init();
 
       // init the BLE interface
-      const plejd = new PlejdService(cryptoKey, config.connectionTimeout, true);
+      const sceneManager = new SceneManager(site, devices);
+      const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, true);
       plejd.on('connectFailed', () => {
         console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
         setTimeout(() => {
@@ -54,12 +56,39 @@ async function main() {
       });
 
       // subscribe to changes from HA
-      client.on('stateChanged', (deviceId, command) => {
-        if (command.state === 'ON') {
-          plejd.turnOn(deviceId, command);
+      client.on('stateChanged', (device, command) => {
+        const deviceId = device.id;
+
+        if (device.typeName === 'Scene') {
+          // we're triggering a scene, lets do that and jump out.
+          // since scenes aren't "real" devices.
+          plejd.triggerScene(device.id);
+          return;
+        }
+
+        let state = 'OFF';
+        let commandObj = {};
+
+        if (typeof command === 'string') {
+          // switch command
+          state = command;
+          commandObj = { state: state };
+
+          // since the switch doesn't get any updates on whether it's on or not,
+          // we fake this by directly send the updateState back to HA in order for
+          // it to change state.
+          client.updateState(deviceId, { state: state === 'ON' ? 1 : 0 });
         }
         else {
-          plejd.turnOff(deviceId, command);
+          state = command.state;
+          commandObj = command;
+        }
+
+        if (state === 'ON') {
+          plejd.turnOn(deviceId, commandObj);
+        }
+        else {
+          plejd.turnOff(deviceId, commandObj);
         }
       });
 

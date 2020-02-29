@@ -100,8 +100,7 @@ class PlejdApi extends EventEmitter {
         self.site = response.data.result.find(x => x.site.title == self.siteName);
         self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
-        //callback(self.cryptoKey);
-        this.emit('ready', self.cryptoKey);
+        this.emit('ready', self.cryptoKey, self.site);
       })
       .catch((error) => {
         console.log('error: unable to retrieve the crypto key. error: ' + error);
@@ -219,10 +218,26 @@ class PlejdApi extends EventEmitter {
           dimmable: roomDevices[roomId].find(x => x.dimmable).length > 0
         };
 
-        logger(JSON.stringify(newDevice));
-
         devices.push(newDevice);
       }
+    }
+
+    // add scenes as switches
+    const scenes = this.site.scenes.filter(x => x.hiddenFromSceneList == false);
+
+    for (const scene of scenes) {
+      const sceneNum = this.site.sceneIndex[scene.sceneId];
+      const newScene = {
+        id: sceneNum,
+        name: scene.title,
+        type: 'switch',
+        typeName: 'Scene',
+        dimmable: false,
+        version: '1.0',
+        serialNumber: scene.objectId
+      };
+
+      devices.push(newScene);
     }
 
     return devices;

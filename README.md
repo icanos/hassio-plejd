@@ -101,6 +101,7 @@ mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
 includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
 connectionTimeout | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.
+writeQueueWaitTime | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.
 
 ## I want voice control!
 With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:

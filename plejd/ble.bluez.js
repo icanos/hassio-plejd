@@ -430,7 +430,7 @@ class PlejdService extends EventEmitter {
     console.log('startWriteQueue()');
     clearInterval(this.writeQueueRef);
 
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue()), 400);
+    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), 400);
     // this.writeQueueRef = setInterval(async () => {
     //   while (this.writeQueue.length > 0) {
     //     const data = this.writeQueue.pop();
@@ -445,7 +445,7 @@ class PlejdService extends EventEmitter {
       await this.write(data, true);
     }
 
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue()), 400);
+    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), 400);
   }
 
   async _processPlejdService(path, characteristics) {

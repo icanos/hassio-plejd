@@ -362,6 +362,11 @@ class PlejdService extends EventEmitter {
       await this.characteristics.data.WriteValue([...encryptedData], {});
     }
     catch (err) {
+      if (err.message === 'In Progress') {
+        setTimeout(() => this.write(data, retry), 1000);
+        return;
+      }
+
       console.log('plejd-ble: write failed ' + err);
       setTimeout(async () => {
         await this.init();
@@ -425,12 +430,22 @@ class PlejdService extends EventEmitter {
     console.log('startWriteQueue()');
     clearInterval(this.writeQueueRef);
 
-    this.writeQueueRef = setInterval(async () => {
-      while (this.writeQueue.length > 0) {
-        const data = this.writeQueue.pop();
-        await this.write(data);
-      }
-    }, 400);
+    this.writeQueueRef = setTimeout(runWriteQueue, 400);
+    // this.writeQueueRef = setInterval(async () => {
+    //   while (this.writeQueue.length > 0) {
+    //     const data = this.writeQueue.pop();
+    //     await this.write(data);
+    //   }
+    // }, 400);
+  }
+
+  async runWriteQueue() {
+    while (this.writeQueue.length > 0) {
+      const data = this.writeQueue.pop();
+      await this.write(data, true);
+    }
+
+    this.writeQueueRef = setTimeout(runWriteQueue, 400);
   }
 
   async _processPlejdService(path, characteristics) {

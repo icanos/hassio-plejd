@@ -40,7 +40,7 @@ const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
 class PlejdService extends EventEmitter {
-  constructor(cryptoKey, devices, sceneManager, connectionTimeout, keepAlive = false) {
+  constructor(cryptoKey, devices, sceneManager, connectionTimeout, writeQueueWaitTime, keepAlive = false) {
     super();
 
     this.cryptoKey = Buffer.from(cryptoKey.replace(/-/g, ''), 'hex');
@@ -53,6 +53,7 @@ class PlejdService extends EventEmitter {
     this.devices = devices;
     this.connectEventHooked = false;
     this.connectionTimeout = connectionTimeout;
+    this.writeQueueWaitTime = writeQueueWaitTime;
     this.writeQueue = [];
     this.writeQueueRef = null;
 
@@ -362,6 +363,11 @@ class PlejdService extends EventEmitter {
       await this.characteristics.data.WriteValue([...encryptedData], {});
     }
     catch (err) {
+      if (err.message === 'In Progress') {
+        setTimeout(() => this.write(data, retry), 1000);
+        return;
+      }
+
       console.log('plejd-ble: write failed ' + err);
       setTimeout(async () => {
         await this.init();
@@ -425,12 +431,16 @@ class PlejdService extends EventEmitter {
     console.log('startWriteQueue()');
     clearInterval(this.writeQueueRef);
 
-    this.writeQueueRef = setInterval(async () => {
-      while (this.writeQueue.length > 0) {
-        const data = this.writeQueue.pop();
-        await this.write(data);
-      }
-    }, 400);
+    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
+  }
+
+  async runWriteQueue() {
+    while (this.writeQueue.length > 0) {
+      const data = this.writeQueue.pop();
+      await this.write(data, true);
+    }
+
+    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
   }
 
   async _processPlejdService(path, characteristics) {

@@ -1,6 +1,6 @@
 {
   "name": "Plejd",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "slug": "plejd",
   "description": "Adds support for the Swedish home automation devices from Plejd.",
   "url": "https://github.com/icanos/hassio-plejd/",
@@ -23,7 +23,8 @@
     "mqttUsername": "",
     "mqttPassword": "",
     "includeRoomsAsLights": false,
-    "connectionTimeout": 2
+    "connectionTimeout": 2,
+    "writeQueueWaitTime": 400
   },
   "schema": {
     "site": "str",
@@ -33,6 +34,7 @@
     "mqttUsername": "str",
     "mqttPassword": "str",
     "includeRoomsAsLights": "bool",
-    "connectionTimeout": "int"
+    "connectionTimeout": "int",
+    "writeQueueWaitTime": "int"
   }
 }

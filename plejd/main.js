@@ -4,7 +4,7 @@ const fs = require('fs');
 const PlejdService = require('./ble.bluez');
 const SceneManager = require('./scene.manager');
 
-const version = "0.4.1";
+const version = "0.4.2";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
@@ -32,7 +32,7 @@ async function main() {
 
       // init the BLE interface
       const sceneManager = new SceneManager(site, devices);
-      const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, true);
+      const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, config.writeQueueWaitTime, true);
       plejd.on('connectFailed', () => {
         console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
         setTimeout(() => {

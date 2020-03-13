@@ -112,6 +112,9 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.4.3*:
+* FIX: Updated add-on to work with the API changes made by Plejd.
+
 *v 0.4.0*:
 * NEW: Implemented support for Plejd scenes, each scene appears as a switch in Home Assistant.
 * NEW: *WPH-01* is supported and generates two switches (left and right button).

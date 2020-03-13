@@ -35,7 +35,7 @@ async function main() {
         client.init();
 
         // init the BLE interface
-        const sceneManager = new SceneManager(site, devices);
+        const sceneManager = new SceneManager(plejdApi.site, devices);
         const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, config.writeQueueWaitTime, true);
         plejd.on('connectFailed', () => {
           console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');

@@ -5,7 +5,8 @@ const _ = require('lodash');
 API_APP_ID = 'zHtVqXt8k4yFyk2QGmgp48D9xZr2G94xWYnF4dak';
 API_BASE_URL = 'https://cloud.plejd.com/parse/';
 API_LOGIN_URL = 'login';
-API_SITES_URL = 'functions/getSites';
+API_SITE_LIST_URL = 'functions/getSiteList';
+API_SITE_DETAILS_URL = 'functions/getSiteById';
 
 // #region logging
 let debug = '';
@@ -56,31 +57,41 @@ class PlejdApi extends EventEmitter {
       }
     });
 
-    logger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
+    return new Promise((resolve, reject) => {
+      logger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
 
-    instance.post(
-      API_LOGIN_URL,
-      {
-        'username': this.username,
-        'password': this.password
-      })
-      .then((response) => {
-        console.log('plejd-api: got session token response');
-        self.sessionToken = response.data.sessionToken;
-        self.emit('loggedIn');
-      })
-      .catch((error) => {
-        if (error.response.status === 400) {
-          console.log('error: server returned status 400. probably invalid credentials, please verify.');
-        }
-        else {
-          console.log('error: unable to retrieve session token response: ' + error);
-        }
-      });
+      instance.post(
+        API_LOGIN_URL,
+        {
+          'username': this.username,
+          'password': this.password
+        })
+        .then((response) => {
+          console.log('plejd-api: got session token response');
+          self.sessionToken = response.data.sessionToken;
+
+          if (!self.sessionToken) {
+            console.log('plejd-api: error: no session token received');
+            reject('no session token received.');
+          }
+
+          resolve();
+        })
+        .catch((error) => {
+          if (error.response.status === 400) {
+            console.log('error: server returned status 400. probably invalid credentials, please verify.');
+          }
+          else {
+            console.log('error: unable to retrieve session token response: ' + error);
+          }
+
+          reject('unable to retrieve session token response: ' + error);
+        });
+    });
   }
 
-  getCryptoKey(callback) {
-    console.log('plejd-api: getCryptoKey()');
+  getSites() {
+    console.log('plejd-api: getSites()');
     const self = this;
 
     const instance = axios.create({
@@ -92,20 +103,65 @@ class PlejdApi extends EventEmitter {
       }
     });
 
-    logger('sending POST to ' + API_BASE_URL + API_SITES_URL);
+    return new Promise((resolve, reject) => {
+      logger('sending POST to ' + API_BASE_URL + API_SITE_LIST_URL);
 
-    instance.post(API_SITES_URL)
-      .then((response) => {
-        console.log('plejd-api: got sites response');
-        self.site = response.data.result.find(x => x.site.title == self.siteName);
-        self.cryptoKey = self.site.plejdMesh.cryptoKey;
+      instance.post(API_SITE_LIST_URL)
+        .then((response) => {
+          console.log('plejd-api: got site list response');
+          const site = response.data.result.find(x => x.site.title == self.siteName);
 
-        this.emit('ready', self.cryptoKey, self.site);
-      })
-      .catch((error) => {
-        console.log('error: unable to retrieve the crypto key. error: ' + error);
-        return Promise.reject('unable to retrieve the crypto key. error: ' + error);
-      });
+          if (!site) {
+            console.log('plejd-api: error: failed to find a site named ' + self.siteName);
+            reject('failed to find a site named ' + self.siteName);
+            return;
+          }
+
+          resolve(site);
+        })
+        .catch((error) => {
+          console.log('plejd-api: error: unable to retrieve list of sites. error: ' + error);
+          return reject('plejd-api: unable to retrieve list of sites. error: ' + error);
+        });
+    });
+  }
+
+  getSite(siteId) {
+    console.log('plejd-api: getSites()');
+    const self = this;
+
+    const instance = axios.create({
+      baseURL: API_BASE_URL,
+      headers: {
+        'X-Parse-Application-Id': API_APP_ID,
+        'X-Parse-Session-Token': this.sessionToken,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      logger('sending POST to ' + API_BASE_URL + API_SITE_DETAILS_URL);
+
+      instance.post(API_SITE_DETAILS_URL, { siteId: siteId })
+        .then((response) => {
+          console.log('plejd-api: got site details response');
+          if (response.data.result.length === 0) {
+            const msg = 'no site with ID ' + siteId + ' was found.';
+            console.log('plejd-api: error: ' + msg);
+            reject(msg);
+            return;
+          }
+
+          self.site = response.data.result[0];
+          self.cryptoKey = self.site.plejdMesh.cryptoKey;
+
+          resolve(self.cryptoKey);
+        })
+        .catch((error) => {
+          console.log('plejd-api: error: unable to retrieve the crypto key. error: ' + error);
+          return reject('plejd-api: unable to retrieve the crypto key. error: ' + error);
+        });
+    });
   }
 
   getDevices() {

@@ -110,7 +110,6 @@ class PlejdApi extends EventEmitter {
         .then((response) => {
           console.log('plejd-api: got site list response');
           const site = response.data.result.find(x => x.site.title == self.siteName);
-          console.log(site);
 
           if (!site) {
             console.log('plejd-api: error: failed to find a site named ' + self.siteName);
@@ -154,6 +153,7 @@ class PlejdApi extends EventEmitter {
           }
 
           self.site = response.data.result[0];
+          console.log(self.site);
           self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
           resolve(self.cryptoKey);

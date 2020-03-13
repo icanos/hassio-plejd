@@ -110,6 +110,7 @@ class PlejdApi extends EventEmitter {
         .then((response) => {
           console.log('plejd-api: got site list response');
           const site = response.data.result.find(x => x.site.title == self.siteName);
+          console.log(site);
 
           if (!site) {
             console.log('plejd-api: error: failed to find a site named ' + self.siteName);

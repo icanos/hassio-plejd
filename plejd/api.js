@@ -153,7 +153,6 @@ class PlejdApi extends EventEmitter {
           }
 
           self.site = response.data.result[0];
-          console.log(self.site);
           self.cryptoKey = self.site.plejdMesh.cryptoKey;
 
           resolve(self.cryptoKey);

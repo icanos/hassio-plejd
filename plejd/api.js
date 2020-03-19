@@ -127,7 +127,7 @@ class PlejdApi extends EventEmitter {
   }
 
   getSite(siteId) {
-    console.log('plejd-api: getSites()');
+    console.log('plejd-api: getSite(...)');
     const self = this;
 
     const instance = axios.create({

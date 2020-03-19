@@ -1,6 +1,6 @@
 {
   "name": "Plejd",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "slug": "plejd",
   "description": "Adds support for the Swedish home automation devices from Plejd.",
   "url": "https://github.com/icanos/hassio-plejd/",
@@ -15,6 +15,7 @@
   "boot": "auto",
   "host_network": true,
   "host_dbus": true,
+  "apparmor": false,
   "options": {
     "site": "Default Site",
     "username": "",

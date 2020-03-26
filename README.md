@@ -112,6 +112,9 @@ Check this out for more information on how you can get your Plejd lights control
 https://www.home-assistant.io/integrations/homekit/
 
 ## Changelog
+*v 0.4.5*:
+* FIX: Resolved a Docker build error
+
 *v 0.4.4*:
 * FIX: Disabled AppArmor Policy since there's been a lot of issues with that.
 

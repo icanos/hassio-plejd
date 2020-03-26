@@ -28,7 +28,7 @@ RUN \
   linux-headers=4.19.36-r0 \
   make=4.2.1-r2 \
   python=2.7.16-r2 \
-  bluez=5.50-r3 \
+  bluez \
   eudev-dev=3.2.8-r0 \
   \
   && apk add --no-cache \

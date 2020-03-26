@@ -4,7 +4,7 @@ const fs = require('fs');
 const PlejdService = require('./ble.bluez');
 const SceneManager = require('./scene.manager');
 
-const version = "0.4.4";
+const version = "0.4.5";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);

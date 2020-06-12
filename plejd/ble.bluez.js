@@ -599,7 +599,8 @@ class PlejdService extends EventEmitter {
     }
 
     this.plejdDevices[device] = {
-      state: state
+      state: state,
+      dim: 0
     };
   }
 

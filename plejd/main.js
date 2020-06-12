@@ -4,7 +4,7 @@ const fs = require('fs');
 const PlejdService = require('./ble.bluez');
 const SceneManager = require('./scene.manager');
 
-const version = "0.4.6";
+const version = "0.4.7";
 
 async function main() {
   console.log('starting Plejd add-on v. ' + version);
@@ -76,22 +76,24 @@ async function main() {
           if (typeof command === 'string') {
             // switch command
             state = command;
-            commandObj = { state: state };
+            commandObj = {
+              state: state
+            };
 
             // since the switch doesn't get any updates on whether it's on or not,
             // we fake this by directly send the updateState back to HA in order for
             // it to change state.
-            client.updateState(deviceId, { state: state === 'ON' ? 1 : 0 });
-          }
-          else {
+            client.updateState(deviceId, {
+              state: state === 'ON' ? 1 : 0
+            });
+          } else {
             state = command.state;
             commandObj = command;
           }
 
           if (state === 'ON') {
             plejd.turnOn(deviceId, commandObj);
-          }
-          else {
+          } else {
             plejd.turnOff(deviceId, commandObj);
           }
         });
@@ -99,11 +101,9 @@ async function main() {
         client.on('settingsChanged', (settings) => {
           if (settings.module === 'mqtt') {
             client.updateSettings(settings);
-          }
-          else if (settings.module === 'ble') {
+          } else if (settings.module === 'ble') {
             plejd.updateSettings(settings);
-          }
-          else if (settings.module === 'api') {
+          } else if (settings.module === 'api') {
             plejdApi.updateSettings(settings);
           }
         });

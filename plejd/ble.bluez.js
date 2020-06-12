@@ -135,8 +135,7 @@ class PlejdService extends EventEmitter {
 
     try {
       await this.adapter.StartDiscovery();
-    }
-    catch (err) {
+    } catch (err) {
       console.log('plejd-ble: error: failed to start discovery. Make sure no other add-on is currently scanning.');
       return;
     }
@@ -166,8 +165,7 @@ class PlejdService extends EventEmitter {
         plejd['device'] = this.devices.find(x => x.serialNumber === fixedPlejdPath);
 
         logger('discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
-      }
-      catch (err) {
+      } catch (err) {
         console.log('plejd-ble: failed inspecting ' + plejd['path'] + ' error: ' + err);
       }
     }
@@ -183,8 +181,7 @@ class PlejdService extends EventEmitter {
           connectedDevice = plejd;
           break
         }
-      }
-      catch (err) {
+      } catch (err) {
         console.log('plejd-ble: warning: unable to connect, will retry. ' + err);
       }
     }
@@ -205,8 +202,7 @@ class PlejdService extends EventEmitter {
         try {
           const adapterObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
           return [path, adapterObject.getInterface(iface), adapterObject];
-        }
-        catch (err) {
+        } catch (err) {
           console.log('plejd-ble: error: failed to get interface \'' + iface + '\': ' + err);
         }
       }
@@ -222,7 +218,9 @@ class PlejdService extends EventEmitter {
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID]['UUIDs'].value.indexOf(PLEJD_SERVICE) > -1) {
         logger('found Plejd service on ' + path);
-        this.bleDevices.push({ 'path': path });
+        this.bleDevices.push({
+          'path': path
+        });
       } else {
         console.log('uh oh, no Plejd device.');
       }
@@ -232,8 +230,7 @@ class PlejdService extends EventEmitter {
   updateSettings(settings) {
     if (settings.debug) {
       debug = 'console';
-    }
-    else {
+    } else {
       debug = '';
     }
   }
@@ -263,8 +260,7 @@ class PlejdService extends EventEmitter {
 
         i++;
       }, 400);
-    }
-    else {
+    } else {
       this._turnOn(id, brightness);
     }
   }
@@ -290,6 +286,8 @@ class PlejdService extends EventEmitter {
       // we have a transition time, split the target brightness (which will be 0)
       // into pieces spread of the transition time
       const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : 250;
+      console.log('initial brightness for ' + id + ' is ' + initialBrightness);
+
       const steps = command.transition * 2;
       const brightnessStep = initialBrightness / steps;
       let currentBrightness = initialBrightness;
@@ -309,8 +307,7 @@ class PlejdService extends EventEmitter {
 
         i++;
       }, 500);
-    }
-    else {
+    } else {
       this._turnOff(id);
     }
   }
@@ -337,8 +334,7 @@ class PlejdService extends EventEmitter {
       const response = this._createChallengeResponse(this.cryptoKey, Buffer.from(challenge));
       //logger('responding to authenticate');
       await this.characteristics.auth.WriteValue([...response], {});
-    }
-    catch (err) {
+    } catch (err) {
       console.log('plejd-ble: error: failed to authenticate: ' + err);
     }
 
@@ -361,8 +357,7 @@ class PlejdService extends EventEmitter {
       console.log('plejd-ble: sending ' + data.length + ' byte(s) of data to Plejd');
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
       await this.characteristics.data.WriteValue([...encryptedData], {});
-    }
-    catch (err) {
+    } catch (err) {
       if (err.message === 'In Progress') {
         setTimeout(() => this.write(data, retry), 1000);
         return;
@@ -411,8 +406,7 @@ class PlejdService extends EventEmitter {
     try {
       await this.characteristics.ping.WriteValue([...ping], {});
       pong = await this.characteristics.ping.ReadValue({});
-    }
-    catch (err) {
+    } catch (err) {
       console.log('error: writing to plejd: ' + err);
       this.emit('pingFailed', 'write error');
       return;
@@ -460,9 +454,9 @@ class PlejdService extends EventEmitter {
     const addr = this._reverseBuffer(
       Buffer.from(
         String(dirtyAddr[1])
-          .replace(/\-/g, '')
-          .replace(/\_/g, '')
-          .replace(/\:/g, ''), 'hex'
+        .replace(/\-/g, '')
+        .replace(/\_/g, '')
+        .replace(/\:/g, ''), 'hex'
       )
     );
 
@@ -476,17 +470,14 @@ class PlejdService extends EventEmitter {
       if (chUuid === DATA_UUID) {
         logger('found DATA characteristic.');
         this.characteristics.data = ch;
-      }
-      else if (chUuid === LAST_DATA_UUID) {
+      } else if (chUuid === LAST_DATA_UUID) {
         logger('found LAST_DATA characteristic.');
         this.characteristics.lastData = ch;
         this.characteristics.lastDataProperties = prop;
-      }
-      else if (chUuid === AUTH_UUID) {
+      } else if (chUuid === AUTH_UUID) {
         logger('found AUTH characteristic.');
         this.characteristics.auth = ch;
-      }
-      else if (chUuid === PING_UUID) {
+      } else if (chUuid === PING_UUID) {
         logger('found PING characteristic.');
         this.characteristics.ping = ch;
       }
@@ -583,23 +574,33 @@ class PlejdService extends EventEmitter {
       state = parseInt(decoded.toString('hex', 5, 6), 10);
       dim = parseInt(decoded.toString('hex', 6, 8), 16) >> 8;
 
+      this.plejdDevices[device] = {
+        state: state,
+        dim: dim
+      };
+
       logger('d: ' + device + ' got state+dim update: ' + state + ' - ' + dim);
-      this.emit('stateChanged', device, { state: state, brightness: dim });
-    }
-    else if (cmd === BLE_CMD_STATE_CHANGE) {
+      this.emit('stateChanged', device, {
+        state: state,
+        brightness: dim
+      });
+
+      return;
+    } else if (cmd === BLE_CMD_STATE_CHANGE) {
       state = parseInt(decoded.toString('hex', 5, 6), 10);
 
       logger('d: ' + device + ' got state update: ' + state);
-      this.emit('stateChanged', device, { state: state });
-    }
-    else if (cmd === BLE_CMD_SCENE_TRIG) {
+      this.emit('stateChanged', device, {
+        state: state
+      });
+    } else if (cmd === BLE_CMD_SCENE_TRIG) {
       const scene = parseInt(decoded.toString('hex', 5, 6), 10);
       this.emit('sceneTriggered', device, scene);
     }
 
     this.plejdDevices[device] = {
       state: state,
-      dim: dim
+      dim: 0
     };
   }
 

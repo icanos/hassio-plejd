@@ -6,7 +6,7 @@
     "dbus-next": "^0.8.1",
     "fs": "0.0.1-security",
     "jspack": "0.0.4",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "mqtt": "^3.0.0",
     "sleep": "^6.1.0"
   }

@@ -35,7 +35,7 @@ const getSettingsTopic = () => `plejd/settings`;
 const getDiscoveryPayload = device => ({
   schema: 'json',
   name: device.name,
-  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
+  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}.${device.id}`,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
   optimistic: false,

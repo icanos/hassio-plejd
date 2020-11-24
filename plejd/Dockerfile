@@ -1,4 +1,4 @@
-ARG BUILD_FROM=hassioaddons/base:5.0.2
+ARG BUILD_FROM=hassioaddons/base:8.0.6
 FROM $BUILD_FROM
 
 ENV LANG C.UTF-8
@@ -22,14 +22,14 @@ ARG BUILD_ARCH
 RUN apk add --no-cache jq
 RUN \
   apk add --no-cache --virtual .build-dependencies \
-  g++=8.3.0-r0 \
-  gcc=8.3.0-r0 \
-  libc-dev=0.7.1-r0 \
-  linux-headers=4.19.36-r0 \
-  make=4.2.1-r2 \
-  python \
+  g++ \
+  gcc \
+  libc-dev \
+  linux-headers \
+  make \
+  python3 \
   bluez \
-  eudev-dev=3.2.8-r0 \
+  eudev-dev \
   \
   && apk add --no-cache \
   git \

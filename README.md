@@ -103,6 +103,19 @@ includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/o
 connectionTimeout | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.
 writeQueueWaitTime | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.
 
+## Transitions
+Transitions from Home Assistant are supported (for dimmable devices) when transition is longer than 1 second. Plejd will do a bit of internal transitioning (default soft start is 0.1 seconds). 
+
+This implementation will transition each device independently, meaning that brightness change might be choppy if transitioning many devices at once or a changing brightness a lot in a limited time. Hassio-plejd's communication channel seems to handle a few updates per second, this is the combined value for all devices.
+
+Transition points will be skipped if the queue of messages to be sent is over a certain threshold, by default equal to the number of devices in the system. Total transition time is prioritized rather than smoothness.
+
+Recommendations
+* Only transition a few devices at a time when possible
+* Expect 5-10 brightness changes per second, meaning 5 devices => 1-2 updates per device per second
+* ... meaning that SLOW transitions will work well (wake-up light, gradually fade over a minute, ...), but quick ones will only work well for few devices or small relative changes in brightness
+* When experiencing choppy quick transitions, turn transitioning off and let the Plejd hardware do the work instead
+
 ## I want voice control!
 With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:
 https://www.home-assistant.io/integrations/google_assistant/

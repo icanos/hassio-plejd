@@ -300,13 +300,13 @@ class PlejdService extends EventEmitter {
           logger('Completing transition from', initialBrightness, 'to', targetBrightness, 'in ', tElapsedMs, 'ms. Done steps', nSteps, ', skipped ' + nSkippedSteps + '. Average interval', tElapsedMs/(nSteps||1), 'ms.');
           this._setBrightness(id, newBrightness);
         }
-        else if (this.writeQueue.length <= maxQueueLengthTarget) {
+        else if (this.writeQueue.length <= this.maxQueueLengthTarget) {
           nSteps++;
           this._setBrightness(id, newBrightness);
         }
         else {
           nSkippedSteps++;
-          logger('Skipping transition step due to write queue full as configured. Queue length', this.writeQueue.length, ', max', maxQueueLengthTarget);
+          logger('Skipping transition step due to write queue full as configured. Queue length', this.writeQueue.length, ', max', this.maxQueueLengthTarget);
         }
 
       }, transitionInterval);

@@ -320,7 +320,7 @@ class PlejdService extends EventEmitter {
   }
 
   _setBrightness(id, brightness) {
-    if (!brightness) {
+    if (!brightness && brightness !== 0) {
       logger('no brightness specified, setting ', id, ' to previous known.');
       var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
       this.writeQueue.unshift(payload);
@@ -337,8 +337,8 @@ class PlejdService extends EventEmitter {
         logger('Setting ', id, 'brightness to ' + brightness);
         brightness = brightness << 8 | brightness;
         var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
-        this.writeQueue.unshift(payload);
       }
+      this.writeQueue.unshift(payload);
     }
   }
 

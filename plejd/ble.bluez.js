@@ -7,7 +7,7 @@ const EventEmitter = require('events');
 let debug = '';
 
 const getLogger = () => {
-  const consoleLogger = msg => console.log('plejd-ble', msg);
+  const consoleLogger = (...msg) => console.log('plejd-ble', ...msg);
   if (debug === 'console') {
     return consoleLogger;
   }
@@ -39,6 +39,9 @@ const BLUEZ_DEVICE_ID = 'org.bluez.Device1';
 const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
+const MAX_TRANSITION_STEPS_PER_SECOND = 5; // Could be made a setting
+const MAX_WRITEQUEUE_LENGTH_TARGET = 0; // Could be made a setting. 0 => queue length = numDevices => 1 command pending per device max
+
 class PlejdService extends EventEmitter {
   constructor(cryptoKey, devices, sceneManager, connectionTimeout, writeQueueWaitTime, keepAlive = false) {
     super();
@@ -49,6 +52,7 @@ class PlejdService extends EventEmitter {
     this.connectedDevice = null;
     this.plejdService = null;
     this.bleDevices = [];
+    this.bleDeviceTransitionTimers = {};
     this.plejdDevices = {};
     this.devices = devices;
     this.connectEventHooked = false;
@@ -56,6 +60,9 @@ class PlejdService extends EventEmitter {
     this.writeQueueWaitTime = writeQueueWaitTime;
     this.writeQueue = [];
     this.writeQueueRef = null;
+    
+    this.maxQueueLengthTarget = MAX_WRITEQUEUE_LENGTH_TARGET || this.devices.length || 5;
+    logger('Max global transition queue length target', this.maxQueueLengthTarget)
 
     // Holds a reference to all characteristics
     this.characteristics = {
@@ -79,7 +86,7 @@ class PlejdService extends EventEmitter {
     }
 
     this.connectedDevice = null;
-    this.bleDevices = [];
+    
     this.characteristics = {
       data: null,
       lastData: null,
@@ -146,10 +153,10 @@ class PlejdService extends EventEmitter {
   }
 
   async _internalInit() {
-    logger('got ' + this.bleDevices.length + ' device(s).');
+    logger('got ', this.bleDevices.length, ' device(s).');
 
     for (const plejd of this.bleDevices) {
-      logger('inspecting ' + plejd['path']);
+      logger('inspecting ', plejd['path']);
 
       try {
         const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, plejd['path']);
@@ -164,7 +171,7 @@ class PlejdService extends EventEmitter {
         fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
         plejd['device'] = this.devices.find(x => x.serialNumber === fixedPlejdPath);
 
-        logger('discovered ' + plejd['path'] + ' with rssi ' + plejd['rssi']);
+        logger('discovered ', plejd['path'] + ' with rssi ' + plejd['rssi']);
       } catch (err) {
         console.log('plejd-ble: failed inspecting ' + plejd['path'] + ' error: ' + err);
       }
@@ -198,7 +205,7 @@ class PlejdService extends EventEmitter {
     for (let path of managedPaths) {
       const pathInterfaces = Object.keys(managedObjects[path]);
       if (pathInterfaces.indexOf(iface) > -1) {
-        logger('found ble interface \'' + iface + '\' at ' + path);
+        logger('found ble interface \'', iface, '\' at ', path);
         try {
           const adapterObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
           return [path, adapterObject.getInterface(iface), adapterObject];
@@ -212,12 +219,12 @@ class PlejdService extends EventEmitter {
   }
 
   async onInterfacesAdded(path, interfaces) {
-    const [adapter, dev, service, characteristic] = path.split('/').slice(3);
+    // const [adapter, dev, service, characteristic] = path.split('/').slice(3);
     const interfaceKeys = Object.keys(interfaces);
 
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID]['UUIDs'].value.indexOf(PLEJD_SERVICE) > -1) {
-        logger('found Plejd service on ' + path);
+        logger('found Plejd service on ', path);
         this.bleDevices.push({
           'path': path
         });
@@ -236,89 +243,113 @@ class PlejdService extends EventEmitter {
   }
 
   turnOn(id, command) {
-    logger('turning on ' + id + ' at brightness ' + (!command.brightness ? 255 : command.brightness));
-    const brightness = command.brightness ? command.brightness : 0;
-
-    if (command.transition) {
-      // we have a transition time, split the target brightness
-      // into pieces spread of the transition time
-      const steps = command.transition * 2;
-      const brightnessStep = brightness / steps;
-
-      let i = 0;
-      const transitionRef = setInterval(() => {
-        let currentBrightness = parseInt((brightnessStep * i) + 1);
-        if (currentBrightness > 254) {
-          currentBrightness = 254;
-        }
-
-        this._turnOn(id, currentBrightness);
-
-        if (i >= steps) {
-          clearInterval(transitionRef);
-        }
-
-        i++;
-      }, 400);
-    } else {
-      this._turnOn(id, brightness);
-    }
-  }
-
-  _turnOn(id, brightness) {
-    var payload;
-    if (!brightness || brightness === 0) {
-      logger('no brightness specified, setting to previous known.');
-      payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
-    } else {
-      logger('brightness is ' + brightness);
-      brightness = brightness << 8 | brightness;
-      payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
-    }
-
-    this.writeQueue.unshift(payload);
+    console.log('Plejd got turn on command for ', id, ', brightness ', command.brightness, ', transition ', command.transition);
+    this._transitionTo(id, command.brightness, command.transition);
   }
 
   turnOff(id, command) {
-    logger('turning off ' + id);
+    console.log('Plejd got turn off command for ', id, ', transition ', command.transition);
+    this._transitionTo(id, 0, command.transition);
+  }
 
-    if (command.transition) {
-      // we have a transition time, split the target brightness (which will be 0)
-      // into pieces spread of the transition time
-      const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : 250;
-      console.log('initial brightness for ' + id + ' is ' + initialBrightness);
 
-      const steps = command.transition * 2;
-      const brightnessStep = initialBrightness / steps;
-      let currentBrightness = initialBrightness;
+  _clearDeviceTransitionTimer(id) {
+    if (this.bleDeviceTransitionTimers[id]) {
+      clearInterval(this.bleDeviceTransitionTimers[id]);
+    }
+  }
 
-      let i = 0;
-      const transitionRef = setInterval(() => {
-        currentBrightness = parseInt(initialBrightness - (brightnessStep * i));
-        if (currentBrightness <= 0 || i >= steps) {
-          clearInterval(transitionRef);
+  _transitionTo(id, targetBrightness, transition) {
+    const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : null;
+    this._clearDeviceTransitionTimer(id);
 
-          // finally, we turn it off
-          this._turnOff(id);
-          return;
+    const isDimmable = this.devices.find(d => d.id === id).dimmable;
+
+    if (transition > 1 && isDimmable && (initialBrightness || initialBrightness === 0) && (targetBrightness || targetBrightness === 0) && targetBrightness !== initialBrightness) {
+      // Transition time set, known initial and target brightness
+      // Calculate transition interval time based on delta brightness and max steps per second
+      // During transition, measure actual transition interval time and adjust stepping continously
+      // If transition <= 1 second, Plejd will do a better job than we can in transitioning so transitioning will be skipped
+
+      const deltaBrightness = targetBrightness - initialBrightness;
+      const transitionSteps = Math.min(Math.abs(deltaBrightness), MAX_TRANSITION_STEPS_PER_SECOND * transition);
+      const transitionInterval = transition * 1000 / transitionSteps;
+
+      logger('transitioning from', initialBrightness, 'to', targetBrightness, 'in', transition, 'seconds.');
+      logger('delta brightness', deltaBrightness, ', steps ', transitionSteps, ', interval', transitionInterval, 'ms');
+      
+      const dtStart = new Date();
+
+      let nSteps = 0;
+      let nSkippedSteps = 0;
+
+      this.bleDeviceTransitionTimers[id] = setInterval(() => {
+        let tElapsedMs = (new Date().getTime() - dtStart.getTime());
+        let tElapsed = tElapsedMs / 1000;
+        
+        if (tElapsed > transition || tElapsed < 0) {
+          tElapsed = transition;
         }
 
-        this._turnOn(id, currentBrightness);
+        let newBrightness = parseInt(initialBrightness + deltaBrightness * tElapsed / transition);
 
-        i++;
-      }, 500);
-    } else {
-      this._turnOff(id);
+        if (tElapsed === transition) {
+          nSteps++;
+          this._clearDeviceTransitionTimer(id);
+          newBrightness = targetBrightness;
+          logger('Completing transition from', initialBrightness, 'to', targetBrightness, 'in ', tElapsedMs, 'ms. Done steps', nSteps, ', skipped ' + nSkippedSteps + '. Average interval', tElapsedMs/(nSteps||1), 'ms.');
+          this._setBrightness(id, newBrightness);
+        }
+        else if (this.writeQueue.length <= this.maxQueueLengthTarget) {
+          nSteps++;
+          this._setBrightness(id, newBrightness);
+        }
+        else {
+          nSkippedSteps++;
+          logger('Skipping transition step due to write queue full as configured. Queue length', this.writeQueue.length, ', max', this.maxQueueLengthTarget);
+        }
+
+      }, transitionInterval);
+    } 
+    else {
+      if (transition && isDimmable) {
+        logger('Could not transition light change. Either initial value is unknown or change is too small. Requested from', initialBrightness, 'to', targetBrightness)
+      }
+      this._setBrightness(id, targetBrightness);
+    }
+  }
+
+  _setBrightness(id, brightness) {
+    if (!brightness && brightness !== 0) {
+      logger('no brightness specified, setting ', id, ' to previous known.');
+      var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
+      this.writeQueue.unshift(payload);
+    } 
+    else {
+      if (brightness <= 0) {
+        this._turnOff(id);
+      }
+      else {
+        if (brightness > 255) {
+          brightness = 255;
+        }
+  
+        logger('Setting ', id, 'brightness to ' + brightness);
+        brightness = brightness << 8 | brightness;
+        var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
+      }
+      this.writeQueue.unshift(payload);
     }
   }
 
   _turnOff(id) {
+    logger('Turning off ', id);
     var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009700', 'hex');
     this.writeQueue.unshift(payload);
   }
 
   triggerScene(sceneIndex) {
-    console.log('triggering scene with ID ' + sceneIndex);
+    console.log('triggering scene with ID', sceneIndex);
     this.sceneManager.executeScene(sceneIndex, this);
   }
 
@@ -354,7 +385,7 @@ class PlejdService extends EventEmitter {
     }
 
     try {
-      console.log('plejd-ble: sending ' + data.length + ' byte(s) of data to Plejd');
+      logger('sending ', data.length, ' byte(s) of data to Plejd', data);
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
       await this.characteristics.data.WriteValue([...encryptedData], {});
     } catch (err) {
@@ -567,7 +598,7 @@ class PlejdService extends EventEmitter {
     const cmd = decoded.toString('hex', 3, 5);
 
     if (debug) {
-      logger('raw event received: ' + decoded.toString('hex'));
+      logger('raw event received: ', decoded.toString('hex'));
     }
 
     if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
@@ -625,14 +656,14 @@ class PlejdService extends EventEmitter {
   _encryptDecrypt(key, addr, data) {
     var buf = Buffer.concat([addr, addr, addr.subarray(0, 4)]);
 
-    var cipher = crypto.createCipheriv("aes-128-ecb", key, '');
+    var cipher = crypto.createCipheriv('aes-128-ecb', key, '');
     cipher.setAutoPadding(false);
 
     var ct = cipher.update(buf).toString('hex');
     ct += cipher.final().toString('hex');
     ct = Buffer.from(ct, 'hex');
 
-    var output = "";
+    var output = '';
     for (var i = 0, length = data.length; i < length; i++) {
       output += String.fromCharCode(data[i] ^ ct[i % 16]);
     }

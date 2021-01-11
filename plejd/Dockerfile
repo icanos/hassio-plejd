@@ -12,7 +12,6 @@ COPY ./config.json /plejd/
 COPY ./main.js /plejd/
 COPY ./mqtt.js /plejd/
 COPY ./package.json /plejd/
-COPY ./ble.js /plejd/
 COPY ./ble.bluez.js /plejd/
 COPY ./scene.manager.js /plejd/
 

@@ -84,7 +84,7 @@ class PlejdService extends EventEmitter {
     if (this.objectManager) {
       this.objectManager.removeAllListeners();
     }
-
+    this.bleDevices = [];
     this.connectedDevice = null;
     
     this.characteristics = {

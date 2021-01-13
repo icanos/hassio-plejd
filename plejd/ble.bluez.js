@@ -98,7 +98,7 @@ class PlejdService extends EventEmitter {
     };
 
     clearInterval(this.pingRef);
-    clearInterval(this.writeQueueRef);
+    clearTimeout(this.writeQueueRef);
     console.log('init()');
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
@@ -369,8 +369,8 @@ class PlejdService extends EventEmitter {
     }
 
     // auth done, start ping
-    await this.startPing();
-    await this.startWriteQueue();
+    this.startPing();
+    this.startWriteQueue();
 
     // After we've authenticated, we need to hook up the event listener
     // for changes to lastData.
@@ -414,7 +414,7 @@ class PlejdService extends EventEmitter {
     }
   }
 
-  async startPing() {
+  startPing() {
     console.log('startPing()');
     clearInterval(this.pingRef);
 
@@ -460,9 +460,9 @@ class PlejdService extends EventEmitter {
     this.emit('pingSuccess', pong[0]);
   }
 
-  async startWriteQueue() {
+  startWriteQueue() {
     console.log('startWriteQueue()');
-    clearInterval(this.writeQueueRef);
+    clearTimeout(this.writeQueueRef);
 
     this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
   }

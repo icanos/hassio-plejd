@@ -380,7 +380,7 @@ class PlejdService extends EventEmitter {
   }
 
   async write(data, retry = true) {
-    if (!this.plejdService || !this.characteristics.data) {
+    if (!data || !this.plejdService || !this.characteristics.data) {
       return;
     }
 

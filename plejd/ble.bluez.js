@@ -60,6 +60,7 @@ class PlejdService extends EventEmitter {
     this.writeQueueWaitTime = writeQueueWaitTime;
     this.writeQueue = [];
     this.writeQueueRef = null;
+    this.delayedInit = null;
 
     this.maxQueueLengthTarget = MAX_WRITEQUEUE_LENGTH_TARGET || this.devices.length || 5;
     logger('Max global transition queue length target', this.maxQueueLengthTarget)

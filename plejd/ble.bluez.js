@@ -60,7 +60,8 @@ class PlejdService extends EventEmitter {
     this.writeQueueWaitTime = writeQueueWaitTime;
     this.writeQueue = [];
     this.writeQueueRef = null;
-    
+    this.delayedInit = null;
+
     this.maxQueueLengthTarget = MAX_WRITEQUEUE_LENGTH_TARGET || this.devices.length || 5;
     logger('Max global transition queue length target', this.maxQueueLengthTarget)
 
@@ -85,8 +86,9 @@ class PlejdService extends EventEmitter {
       this.objectManager.removeAllListeners();
     }
 
+    this.bleDevices = [];
     this.connectedDevice = null;
-    
+
     this.characteristics = {
       data: null,
       lastData: null,
@@ -96,7 +98,7 @@ class PlejdService extends EventEmitter {
     };
 
     clearInterval(this.pingRef);
-    clearInterval(this.writeQueueRef);
+    clearTimeout(this.writeQueueRef);
     console.log('init()');
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
@@ -146,10 +148,7 @@ class PlejdService extends EventEmitter {
       console.log('plejd-ble: error: failed to start discovery. Make sure no other add-on is currently scanning.');
       return;
     }
-
-    setTimeout(async () => {
-      await this._internalInit();
-    }, this.connectionTimeout * 1000);
+    return new Promise(resolve => setTimeout(() => resolve(this._internalInit()), this.connectionTimeout * 1000));
   }
 
   async _internalInit() {
@@ -277,7 +276,7 @@ class PlejdService extends EventEmitter {
 
       logger('transitioning from', initialBrightness, 'to', targetBrightness, 'in', transition, 'seconds.');
       logger('delta brightness', deltaBrightness, ', steps ', transitionSteps, ', interval', transitionInterval, 'ms');
-      
+
       const dtStart = new Date();
 
       let nSteps = 0;
@@ -286,7 +285,7 @@ class PlejdService extends EventEmitter {
       this.bleDeviceTransitionTimers[id] = setInterval(() => {
         let tElapsedMs = (new Date().getTime() - dtStart.getTime());
         let tElapsed = tElapsedMs / 1000;
-        
+
         if (tElapsed > transition || tElapsed < 0) {
           tElapsed = transition;
         }
@@ -310,7 +309,7 @@ class PlejdService extends EventEmitter {
         }
 
       }, transitionInterval);
-    } 
+    }
     else {
       if (transition && isDimmable) {
         logger('Could not transition light change. Either initial value is unknown or change is too small. Requested from', initialBrightness, 'to', targetBrightness)
@@ -324,7 +323,7 @@ class PlejdService extends EventEmitter {
       logger('no brightness specified, setting ', id, ' to previous known.');
       var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009701', 'hex');
       this.writeQueue.unshift(payload);
-    } 
+    }
     else {
       if (brightness <= 0) {
         this._turnOff(id);
@@ -333,7 +332,7 @@ class PlejdService extends EventEmitter {
         if (brightness > 255) {
           brightness = 255;
         }
-  
+
         logger('Setting ', id, 'brightness to ' + brightness);
         brightness = brightness << 8 | brightness;
         var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
@@ -370,8 +369,8 @@ class PlejdService extends EventEmitter {
     }
 
     // auth done, start ping
-    await this.startPing();
-    await this.startWriteQueue();
+    this.startPing();
+    this.startWriteQueue();
 
     // After we've authenticated, we need to hook up the event listener
     // for changes to lastData.
@@ -379,8 +378,20 @@ class PlejdService extends EventEmitter {
     this.characteristics.lastData.StartNotify();
   }
 
+  async throttledInit(delay) {
+    if(this.delayedInit){
+      return this.delayedInit;
+    }
+   this.delayedInit = new Promise((resolve) => setTimeout(async () => {
+     const result = await this.init();
+     this.delayedInit = null;
+     resolve(result)
+   }, delay))
+   return this.delayedInit;
+  }
+
   async write(data, retry = true) {
-    if (!this.plejdService || !this.characteristics.data) {
+    if (!data || !this.plejdService || !this.characteristics.data) {
       return;
     }
 
@@ -393,20 +404,17 @@ class PlejdService extends EventEmitter {
         setTimeout(() => this.write(data, retry), 1000);
         return;
       }
-
       console.log('plejd-ble: write failed ' + err);
-      setTimeout(async () => {
-        await this.init();
+      await this.throttledInit(this.connectionTimeout * 1000);
 
-        if (retry) {
-          logger('reconnected and retrying to write');
-          await this.write(data, false);
-        }
-      }, this.connectionTimeout * 1000);
+      if(retry){
+        logger('reconnected and retrying to write');
+        await this.write(data, false);
+      }
     }
   }
 
-  async startPing() {
+  startPing() {
     console.log('startPing()');
     clearInterval(this.pingRef);
 
@@ -452,9 +460,9 @@ class PlejdService extends EventEmitter {
     this.emit('pingSuccess', pong[0]);
   }
 
-  async startWriteQueue() {
+  startWriteQueue() {
     console.log('startWriteQueue()');
-    clearInterval(this.writeQueueRef);
+    clearTimeout(this.writeQueueRef);
 
     this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
   }

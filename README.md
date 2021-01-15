@@ -25,6 +25,7 @@ To get started, make sure that the following requirements are met:
 The add-on has been tested on the following platforms:
 * Mac OS Catalina 10.15.1 with Node v. 13.2.0
 * Raspberry Pi 4 with Hass.io
+* Raspberry Pi 4 with Hass.io/aarch64
 
 #### Tested Plejd devices
 * DIM-01
@@ -70,6 +71,9 @@ Open the `config.json` file and locate `host_dbus`, after that line, insert: `"a
 
 More information about available parameters can be found here:
 https://developers.home-assistant.io/docs/en/hassio_addon_config.html
+
+#### Migration from 32bit to 64 bit
+If you restorre a backup from a 32bit system to a new 64bit system, use the Rebuid option in the Add-on 
 
 ### Configuration
 You need to add the following to your `configuration.yaml` file:

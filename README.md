@@ -73,7 +73,7 @@ More information about available parameters can be found here:
 https://developers.home-assistant.io/docs/en/hassio_addon_config.html
 
 #### Migration from 32bit to 64 bit
-If you restorre a backup from a 32bit system to a new 64bit system, use the Rebuid option in the Add-on 
+If you restore a backup from a 32bit system to a new 64bit system, use the Rebuild option in the Add-on 
 
 ### Configuration
 You need to add the following to your `configuration.yaml` file:

@@ -16,7 +16,7 @@ async function main() {
     config.connectionTimeout = 2;
   }
 
-  const plejdApi = new api.PlejdApi(config.site, config.username, config.password);
+  const plejdApi = new api.PlejdApi(config.site, config.username, config.password, config.includeRoomsAsLights);
   const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.login().then(() => {

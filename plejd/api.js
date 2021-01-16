@@ -1,6 +1,5 @@
 const axios = require('axios');
 const EventEmitter = require('events');
-const _ = require('lodash');
 
 API_APP_ID = 'zHtVqXt8k4yFyk2QGmgp48D9xZr2G94xWYnF4dak';
 API_BASE_URL = 'https://cloud.plejd.com/parse/';
@@ -8,19 +7,20 @@ API_LOGIN_URL = 'login';
 API_SITE_LIST_URL = 'functions/getSiteList';
 API_SITE_DETAILS_URL = 'functions/getSiteById';
 
-// #region logging
-let debug = '';
+const logInfo = true;
+const logVerbose = true;
+const logDebug = false;
 
-const getLogger = () => {
-  const consoleLogger = msg => console.log('plejd-api', msg);
-  if (debug === 'console') {
-    return consoleLogger;
-  }
-  return _.noop;
-};
+const consoleLogger = (level) => (...msg) =>
+  console.log(new Date().toISOString().replace("T", " ").substring(0, 19) + "Z", level, "plejd-api", ...msg);
 
-const logger = getLogger();
-// #endregion
+const getLogger = (level, shouldLog) => (shouldLog ? consoleLogger(level) : () => {});
+
+const errLogger = getLogger("ERR", true);
+const infLogger = getLogger("INF", logInfo);
+const vrbLogger = getLogger("VRB", logVerbose);
+const dbgLogger = getLogger("DBG", logDebug);
+
 
 class PlejdApi extends EventEmitter {
   constructor(siteName, username, password, includeRoomsAsLights) {
@@ -36,17 +36,12 @@ class PlejdApi extends EventEmitter {
   }
 
   updateSettings(settings) {
-    if (settings.debug) {
-      debug = 'console';
-    }
-    else {
-      debug = '';
-    }
+    logVerbose("Got new settings: ", settings);
   }
 
   login() {
-    console.log('plejd-api: login()');
-    console.log('plejd-api: logging into ' + this.siteName);
+    infLogger('login()');
+    infLogger('logging into ' + this.siteName);
     const self = this;
 
     const instance = axios.create({
@@ -58,7 +53,7 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      logger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
+      vrbLogger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
 
       instance.post(
         API_LOGIN_URL,
@@ -67,11 +62,11 @@ class PlejdApi extends EventEmitter {
           'password': this.password
         })
         .then((response) => {
-          console.log('plejd-api: got session token response');
+          infLogger('got session token response');
           self.sessionToken = response.data.sessionToken;
 
           if (!self.sessionToken) {
-            console.log('plejd-api: error: no session token received');
+            infError('No session token received');
             reject('no session token received.');
           }
 
@@ -79,10 +74,10 @@ class PlejdApi extends EventEmitter {
         })
         .catch((error) => {
           if (error.response.status === 400) {
-            console.log('error: server returned status 400. probably invalid credentials, please verify.');
+            errLogger('Server returned status 400. probably invalid credentials, please verify.');
           }
           else {
-            console.log('error: unable to retrieve session token response: ' + error);
+            errLogger('Unable to retrieve session token response: ' + error);
           }
 
           reject('unable to retrieve session token response: ' + error);
@@ -91,7 +86,7 @@ class PlejdApi extends EventEmitter {
   }
 
   getSites() {
-    console.log('plejd-api: getSites()');
+    infLogger('getSites()');
     const self = this;
 
     const instance = axios.create({
@@ -104,15 +99,15 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      logger('sending POST to ' + API_BASE_URL + API_SITE_LIST_URL);
+      vrbLogger('sending POST to ' + API_BASE_URL + API_SITE_LIST_URL);
 
       instance.post(API_SITE_LIST_URL)
         .then((response) => {
-          console.log('plejd-api: got site list response');
+          infLogger('got site list response');
           const site = response.data.result.find(x => x.site.title == self.siteName);
 
           if (!site) {
-            console.log('plejd-api: error: failed to find a site named ' + self.siteName);
+            errLogger('error: failed to find a site named ' + self.siteName);
             reject('failed to find a site named ' + self.siteName);
             return;
           }
@@ -120,14 +115,14 @@ class PlejdApi extends EventEmitter {
           resolve(site);
         })
         .catch((error) => {
-          console.log('plejd-api: error: unable to retrieve list of sites. error: ' + error);
+          errLogger('error: unable to retrieve list of sites. error: ' + error);
           return reject('plejd-api: unable to retrieve list of sites. error: ' + error);
         });
     });
   }
 
   getSite(siteId) {
-    console.log('plejd-api: getSite(...)');
+    infLogger('getSite(...)');
     const self = this;
 
     const instance = axios.create({
@@ -140,14 +135,14 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      logger('sending POST to ' + API_BASE_URL + API_SITE_DETAILS_URL);
+      vrbLogger('sending POST to ' + API_BASE_URL + API_SITE_DETAILS_URL);
 
       instance.post(API_SITE_DETAILS_URL, { siteId: siteId })
         .then((response) => {
-          console.log('plejd-api: got site details response');
+          infLogger('got site details response');
           if (response.data.result.length === 0) {
             const msg = 'no site with ID ' + siteId + ' was found.';
-            console.log('plejd-api: error: ' + msg);
+            errLogger('error: ' + msg);
             reject(msg);
             return;
           }
@@ -158,7 +153,7 @@ class PlejdApi extends EventEmitter {
           resolve(self.cryptoKey);
         })
         .catch((error) => {
-          console.log('plejd-api: error: unable to retrieve the crypto key. error: ' + error);
+          errLogger('error: unable to retrieve the crypto key. error: ' + error);
           return reject('plejd-api: unable to retrieve the crypto key. error: ' + error);
         });
     });
@@ -167,10 +162,7 @@ class PlejdApi extends EventEmitter {
   getDevices() {
     let devices = [];
 
-    // Just log the devices if debug logging enabled
-    if (debug) {
-      logger(JSON.stringify(this.site));
-    }
+    dbgLogger(JSON.stringify(this.site));
 
     const roomDevices = {};
 
@@ -260,7 +252,7 @@ class PlejdApi extends EventEmitter {
     }
 
     if (this.includeRoomsAsLights) {
-      logger('includeRoomsAsLights is set to true, adding rooms too.');
+      vrbLogger('includeRoomsAsLights is set to true, adding rooms too.');
       for (let i = 0; i < this.site.rooms.length; i++) {
         const room = this.site.rooms[i];
         const roomId = room.roomId;
@@ -271,11 +263,12 @@ class PlejdApi extends EventEmitter {
           name: room.title,
           type: 'light',
           typeName: 'Room',
-          dimmable: roomDevices[roomId].find(x => x.dimmable).length > 0
+          dimmable: roomDevices[roomId].filter(x => x.dimmable).length > 0
         };
 
         devices.push(newDevice);
       }
+      vrbLogger('includeRoomsAsLights done.');
     }
 
     // add scenes as switches

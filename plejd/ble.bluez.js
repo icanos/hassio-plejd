@@ -258,11 +258,11 @@ class PlejdService extends EventEmitter {
     }
   }
 
-  _transitionTo(id, targetBrightness, transition) {
-    const initialBrightness = this.plejdDevices[id] ? this.plejdDevices[id].dim : null;
-    this._clearDeviceTransitionTimer(id);
+  _transitionTo(deviceId, targetBrightness, transition) {
+    const initialBrightness = this.plejdDevices[deviceId] ? this.plejdDevices[deviceId].state && this.plejdDevices[deviceId].dim : null;
+    this._clearDeviceTransitionTimer(deviceId);
 
-    const isDimmable = this.devices.find(d => d.id === id).dimmable;
+    const isDimmable = this.devices.find(d => d.id === deviceId).dimmable;
 
     if (transition > 1 && isDimmable && (initialBrightness || initialBrightness === 0) && (targetBrightness || targetBrightness === 0) && targetBrightness !== initialBrightness) {
       // Transition time set, known initial and target brightness
@@ -282,7 +282,7 @@ class PlejdService extends EventEmitter {
       let nSteps = 0;
       let nSkippedSteps = 0;
 
-      this.bleDeviceTransitionTimers[id] = setInterval(() => {
+      this.bleDeviceTransitionTimers[deviceId] = setInterval(() => {
         let tElapsedMs = (new Date().getTime() - dtStart.getTime());
         let tElapsed = tElapsedMs / 1000;
 
@@ -294,14 +294,14 @@ class PlejdService extends EventEmitter {
 
         if (tElapsed === transition) {
           nSteps++;
-          this._clearDeviceTransitionTimer(id);
+          this._clearDeviceTransitionTimer(deviceId);
           newBrightness = targetBrightness;
           logger('Completing transition from', initialBrightness, 'to', targetBrightness, 'in ', tElapsedMs, 'ms. Done steps', nSteps, ', skipped ' + nSkippedSteps + '. Average interval', tElapsedMs/(nSteps||1), 'ms.');
-          this._setBrightness(id, newBrightness);
+          this._setBrightness(deviceId, newBrightness);
         }
         else if (this.writeQueue.length <= this.maxQueueLengthTarget) {
           nSteps++;
-          this._setBrightness(id, newBrightness);
+          this._setBrightness(deviceId, newBrightness);
         }
         else {
           nSkippedSteps++;
@@ -314,7 +314,7 @@ class PlejdService extends EventEmitter {
       if (transition && isDimmable) {
         logger('Could not transition light change. Either initial value is unknown or change is too small. Requested from', initialBrightness, 'to', targetBrightness)
       }
-      this._setBrightness(id, targetBrightness);
+      this._setBrightness(deviceId, targetBrightness);
     }
   }
 
@@ -336,8 +336,8 @@ class PlejdService extends EventEmitter {
         logger('Setting ', id, 'brightness to ' + brightness);
         brightness = brightness << 8 | brightness;
         var payload = Buffer.from((id).toString(16).padStart(2, '0') + '0110009801' + (brightness).toString(16).padStart(4, '0'), 'hex');
+        this.writeQueue.unshift(payload);
       }
-      this.writeQueue.unshift(payload);
     }
   }
 
@@ -354,7 +354,6 @@ class PlejdService extends EventEmitter {
 
   async authenticate() {
     console.log('authenticate()');
-    const self = this;
 
     try {
       //logger('sending challenge to device');

@@ -7,9 +7,9 @@ API_LOGIN_URL = 'login';
 API_SITE_LIST_URL = 'functions/getSiteList';
 API_SITE_DETAILS_URL = 'functions/getSiteById';
 
-const logInfo = true;
-const logVerbose = true;
-const logDebug = false;
+const logInfo = true;     // Normal operations
+const logDebug = false;   // Chatty
+const logVerbose = false; // Very chatty
 
 const consoleLogger = (level) => (...msg) =>
   console.log(new Date().toISOString().replace("T", " ").substring(0, 19) + "Z", level, "plejd-api", ...msg);
@@ -18,8 +18,8 @@ const getLogger = (level, shouldLog) => (shouldLog ? consoleLogger(level) : () =
 
 const errLogger = getLogger("ERR", true);
 const infLogger = getLogger("INF", logInfo);
-const vrbLogger = getLogger("VRB", logVerbose);
 const dbgLogger = getLogger("DBG", logDebug);
+const vrbLogger = getLogger("vrb", logVerbose);
 
 
 class PlejdApi extends EventEmitter {
@@ -53,7 +53,7 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      vrbLogger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
+      dbgLogger('sending POST to ' + API_BASE_URL + API_LOGIN_URL);
 
       instance.post(
         API_LOGIN_URL,
@@ -99,7 +99,7 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      vrbLogger('sending POST to ' + API_BASE_URL + API_SITE_LIST_URL);
+      dbgLogger('sending POST to ' + API_BASE_URL + API_SITE_LIST_URL);
 
       instance.post(API_SITE_LIST_URL)
         .then((response) => {
@@ -135,7 +135,7 @@ class PlejdApi extends EventEmitter {
     });
 
     return new Promise((resolve, reject) => {
-      vrbLogger('sending POST to ' + API_BASE_URL + API_SITE_DETAILS_URL);
+      dbgLogger('sending POST to ' + API_BASE_URL + API_SITE_DETAILS_URL);
 
       instance.post(API_SITE_DETAILS_URL, { siteId: siteId })
         .then((response) => {
@@ -162,7 +162,7 @@ class PlejdApi extends EventEmitter {
   getDevices() {
     let devices = [];
 
-    dbgLogger(JSON.stringify(this.site));
+    vrbLogger(JSON.stringify(this.site));
 
     const roomDevices = {};
 
@@ -252,7 +252,7 @@ class PlejdApi extends EventEmitter {
     }
 
     if (this.includeRoomsAsLights) {
-      vrbLogger('includeRoomsAsLights is set to true, adding rooms too.');
+      dbgLogger('includeRoomsAsLights is set to true, adding rooms too.');
       for (let i = 0; i < this.site.rooms.length; i++) {
         const room = this.site.rooms[i];
         const roomId = room.roomId;
@@ -268,7 +268,7 @@ class PlejdApi extends EventEmitter {
 
         devices.push(newDevice);
       }
-      vrbLogger('includeRoomsAsLights done.');
+      dbgLogger('includeRoomsAsLights done.');
     }
 
     // add scenes as switches

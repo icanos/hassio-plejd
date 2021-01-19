@@ -66,7 +66,7 @@ class PlejdApi extends EventEmitter {
           self.sessionToken = response.data.sessionToken;
 
           if (!self.sessionToken) {
-            infError('No session token received');
+            errLogger('No session token received');
             reject('no session token received.');
           }
 

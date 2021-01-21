@@ -24,6 +24,7 @@
     "mqttUsername": "",
     "mqttPassword": "",
     "includeRoomsAsLights": false,
+    "logLevel": "info",
     "connectionTimeout": 2,
     "writeQueueWaitTime": 400
   },
@@ -35,6 +36,7 @@
     "mqttUsername": "str",
     "mqttPassword": "str",
     "includeRoomsAsLights": "bool",
+    "logLevel": "str",
     "connectionTimeout": "int",
     "writeQueueWaitTime": "int"
   }

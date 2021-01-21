@@ -1,6 +1,10 @@
 const winston = require("winston");
 const { colorize, combine, label, printf, timestamp } = winston.format;
 
+const Configuration = require("./Configuration");
+
+const LEVELS = ["error", "warn", "info", "debug", "verbose", "silly"];
+
 const logFormat = printf(info => {
     if(info.stack) {
         return `${info.timestamp} ${info.level} [${info.label}] ${info.message}\n${info.stack}`;
@@ -19,11 +23,17 @@ class Logger {
      *  - swap debug/verbose levels and omit http to mimic HA standard 
      * Levels (in order): error, warn, info, debug, verbose, silly
      * */
-    static getLogger(moduleName, level="verbose") {
+    static getLogger(moduleName) {
+        const config = Configuration.getConfiguration();
+        const level = (config.logLevel && LEVELS.find(l => l.startsWith(config.logLevel[0].toLowerCase()))) || "info";
+
         const logger = winston.createLogger({
             format: combine(
                 winston.format(info => {
                     switch (info.level) {
+                        case "warning":
+                            info.level = "WRN";
+                            break;
                         case "verbose":
                             info.level = "VRB";
                             break;
@@ -48,6 +58,12 @@ class Logger {
             ]
         });
         winston.addColors(Logger.logLevels().colors);
+
+        
+        if (moduleName === "plejd-main") {
+            logger.log(level, `Log level set to ${level}`);
+        }
+
         return logger;
     }
 

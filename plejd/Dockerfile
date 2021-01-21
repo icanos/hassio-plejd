@@ -10,6 +10,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 COPY ./api.js /plejd/
 COPY ./ble.bluez.js /plejd/
 COPY ./config.json /plejd/
+COPY ./Configuration.js /plejd/
 COPY ./Logger.js /plejd/
 COPY ./main.js /plejd/
 COPY ./mqtt.js /plejd/

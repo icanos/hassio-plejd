@@ -1,10 +1,10 @@
 const api = require('./api');
 const mqtt = require('./mqtt');
-const fs = require('fs');
 
 const Logger = require('./Logger');
 const PlejdService = require('./ble.bluez');
 const SceneManager = require('./scene.manager');
+const Configuration = require("./Configuration");
 
 const logger = Logger.getLogger("plejd-main");
 
@@ -14,8 +14,7 @@ const version = "0.4.8";
 async function main() {
   logger.info(`Starting Plejd add-on v. ${version}`);
 
-  const rawData = fs.readFileSync('/data/plejd.json');
-  const config = JSON.parse(rawData);
+  const config = Configuration.getConfiguration();
 
   if (!config.connectionTimeout) {
     config.connectionTimeout = 2;

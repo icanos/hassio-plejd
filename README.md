@@ -104,6 +104,7 @@ mqttBroker | URL of the MQTT Broker, eg. mqtt://localhost
 mqttUsername | Username of the MQTT broker
 mqttPassword | Password of the MQTT broker
 includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. *Added in v. 5*.
+logLevel | Minimim log level. Supported values are `error`, `warn`, `info`, `debug`, `verbose`, `silly` with increasing amount of logging. Do not log more than `info` for production purposes.
 connectionTimeout | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.
 writeQueueWaitTime | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.
 
@@ -127,6 +128,57 @@ https://www.home-assistant.io/integrations/google_assistant/
 ### I don't want voice, I want HomeKit!
 Check this out for more information on how you can get your Plejd lights controlled using HomeKit:
 https://www.home-assistant.io/integrations/homekit/
+
+## Logs
+Logs are color coded and can be accessed on the Log tab of the addon. If you set log level to debug, verbose or silly you will generate a lot of log output
+that will quickly scroll out of view. Logs can be exported through Docker that hosts all Home Assistant addons. To do that:
+* SSH or console access the HA installation
+* Identify the docker container name using `docker container ls` (NAMES column). Example name used `addon_local_plejd`
+* tail logs: `tail -f addon_local_plejd`
+* tail logs, strip color coding and save to file `docker logs -f addon_local_plejd | sed 's/\x1b\[[0-9;]*m//g' > /config/plejd.log`  (output file might need to be adjusted)
+
+### View logs in VS Code addon
+Logs extracted as above can easily be viewed in the VS Code Home Assistant addon, which will default to using the excellent `Log File Highlighter` extension to parse the file.
+Out of the box you can for example view elapsed time by selecting multiple lines and keeping an eye in the status bar. If you're feeling fancy you can get back the removed color information by adding something like below to the the `settings.json` configuration of VS Code.
+
+```JSON
+{
+  ... other settings,
+  "logFileHighlighter.customPatterns": [
+    {
+        "pattern": "ERR",
+        "foreground": "#af1f1f",
+        "fontStyle": "bold",
+    },
+    {
+        "pattern": "WRN",
+        "foreground": "#af6f00",
+        "fontStyle": "bold",
+    },
+    {
+      "pattern": "INF",
+      "foreground": "#44d",
+      "fontStyle": "bold"
+    },
+    {
+      "pattern": "VRB",
+      "foreground": "#4a4",
+    },
+    {
+      "pattern": "DBG",
+      "foreground": "#4a4",
+    },
+    {
+      "pattern": "SIL",
+      "foreground": "#999"
+    },
+    {
+      "pattern": "\\[.*\\]",
+      "foreground": "#666"
+    }
+  ]  
+}
+```
 
 ## Changelog
 *v 0.4.5*:

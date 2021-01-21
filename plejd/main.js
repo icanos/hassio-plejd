@@ -1,13 +1,18 @@
 const api = require('./api');
 const mqtt = require('./mqtt');
 const fs = require('fs');
+
+const Logger = require('./Logger');
 const PlejdService = require('./ble.bluez');
 const SceneManager = require('./scene.manager');
+
+const logger = Logger.getLogger("plejd-main");
+
 
 const version = "0.4.8";
 
 async function main() {
-  console.log('starting Plejd add-on v. ' + version);
+  logger.info(`Starting Plejd add-on v. ${version}`);
 
   const rawData = fs.readFileSync('/data/plejd.json');
   const config = JSON.parse(rawData);
@@ -28,7 +33,7 @@ async function main() {
         const devices = plejdApi.getDevices();
 
         client.on('connected', () => {
-          console.log('plejd-mqtt: connected to mqtt.');
+          logger.verbose('connected to mqtt.');
           client.discover(devices);
         });
 
@@ -38,7 +43,7 @@ async function main() {
         const sceneManager = new SceneManager(plejdApi.site, devices);
         const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, config.writeQueueWaitTime, true);
         plejd.on('connectFailed', () => {
-          console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
+          logger.verbose('Were unable to connect, will retry connection in 10 seconds.');
           setTimeout(() => {
             plejd.init();
           }, 10000);
@@ -47,7 +52,7 @@ async function main() {
         plejd.init();
 
         plejd.on('authenticated', () => {
-          console.log('plejd: connected via bluetooth.');
+          logger.verbose('plejd: connected via bluetooth.');
         });
 
         // subscribe to changes from Plejd
@@ -95,16 +100,6 @@ async function main() {
             plejd.turnOn(deviceId, commandObj);
           } else {
             plejd.turnOff(deviceId, commandObj);
-          }
-        });
-
-        client.on('settingsChanged', (settings) => {
-          if (settings.module === 'mqtt') {
-            client.updateSettings(settings);
-          } else if (settings.module === 'ble') {
-            plejd.updateSettings(settings);
-          } else if (settings.module === 'api') {
-            plejdApi.updateSettings(settings);
           }
         });
       });

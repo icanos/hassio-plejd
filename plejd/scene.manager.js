@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-const _ = require('lodash');
 
 class SceneManager extends EventEmitter {
     constructor(site, devices) {

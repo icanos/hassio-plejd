@@ -1,22 +1,10 @@
 const EventEmitter = require('events');
 const mqtt = require('mqtt');
-const _ = require('lodash');
+const Logger = require('./Logger');
 
 const startTopic = 'hass/status';
 
-// #region logging
-let debug = '';
-
-const getLogger = () => {
-  const consoleLogger = msg => console.log('plejd-mqtt', msg);
-  if (debug === 'console') {
-    return consoleLogger;
-  }
-  return _.noop;
-};
-
-const logger = getLogger();
-// #endregion
+const logger = Logger.getLogger("plejd-mqtt");
 
 // #region discovery
 
@@ -30,7 +18,6 @@ const getConfigPath = plug => `${getPath(plug)}/config`;
 const getStateTopic = plug => `${getPath(plug)}/state`;
 const getCommandTopic = plug => `${getPath(plug)}/set`;
 const getSceneEventTopic = () => `plejd/event/scene`;
-const getSettingsTopic = () => `plejd/settings`;
 
 const getDiscoveryPayload = device => ({
   schema: 'json',
@@ -77,6 +64,7 @@ class MqttClient extends EventEmitter {
   }
 
   init() {
+    logger.info("Initializing MQTT connection for Plejd addon");
     const self = this;
 
     this.client = mqtt.connect(this.mqttBroker, {
@@ -85,11 +73,11 @@ class MqttClient extends EventEmitter {
     });
 
     this.client.on('connect', () => {
-      logger('connected to MQTT.');
+      logger.info('Connected to MQTT.');
 
       this.client.subscribe(startTopic, (err) => {
         if (err) {
-          logger('error: unable to subscribe to ' + startTopic);
+          logger.error(`Unable to subscribe to ${startTopic}`);
         }
 
         self.emit('connected');
@@ -97,18 +85,14 @@ class MqttClient extends EventEmitter {
 
       this.client.subscribe(getSubscribePath(), (err) => {
         if (err) {
-          logger('error: unable to subscribe to control topics');
+          logger.error('Unable to subscribe to control topics');
         }
       });
 
-      this.client.subscribe(getSettingsTopic(), (err) => {
-        if (err) {
-          console.log('error: could not subscribe to settings topic');
-        }
-      });
     });
 
     this.client.on('close', () => {
+      logger.verbose('Warning: mqtt channel closed event, reconnecting...');
       self.reconnect();
     });
 
@@ -119,27 +103,18 @@ class MqttClient extends EventEmitter {
         : message.toString();
 
       if (topic === startTopic) {
-        logger('home assistant has started. lets do discovery.');
+        logger.info('Home Assistant has started. lets do discovery.');
         self.emit('connected');
       }
-      else if (topic === getSettingsTopic()) {
-        self.emit('settingsChanged', command);
-      }
-
-      if (_.includes(topic, 'set')) {
+      else if (topic.includes('set')) {
+        logger.verbose(`Got mqtt command on ${topic} - ${message}`);
         const device = self.devices.find(x => getCommandTopic(x) === topic);
         self.emit('stateChanged', device, command);
       }
+      else {
+        logger.verbose(`Warning: Got unrecognized mqtt command on ${topic} - ${message}`);
+      }
     });
-  }
-
-  updateSettings(settings) {
-    if (settings.debug) {
-      debug = 'console';
-    }
-    else {
-      debug = '';
-    }
   }
 
   reconnect() {
@@ -150,13 +125,13 @@ class MqttClient extends EventEmitter {
     this.devices = devices;
 
     const self = this;
-    logger('sending discovery of ' + devices.length + ' device(s).');
+    logger.debug(`Sending discovery of ${devices.length} device(s).`);
 
     devices.forEach((device) => {
-      logger(`sending discovery for ${device.name}`);
+      logger.debug(`Sending discovery for ${device.name}`);
 
       let payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
-      console.log(`plejd-mqtt: discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`);
+      logger.info(`Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`);
 
       self.deviceMap[device.id] = payload.unique_id;
 
@@ -171,11 +146,11 @@ class MqttClient extends EventEmitter {
     const device = this.devices.find(x => x.id === deviceId);
 
     if (!device) {
-      logger('error: ' + deviceId + ' is not handled by us.');
+      logger.warn(`Unknown device id ${deviceId} - not handled by us.`);
       return;
     }
 
-    logger('updating state for ' + device.name + ': ' + data.state);
+    logger.verbose(`Updating state for ${device.name}: ${data.state}`);
     let payload = null;
 
     if (device.type === 'switch') {
@@ -204,6 +179,7 @@ class MqttClient extends EventEmitter {
   }
 
   sceneTriggered(scene) {
+    logger.verbose(`Scene triggered: ${scene}`);
     this.client.publish(
       getSceneEventTopic(),
       JSON.stringify({ scene: scene })

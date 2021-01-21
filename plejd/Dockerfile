@@ -8,11 +8,12 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Copy data for add-on
 COPY ./api.js /plejd/
+COPY ./ble.bluez.js /plejd/
 COPY ./config.json /plejd/
+COPY ./Logger.js /plejd/
 COPY ./main.js /plejd/
 COPY ./mqtt.js /plejd/
 COPY ./package.json /plejd/
-COPY ./ble.bluez.js /plejd/
 COPY ./scene.manager.js /plejd/
 
 ARG BUILD_ARCH

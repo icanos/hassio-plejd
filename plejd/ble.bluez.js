@@ -2,20 +2,9 @@ const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
 const EventEmitter = require('events');
+const Logger = require('./Logger');
 
-const logInfo = true;     // Normal operations
-const logDebug = false;   // Chatty
-const logVerbose = false; // Very chatty
-
-const consoleLogger = (level) => (...msg) =>
-  console.log(new Date().toISOString().replace('T', ' ').substring(0, 19) + 'Z', level, 'plejd-ble', ...msg);
-
-const getLogger = (level, shouldLog) => (shouldLog ? consoleLogger(level) : () => {});
-
-const errLogger = getLogger('ERR', true);
-const infLogger = getLogger('INF', logInfo);
-const dbgLogger = getLogger('DBG', logDebug);
-const vrbLogger = getLogger('vrb', logVerbose);
+const logger = Logger.getLogger("plejd-ble");
 
 
 // UUIDs
@@ -46,7 +35,7 @@ class PlejdService extends EventEmitter {
   constructor(cryptoKey, devices, sceneManager, connectionTimeout, writeQueueWaitTime, keepAlive = false) {
     super();
 
-    infLogger('Starting Plejd BLE, resetting all device states.');
+    logger.info('Starting Plejd BLE, resetting all device states.');
 
     this.cryptoKey = Buffer.from(cryptoKey.replace(/-/g, ''), 'hex');
 
@@ -76,7 +65,7 @@ class PlejdService extends EventEmitter {
     this.bus = dbus.systemBus();
     this.adapter = null;
 
-    dbgLogger('wiring events and waiting for BLE interface to power up.');
+    logger.debug('wiring events and waiting for BLE interface to power up.');
     this.wireEvents();
   }
 
@@ -98,7 +87,7 @@ class PlejdService extends EventEmitter {
 
     clearInterval(this.pingRef);
     clearTimeout(this.writeQueueRef);
-    infLogger('init()');
+    logger.info('init()');
 
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
@@ -112,7 +101,7 @@ class PlejdService extends EventEmitter {
     }
 
     if (!this.adapter) {
-      errLogger('unable to find a bluetooth adapter that is compatible.');
+      logger.error('unable to find a bluetooth adapter that is compatible.');
       return;
     }
 
@@ -126,7 +115,7 @@ class PlejdService extends EventEmitter {
         const connected = managedObjects[path][BLUEZ_DEVICE_ID].Connected.value;
 
         if (connected) {
-          infLogger('disconnecting ' + path);
+          logger.info('disconnecting ' + path);
           await device.Disconnect();
         }
 
@@ -144,22 +133,22 @@ class PlejdService extends EventEmitter {
     try {
       await this.adapter.StartDiscovery();
     } catch (err) {
-      errLogger('failed to start discovery. Make sure no other add-on is currently scanning.');
+      logger.error('failed to start discovery. Make sure no other add-on is currently scanning.');
       return;
     }
     return new Promise(resolve => 
       setTimeout(() => resolve(
-        this._internalInit().catch((err) => { errLogger('InternalInit exception! Will rethrow.', err); throw err; })
+        this._internalInit().catch((err) => { logger.error('InternalInit exception! Will rethrow.', err); throw err; })
         ), this.connectionTimeout * 1000
       )
     );
   }
 
   async _internalInit() {
-    dbgLogger(`Got ${this.bleDevices.length} device(s).`);
+    logger.debug(`Got ${this.bleDevices.length} device(s).`);
 
     for (const plejd of this.bleDevices) {
-      dbgLogger(`Inspecting ${plejd['path']}`);
+      logger.debug(`Inspecting ${plejd['path']}`);
 
       try {
         const proxyObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, plejd['path']);
@@ -174,9 +163,9 @@ class PlejdService extends EventEmitter {
         fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
         plejd['device'] = this.devices.find(x => x.serialNumber === fixedPlejdPath);
 
-        dbgLogger(`Discovered ${plejd['path']} with rssi ${plejd['rssi']}`);
+        logger.debug(`Discovered ${plejd['path']} with rssi ${plejd['rssi']}`);
       } catch (err) {
-        errLogger(`Failed inspecting ${plejd['path']}. `, err);
+        logger.error(`Failed inspecting ${plejd['path']}. `, err);
       }
     }
 
@@ -186,13 +175,13 @@ class PlejdService extends EventEmitter {
     for (const plejd of sortedDevices) {
       try {
         if (plejd['instance']) {
-          infLogger(`Connecting to ${plejd['path']}`);
+          logger.info(`Connecting to ${plejd['path']}`);
           await plejd['instance'].Connect();
           connectedDevice = plejd;
           break
         }
       } catch (err) {
-        errLogger('Warning: unable to connect, will retry. ', err);
+        logger.error('Warning: unable to connect, will retry. ', err);
       }
     }
 
@@ -208,12 +197,12 @@ class PlejdService extends EventEmitter {
     for (let path of managedPaths) {
       const pathInterfaces = Object.keys(managedObjects[path]);
       if (pathInterfaces.indexOf(iface) > -1) {
-        dbgLogger(`Found BLE interface '${iface}' at ${path}`);
+        logger.debug(`Found BLE interface '${iface}' at ${path}`);
         try {
           const adapterObject = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, path);
           return [path, adapterObject.getInterface(iface), adapterObject];
         } catch (err) {
-          errLogger(`Failed to get interface '${iface}'. `, err);
+          logger.error(`Failed to get interface '${iface}'. `, err);
         }
       }
     }
@@ -227,34 +216,25 @@ class PlejdService extends EventEmitter {
 
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID]['UUIDs'].value.indexOf(PLEJD_SERVICE) > -1) {
-        dbgLogger(`Found Plejd service on ${path}`);
+        logger.debug(`Found Plejd service on ${path}`);
         this.bleDevices.push({
           'path': path
         });
       } else {
-        errLogger('Uh oh, no Plejd device!');
+        logger.error('Uh oh, no Plejd device!');
       }
     }
   }
 
-  updateSettings(settings) {
-    dbgLogger('Got new settings: ', settings);
-    if (settings.debug) {
-      debug = true;
-    } else {
-      debug = false;
-    }
-  }
-
   turnOn(deviceId, command) {
-    const deviceName = (logVerbose || logDebug) ? this._getDeviceName(deviceId) : '';
-    infLogger(`Plejd got turn on command for ${deviceName} (${deviceId}), brightness ${command.brightness}${command.transition ? `, transition: ${command.transition}` : ''}`);
+    const deviceName = this._getDeviceName(deviceId);
+    logger.info(`Plejd got turn on command for ${deviceName} (${deviceId}), brightness ${command.brightness}${command.transition ? `, transition: ${command.transition}` : ''}`);
     this._transitionTo(deviceId, command.brightness, command.transition, deviceName);
   }
 
   turnOff(deviceId, command) {
-    const deviceName = (logVerbose || logDebug) ? this._getDeviceName(deviceId) : '';
-    infLogger(`Plejd got turn off command for ${deviceName} (${deviceId}), brightness ${command.brightness}${command.transition ? `, transition: ${command.transition}` : ''}`);
+    const deviceName = this._getDeviceName(deviceId);
+    logger.info(`Plejd got turn off command for ${deviceName} (${deviceId}), brightness ${command.brightness}${command.transition ? `, transition: ${command.transition}` : ''}`);
     this._transitionTo(deviceId, 0, command.transition, deviceName);
   }
 
@@ -281,8 +261,8 @@ class PlejdService extends EventEmitter {
       const transitionSteps = Math.min(Math.abs(deltaBrightness), MAX_TRANSITION_STEPS_PER_SECOND * transition);
       const transitionInterval = transition * 1000 / transitionSteps;
 
-      dbgLogger(`transitioning from ${initialBrightness} to ${targetBrightness} ${transition ? 'in ' + transition + ' seconds' : ''}.`);
-      vrbLogger(`delta brightness ${deltaBrightness}, steps ${transitionSteps}, interval ${transitionInterval} ms`);
+      logger.debug(`transitioning from ${initialBrightness} to ${targetBrightness} ${transition ? 'in ' + transition + ' seconds' : ''}.`);
+      logger.verbose(`delta brightness ${deltaBrightness}, steps ${transitionSteps}, interval ${transitionInterval} ms`);
 
       const dtStart = new Date();
 
@@ -302,11 +282,11 @@ class PlejdService extends EventEmitter {
           nSteps++;
           this._clearDeviceTransitionTimer(deviceId);
           newBrightness = targetBrightness;
-          dbgLogger(`Queueing finalize ${deviceName} (${deviceId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${tElapsedMs / (nSteps || 1)} ms.`);
+          logger.debug(`Queueing finalize ${deviceName} (${deviceId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${tElapsedMs / (nSteps || 1)} ms.`);
           this._setBrightness(deviceId, newBrightness, true, deviceName);
         } else {
           nSteps++;
-          vrbLogger(`Queueing dim transition for ${deviceName} (${deviceId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`);
+          logger.verbose(`Queueing dim transition for ${deviceName} (${deviceId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`);
           this._setBrightness(deviceId, newBrightness, false, deviceName);
         }
 
@@ -314,7 +294,7 @@ class PlejdService extends EventEmitter {
     }
     else {
       if (transition && isDimmable) {
-        dbgLogger(`Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${targetBrightness}`)
+        logger.debug(`Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${targetBrightness}`)
       }
       this._setBrightness(deviceId, targetBrightness, true, deviceName);
     }
@@ -325,13 +305,13 @@ class PlejdService extends EventEmitter {
     let log = '';
 
     if (!brightness && brightness !== 0) {
-      dbgLogger(`Queueing turn on ${deviceName} (${deviceId}). No brightness specified, setting DIM to previous.`);
+      logger.debug(`Queueing turn on ${deviceName} (${deviceId}). No brightness specified, setting DIM to previous.`);
       payload = Buffer.from((deviceId).toString(16).padStart(2, '0') + '0110009701', 'hex');
       log = 'ON';
     }
     else {
       if (brightness <= 0) {
-        dbgLogger(`Queueing turn off ${deviceId}`);
+        logger.debug(`Queueing turn off ${deviceId}`);
         payload = Buffer.from((deviceId).toString(16).padStart(2, '0') + '0110009700', 'hex');
         log = 'OFF';
      }
@@ -340,7 +320,7 @@ class PlejdService extends EventEmitter {
           brightness = 255;
         }
 
-        dbgLogger(`Queueing ${deviceId} set brightness to ${brightness}`);
+        logger.debug(`Queueing ${deviceId} set brightness to ${brightness}`);
         const brightnessVal = (brightness << 8) | brightness;
         payload = Buffer.from((deviceId).toString(16).padStart(2, '0') + '0110009801' + (brightnessVal).toString(16).padStart(4, '0'), 'hex');
         log = `DIM ${brightness}`;
@@ -351,23 +331,23 @@ class PlejdService extends EventEmitter {
 
   triggerScene(sceneIndex) {
     const sceneName = this._getDeviceName(sceneIndex);
-    infLogger(`Triggering scene ${sceneName} (${sceneIndex}). Scene name might be misleading if there is a device with the same numeric id.`);
+    logger.info(`Triggering scene ${sceneName} (${sceneIndex}). Scene name might be misleading if there is a device with the same numeric id.`);
     this.sceneManager.executeScene(sceneIndex, this);
   }
 
   async authenticate() {
-    infLogger('authenticate()');
+    logger.info('authenticate()');
 
     try {
-      dbgLogger('Sending challenge to device');
+      logger.debug('Sending challenge to device');
       await this.characteristics.auth.WriteValue([0], {});
-      dbgLogger('Reading response from device');
+      logger.debug('Reading response from device');
       const challenge = await this.characteristics.auth.ReadValue({});
       const response = this._createChallengeResponse(this.cryptoKey, Buffer.from(challenge));
-      dbgLogger('Responding to authenticate');
+      logger.debug('Responding to authenticate');
       await this.characteristics.auth.WriteValue([...response], {});
     } catch (err) {
-      errLogger('Failed to authenticate: ', err);
+      logger.error('Failed to authenticate: ', err);
     }
 
     // auth done, start ping
@@ -382,11 +362,11 @@ class PlejdService extends EventEmitter {
 
   async throttledInit(delay) {
     if(this.initInProgress){
-      dbgLogger('ThrottledInit already in progress. Skipping this call and returning existing promise.')
+      logger.debug('ThrottledInit already in progress. Skipping this call and returning existing promise.')
       return this.initInProgress;
     }
    this.initInProgress = new Promise((resolve) => setTimeout(async () => {
-     const result = await this.init().catch((err) => { errLogger('TrottledInit exception calling init(). Will re-throw.', err); throw err; });
+     const result = await this.init().catch((err) => { logger.error('TrottledInit exception calling init(). Will re-throw.', err); throw err; });
      this.initInProgress = null;
      resolve(result)
    }, delay))
@@ -395,20 +375,20 @@ class PlejdService extends EventEmitter {
 
   async write(data) {
     if (!data || !this.plejdService || !this.characteristics.data) {
-      dbgLogger('data, plejdService or characteristics not available. Cannot write()');
+      logger.debug('data, plejdService or characteristics not available. Cannot write()');
       return;
     }
 
     try {
-      vrbLogger(`Sending ${data.length} byte(s) of data to Plejd`, data);
+      logger.verbose(`Sending ${data.length} byte(s) of data to Plejd`, data);
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
       await this.characteristics.data.WriteValue([...encryptedData], {});
       return true;
     } catch (err) {
       if (err.message === 'In Progress') {
-        dbgLogger('Write failed due to \'In progress\' ', err);
+        logger.debug('Write failed due to \'In progress\' ', err);
       } else {
-        dbgLogger('Write failed ', err);
+        logger.debug('Write failed ', err);
       }
       await this.throttledInit(this.connectionTimeout * 1000);
       return false;
@@ -416,29 +396,29 @@ class PlejdService extends EventEmitter {
   }
 
   startPing() {
-    infLogger('startPing()');
+    logger.info('startPing()');
     clearInterval(this.pingRef);
 
     this.pingRef = setInterval(async () => {
-      vrbLogger('ping');
+      logger.silly('ping');
       await this.ping();
     }, 3000);
   }
 
   onPingSuccess(nr) {
-    vrbLogger('pong: ' + nr);
+    logger.silly('pong: ' + nr);
   }
 
   async onPingFailed(error) {
-    dbgLogger('onPingFailed(' + error + ')');
-    infLogger('ping failed, reconnecting.');
+    logger.debug('onPingFailed(' + error + ')');
+    logger.info('ping failed, reconnecting.');
 
     clearInterval(this.pingRef);
     await this.init();
   }
 
   async ping() {
-    vrbLogger('ping()');
+    logger.silly('ping()');
 
     var ping = crypto.randomBytes(1);
     let pong = null;
@@ -447,13 +427,13 @@ class PlejdService extends EventEmitter {
       await this.characteristics.ping.WriteValue([...ping], {});
       pong = await this.characteristics.ping.ReadValue({});
     } catch (err) {
-      errLogger('writing to plejd: ', err);
+      logger.error('Error writing to plejd: ', err);
       this.emit('pingFailed', 'write error');
       return;
     }
 
     if (((ping[0] + 1) & 0xff) !== pong[0]) {
-      errLogger('plejd ping failed');
+      logger.error('Plejd ping failed');
       this.emit('pingFailed', 'plejd ping failed ' + ping[0] + ' - ' + pong[0]);
       return;
     }
@@ -462,7 +442,7 @@ class PlejdService extends EventEmitter {
   }
 
   startWriteQueue() {
-    infLogger('startWriteQueue()');
+    logger.info('startWriteQueue()');
     clearTimeout(this.writeQueueRef);
 
     this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
@@ -473,22 +453,22 @@ class PlejdService extends EventEmitter {
       while (this.writeQueue.length > 0) {
         const queueItem = this.writeQueue.pop();
         const deviceName = this._getDeviceName(queueItem.deviceId);
-        dbgLogger(`Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log}. Total queue length: ${this.writeQueue.length}`);
+        logger.debug(`Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log}. Total queue length: ${this.writeQueue.length}`);
 
         if (this.writeQueue.some((item) => item.deviceId === queueItem.deviceId)) {
-          vrbLogger(`Skipping ${deviceName} (${queueItem.deviceId}) ${queueItem.log} due to more recent command in queue.`);
+          logger.verbose(`Skipping ${deviceName} (${queueItem.deviceId}) ${queueItem.log} due to more recent command in queue.`);
           continue; // Skip commands if new ones exist for the same deviceId, but still process all messages in order
         }
 
         const success = await this.write(queueItem.payload);
         if (!success && queueItem.shouldRetry) {
           queueItem.retryCount = (queueItem.retryCount || 0) + 1;
-          dbgLogger('Will retry command, count failed so far', queueItem.retryCount);
+          logger.debug(`Will retry command, count failed so far ${queueItem.retryCount}`);
           if (queueItem.retryCount <= MAX_RETRY_COUNT) {
             this.writeQueue.push(queueItem); // Add back to top of queue to be processed next;
           }
           else {
-            errLogger(`Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log} failed.`);
+            logger.error(`Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log} failed.`);
             break;
           }
           if (queueItem.retryCount > 1) {
@@ -497,7 +477,7 @@ class PlejdService extends EventEmitter {
         }
       }
     } catch (e) {
-      errLogger('Error in writeQueue loop, values probably not written to Plejd', e);
+      logger.error('Error in writeQueue loop, values probably not written to Plejd', e);
     }
 
     this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.writeQueueWaitTime);
@@ -510,7 +490,7 @@ class PlejdService extends EventEmitter {
 
     const uuid = (await properties.Get(GATT_SERVICE_ID, 'UUID')).value;
     if (uuid !== PLEJD_SERVICE) {
-      errLogger('not a Plejd device.');
+      logger.error('not a Plejd device.');
       return null;
     }
 
@@ -534,17 +514,17 @@ class PlejdService extends EventEmitter {
       const chUuid = (await prop.Get(GATT_CHRC_ID, 'UUID')).value;
 
       if (chUuid === DATA_UUID) {
-        dbgLogger('found DATA characteristic.');
+        logger.debug('found DATA characteristic.');
         this.characteristics.data = ch;
       } else if (chUuid === LAST_DATA_UUID) {
-        dbgLogger('found LAST_DATA characteristic.');
+        logger.debug('found LAST_DATA characteristic.');
         this.characteristics.lastData = ch;
         this.characteristics.lastDataProperties = prop;
       } else if (chUuid === AUTH_UUID) {
-        dbgLogger('found AUTH characteristic.');
+        logger.debug('found AUTH characteristic.');
         this.characteristics.auth = ch;
       } else if (chUuid === PING_UUID) {
-        dbgLogger('found PING characteristic.');
+        logger.debug('found PING characteristic.');
         this.characteristics.ping = ch;
       }
     }
@@ -555,10 +535,10 @@ class PlejdService extends EventEmitter {
   }
 
   async onDeviceConnected(device) {
-    infLogger('onDeviceConnected()');
-    dbgLogger('Device: ', device);
+    logger.info('onDeviceConnected()');
+    logger.debug(`Device: ${device}`);
     if (!device) {
-      errLogger('Device is null. Should we break/return when this happens?');
+      logger.error('Device is null. Should we break/return when this happens?');
     }
 
     const objects = await this.objectManager.GetManagedObjects();
@@ -582,7 +562,7 @@ class PlejdService extends EventEmitter {
           }
         }
 
-        infLogger('trying ' + chPaths.length + ' characteristics');
+        logger.info('trying ' + chPaths.length + ' characteristics');
 
         this.plejdService = await this._processPlejdService(path, chPaths);
         if (this.plejdService) {
@@ -592,13 +572,13 @@ class PlejdService extends EventEmitter {
     }
 
     if (!this.plejdService) {
-      infLogger('warning: wasn\'t able to connect to Plejd, will retry.');
+      logger.info('warning: wasn\'t able to connect to Plejd, will retry.');
       this.emit('connectFailed');
       return;
     }
 
     if (!this.characteristics.auth) {
-      errLogger('unable to enumerate characteristics.');
+      logger.error('unable to enumerate characteristics.');
       this.emit('connectFailed');
       return;
     }
@@ -632,19 +612,19 @@ class PlejdService extends EventEmitter {
     const data2 = parseInt(decoded.toString('hex', 6, 8), 16) >> 8;
 
     if (decoded.length < 5) {
-      dbgLogger('Too short raw event ignored: ', decoded.toString('hex'));
+      logger.debug(`Too short raw event ignored: ${decoded.toString('hex')}`);
       // ignore the notification since too small
       return;
     }
 
-    const deviceName = (logVerbose || logDebug) ? this._getDeviceName(deviceId) : '';
-    vrbLogger('Raw event received: ', decoded.toString('hex'));
-    vrbLogger(`Device ${deviceId}, cmd ${cmd.toString('hex')}, state ${state}, dim/data2 ${data2}`);
+    const deviceName = this._getDeviceName(deviceId);
+    logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
+    logger.verbose(`Device ${deviceId}, cmd ${cmd.toString('hex')}, state ${state}, dim/data2 ${data2}`);
 
     if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
       const dim = data2;
 
-      dbgLogger(`${deviceName} (${deviceId}) got state+dim update. S: ${state}, D: ${dim}`);
+      logger.debug(`${deviceName} (${deviceId}) got state+dim update. S: ${state}, D: ${dim}`);
 
       this.emit('stateChanged', deviceId, {
         state: state,
@@ -655,9 +635,9 @@ class PlejdService extends EventEmitter {
         state: state,
         dim: dim
       };
-      vrbLogger('All states: ', this.plejdDevices);
+      logger.verbose(`All states: ${JSON.stringify(this.plejdDevices)}`);
     } else if (cmd === BLE_CMD_STATE_CHANGE) {
-      dbgLogger(`${deviceName} (${deviceId}) got state update. S: ${state}`);
+      logger.debug(`${deviceName} (${deviceId}) got state update. S: ${state}`);
       this.emit('stateChanged', deviceId, {
         state: state
       });
@@ -665,25 +645,25 @@ class PlejdService extends EventEmitter {
         state: state,
         dim: 0
       };
-      vrbLogger('All states: ', this.plejdDevices);
+      logger.verbose(`All states: ${this.plejdDevices}`);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
       const sceneId = parseInt(decoded.toString('hex', 5, 6), 16);
       const sceneName = this._getDeviceName(sceneId);
 
-      dbgLogger(`${sceneName} (${sceneId}) scene triggered (device id ${deviceId}). Name can be misleading if there is a device with the same numeric id.`);
+      logger.debug(`${sceneName} (${sceneId}) scene triggered (device id ${deviceId}). Name can be misleading if there is a device with the same numeric id.`);
 
       this.emit('sceneTriggered', deviceId, sceneId);
     }
     else if (cmd === '001b') {
-      // vrbLogger('Command 001b seems to be some kind of often repeating ping/mesh data');
+      logger.silly('Command 001b seems to be some kind of often repeating ping/mesh data');
     }
     else {
-      vrbLogger(`Command ${cmd.toString('hex')} unknown. Device ${deviceName} (${deviceId})`);
+      logger.verbose(`Command ${cmd.toString('hex')} unknown. Device ${deviceName} (${deviceId})`);
     }
   }
 
   wireEvents() {
-    infLogger('wireEvents()');
+    logger.info('wireEvents()');
     const self = this;
 
     this.on('pingFailed', this.onPingFailed.bind(self));

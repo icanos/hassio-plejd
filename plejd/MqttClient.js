@@ -4,7 +4,7 @@ const Logger = require('./Logger');
 
 const startTopic = 'hass/status';
 
-const logger = Logger.getLogger("plejd-mqtt");
+const logger = Logger.getLogger('plejd-mqtt');
 
 // #region discovery
 
@@ -12,14 +12,13 @@ const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
 
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-const getPath = ({ id, type }) =>
-  `${discoveryPrefix}/${type}/${nodeId}/${id}`;
-const getConfigPath = plug => `${getPath(plug)}/config`;
-const getStateTopic = plug => `${getPath(plug)}/state`;
-const getCommandTopic = plug => `${getPath(plug)}/set`;
-const getSceneEventTopic = () => `plejd/event/scene`;
+const getPath = ({ id, type }) => `${discoveryPrefix}/${type}/${nodeId}/${id}`;
+const getConfigPath = (plug) => `${getPath(plug)}/config`;
+const getStateTopic = (plug) => `${getPath(plug)}/state`;
+const getCommandTopic = (plug) => `${getPath(plug)}/set`;
+const getSceneEventTopic = () => 'plejd/event/scene';
 
-const getDiscoveryPayload = device => ({
+const getDiscoveryPayload = (device) => ({
   schema: 'json',
   name: device.name,
   unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
@@ -28,26 +27,26 @@ const getDiscoveryPayload = device => ({
   optimistic: false,
   brightness: `${device.dimmable}`,
   device: {
-    identifiers: device.serialNumber + '_' + device.id,
+    identifiers: `${device.serialNumber}_${device.id}`,
     manufacturer: 'Plejd',
     model: device.typeName,
     name: device.name,
-    sw_version: device.version
-  }
+    sw_version: device.version,
+  },
 });
 
-const getSwitchPayload = device => ({
+const getSwitchPayload = (device) => ({
   name: device.name,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
   optimistic: false,
   device: {
-    identifiers: device.serialNumber + '_' + device.id,
+    identifiers: `${device.serialNumber}_${device.id}`,
     manufacturer: 'Plejd',
     model: device.typeName,
     name: device.name,
-    sw_version: device.version
-  }
+    sw_version: device.version,
+  },
 });
 
 // #endregion
@@ -64,12 +63,12 @@ class MqttClient extends EventEmitter {
   }
 
   init() {
-    logger.info("Initializing MQTT connection for Plejd addon");
+    logger.info('Initializing MQTT connection for Plejd addon');
     const self = this;
 
     this.client = mqtt.connect(this.mqttBroker, {
       username: this.username,
-      password: this.password
+      password: this.password,
     });
 
     this.client.on('connect', () => {
@@ -88,7 +87,6 @@ class MqttClient extends EventEmitter {
           logger.error('Unable to subscribe to control topics');
         }
       });
-
     });
 
     this.client.on('close', () => {
@@ -97,21 +95,19 @@ class MqttClient extends EventEmitter {
     });
 
     this.client.on('message', (topic, message) => {
-      //const command = message.toString();
-      const command = message.toString().substring(0, 1) === '{' 
+      // const command = message.toString();
+      const command = message.toString().substring(0, 1) === '{'
         ? JSON.parse(message.toString())
         : message.toString();
 
       if (topic === startTopic) {
         logger.info('Home Assistant has started. lets do discovery.');
         self.emit('connected');
-      }
-      else if (topic.includes('set')) {
+      } else if (topic.includes('set')) {
         logger.verbose(`Got mqtt command on ${topic} - ${message}`);
-        const device = self.devices.find(x => getCommandTopic(x) === topic);
+        const device = self.devices.find((x) => getCommandTopic(x) === topic);
         self.emit('stateChanged', device, command);
-      }
-      else {
+      } else {
         logger.verbose(`Warning: Got unrecognized mqtt command on ${topic} - ${message}`);
       }
     });
@@ -130,20 +126,19 @@ class MqttClient extends EventEmitter {
     devices.forEach((device) => {
       logger.debug(`Sending discovery for ${device.name}`);
 
-      let payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
-      logger.info(`Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`);
+      const payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
+      logger.info(
+        `Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`,
+      );
 
       self.deviceMap[device.id] = payload.unique_id;
 
-      self.client.publish(
-        getConfigPath(device),
-        JSON.stringify(payload)
-      );
+      self.client.publish(getConfigPath(device), JSON.stringify(payload));
     });
   }
 
   updateState(deviceId, data) {
-    const device = this.devices.find(x => x.id === deviceId);
+    const device = this.devices.find((x) => x.id === deviceId);
 
     if (!device) {
       logger.warn(`Unknown device id ${deviceId} - not handled by us.`);
@@ -155,36 +150,28 @@ class MqttClient extends EventEmitter {
 
     if (device.type === 'switch') {
       payload = data.state === 1 ? 'ON' : 'OFF';
-    }
-    else {
+    } else {
       if (device.dimmable) {
         payload = {
           state: data.state === 1 ? 'ON' : 'OFF',
-          brightness: data.brightness
-        }
-      }
-      else {
+          brightness: data.brightness,
+        };
+      } else {
         payload = {
-          state: data.state === 1 ? 'ON' : 'OFF'
-        }
+          state: data.state === 1 ? 'ON' : 'OFF',
+        };
       }
 
       payload = JSON.stringify(payload);
     }
 
-    this.client.publish(
-      getStateTopic(device),
-      payload
-    );
+    this.client.publish(getStateTopic(device), payload);
   }
 
   sceneTriggered(scene) {
     logger.verbose(`Scene triggered: ${scene}`);
-    this.client.publish(
-      getSceneEventTopic(),
-      JSON.stringify({ scene: scene })
-    );
+    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene }));
   }
 }
 
-module.exports = { MqttClient };
+module.exports = MqttClient;

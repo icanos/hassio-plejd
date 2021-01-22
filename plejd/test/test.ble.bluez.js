@@ -1,4 +1,4 @@
-const PlejdService = require('../ble.bluez');
+const PlejdService = require('../PlejdService');
 
 const cryptoKey = '';
 

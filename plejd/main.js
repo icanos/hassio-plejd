@@ -1,15 +1,14 @@
-const api = require('./api');
-const mqtt = require('./mqtt');
+const PlejdApi = require('./PlejdApi');
+const MqttClient = require('./MqttClient');
 
 const Logger = require('./Logger');
-const PlejdService = require('./ble.bluez');
-const SceneManager = require('./scene.manager');
-const Configuration = require("./Configuration");
+const PlejdService = require('./PlejdService');
+const SceneManager = require('./SceneManager');
+const Configuration = require('./Configuration');
 
-const logger = Logger.getLogger("plejd-main");
+const logger = Logger.getLogger('plejd-main');
 
-
-const version = "0.4.8";
+const version = '0.4.8';
 
 async function main() {
   logger.info(`Starting Plejd add-on v. ${version}`);
@@ -20,8 +19,13 @@ async function main() {
     config.connectionTimeout = 2;
   }
 
-  const plejdApi = new api.PlejdApi(config.site, config.username, config.password, config.includeRoomsAsLights);
-  const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
+  const plejdApi = new PlejdApi(
+    config.site,
+    config.username,
+    config.password,
+    config.includeRoomsAsLights,
+  );
+  const client = new MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.login().then(() => {
     // load all sites and find the one that we want (from config)
@@ -40,7 +44,13 @@ async function main() {
 
         // init the BLE interface
         const sceneManager = new SceneManager(plejdApi.site, devices);
-        const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, config.writeQueueWaitTime, true);
+        const plejd = new PlejdService(
+          cryptoKey,
+          devices,
+          sceneManager,
+          config.connectionTimeout,
+          config.writeQueueWaitTime,
+        );
         plejd.on('connectFailed', () => {
           logger.verbose('Were unable to connect, will retry connection in 10 seconds.');
           setTimeout(() => {
@@ -81,16 +91,17 @@ async function main() {
             // switch command
             state = command;
             commandObj = {
-              state: state
+              state,
             };
 
             // since the switch doesn't get any updates on whether it's on or not,
             // we fake this by directly send the updateState back to HA in order for
             // it to change state.
             client.updateState(deviceId, {
-              state: state === 'ON' ? 1 : 0
+              state: state === 'ON' ? 1 : 0,
             });
           } else {
+            // eslint-disable-next-line prefer-destructuring
             state = command.state;
             commandObj = command;
           }

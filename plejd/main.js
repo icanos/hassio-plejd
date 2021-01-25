@@ -36,8 +36,12 @@ async function main() {
         const devices = plejdApi.getDevices();
 
         client.on('connected', () => {
-          logger.verbose('connected to mqtt.');
-          client.discover(devices);
+          try {
+            logger.verbose('connected to mqtt.');
+            client.discover(devices);
+          } catch (err) {
+            logger.error('Error in MqttClient.connected callback in main.js', err);
+          }
         });
 
         client.init();
@@ -54,7 +58,9 @@ async function main() {
         plejd.on('connectFailed', () => {
           logger.verbose('Were unable to connect, will retry connection in 10 seconds.');
           setTimeout(() => {
-            plejd.init();
+            plejd
+              .init()
+              .catch((e) => logger.error('Error in init() from connectFailed in main.js', e));
           }, 10000);
         });
 
@@ -66,50 +72,62 @@ async function main() {
 
         // subscribe to changes from Plejd
         plejd.on('stateChanged', (deviceId, command) => {
-          client.updateState(deviceId, command);
+          try {
+            client.updateState(deviceId, command);
+          } catch (err) {
+            logger.error('Error in PlejdService.stateChanged callback in main.js', err);
+          }
         });
 
         plejd.on('sceneTriggered', (deviceId, scene) => {
-          client.sceneTriggered(scene);
+          try {
+            client.sceneTriggered(scene);
+          } catch (err) {
+            logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
+          }
         });
 
         // subscribe to changes from HA
         client.on('stateChanged', (device, command) => {
-          const deviceId = device.id;
+          try {
+            const deviceId = device.id;
 
-          if (device.typeName === 'Scene') {
-            // we're triggering a scene, lets do that and jump out.
-            // since scenes aren't "real" devices.
-            plejd.triggerScene(device.id);
-            return;
-          }
+            if (device.typeName === 'Scene') {
+              // we're triggering a scene, lets do that and jump out.
+              // since scenes aren't "real" devices.
+              plejd.triggerScene(device.id);
+              return;
+            }
 
-          let state = 'OFF';
-          let commandObj = {};
+            let state = 'OFF';
+            let commandObj = {};
 
-          if (typeof command === 'string') {
-            // switch command
-            state = command;
-            commandObj = {
-              state,
-            };
+            if (typeof command === 'string') {
+              // switch command
+              state = command;
+              commandObj = {
+                state,
+              };
 
-            // since the switch doesn't get any updates on whether it's on or not,
-            // we fake this by directly send the updateState back to HA in order for
-            // it to change state.
-            client.updateState(deviceId, {
-              state: state === 'ON' ? 1 : 0,
-            });
-          } else {
-            // eslint-disable-next-line prefer-destructuring
-            state = command.state;
-            commandObj = command;
-          }
+              // since the switch doesn't get any updates on whether it's on or not,
+              // we fake this by directly send the updateState back to HA in order for
+              // it to change state.
+              client.updateState(deviceId, {
+                state: state === 'ON' ? 1 : 0,
+              });
+            } else {
+              // eslint-disable-next-line prefer-destructuring
+              state = command.state;
+              commandObj = command;
+            }
 
-          if (state === 'ON') {
-            plejd.turnOn(deviceId, commandObj);
-          } else {
-            plejd.turnOff(deviceId, commandObj);
+            if (state === 'ON') {
+              plejd.turnOn(deviceId, commandObj);
+            } else {
+              plejd.turnOff(deviceId, commandObj);
+            }
+          } catch (err) {
+            logger.error('Error in MqttClient.stateChanged callback in main.js', err);
           }
         });
       });

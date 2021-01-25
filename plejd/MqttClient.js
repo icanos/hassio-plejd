@@ -106,7 +106,15 @@ class MqttClient extends EventEmitter {
       } else if (topic.includes('set')) {
         logger.verbose(`Got mqtt command on ${topic} - ${message}`);
         const device = self.devices.find((x) => getCommandTopic(x) === topic);
-        self.emit('stateChanged', device, command);
+        if (device) {
+          self.emit('stateChanged', device, command);
+        } else {
+          logger.warn(
+            `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+          );
+        }
+      } else if (topic.includes('state')) {
+        logger.verbose(`State update sent over mqtt to HA ${topic} - ${message}`);
       } else {
         logger.verbose(`Warning: Got unrecognized mqtt command on ${topic} - ${message}`);
       }
@@ -145,7 +153,11 @@ class MqttClient extends EventEmitter {
       return;
     }
 
-    logger.verbose(`Updating state for ${device.name}: ${data.state}`);
+    logger.verbose(
+      `Updating state for ${device.name}: ${data.state}${
+        data.brightness ? `, dim: ${data.brightness}` : ''
+      }`,
+    );
     let payload = null;
 
     if (device.type === 'switch') {

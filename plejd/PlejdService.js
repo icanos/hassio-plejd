@@ -253,9 +253,9 @@ class PlejdService extends EventEmitter {
   turnOff(deviceId, command) {
     const deviceName = this._getDeviceName(deviceId);
     logger.info(
-      `Plejd got turn off command for ${deviceName} (${deviceId}), brightness ${
-        command.brightness
-      }${command.transition ? `, transition: ${command.transition}` : ''}`,
+      `Plejd got turn off command for ${deviceName} (${deviceId})${
+        command.transition ? `, transition: ${command.transition}` : ''
+      }`,
     );
     this._transitionTo(deviceId, 0, command.transition, deviceName);
   }
@@ -447,7 +447,7 @@ class PlejdService extends EventEmitter {
     }
 
     try {
-      logger.verbose(`Sending ${data.length} byte(s) of data to Plejd`, data);
+      logger.verbose(`Sending ${data.length} byte(s) of data to Plejd. ${data.toString('hex')}`);
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
       await this.characteristics.data.WriteValue([...encryptedData], {});
       return true;
@@ -576,7 +576,10 @@ class PlejdService extends EventEmitter {
     const regex = /dev_([0-9A-F_]+)$/;
     const dirtyAddr = regex.exec(dev);
     const addr = this._reverseBuffer(
-      Buffer.from(String(dirtyAddr[1]).replace(/-/g, '').replace(/_/g, '').replace(/:/g, ''), 'hex'),
+      Buffer.from(
+        String(dirtyAddr[1]).replace(/-/g, '').replace(/_/g, '').replace(/:/g, ''),
+        'hex',
+      ),
     );
 
     // eslint-disable-next-line no-restricted-syntax

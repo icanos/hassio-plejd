@@ -4,13 +4,13 @@ module.exports = {
   semi: true,
   singleQuote: true,
   tabWidth: 2,
-  trailingComma: 'none',
+  trailingComma: 'all',
   overrides: [
     {
-      files: '*.js, *.jsx',
+      files: ['*.js'],
       options: {
-        trailingComma: 'all' // or es5
-      }
-    }
-  ]
+        trailingComma: 'all',
+      },
+    },
+  ],
 };

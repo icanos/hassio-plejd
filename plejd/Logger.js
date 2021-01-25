@@ -36,7 +36,7 @@ class Logger {
       format: combine(
         winston.format((info) => {
           switch (info.level) {
-            case 'warning':
+            case 'warn':
               info.level = 'WRN';
               break;
             case 'verbose':

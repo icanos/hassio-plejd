@@ -30,7 +30,7 @@
     "mqttUsername": "str",
     "mqttPassword": "str",
     "includeRoomsAsLights": "bool",
-    "logLevel": "str",
+    "logLevel": "list(error|warn|info|debug|verbose|silly)",
     "connectionTimeout": "int",
     "writeQueueWaitTime": "int"
   }

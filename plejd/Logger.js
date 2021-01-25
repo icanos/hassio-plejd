@@ -7,6 +7,14 @@ const {
 const Configuration = require('./Configuration');
 
 const LEVELS = ['error', 'warn', 'info', 'debug', 'verbose', 'silly'];
+const LEVELS_LOOKUP = {
+  error: 'ERR',
+  warn: 'WRN',
+  info: 'INF',
+  debug: 'DBG',
+  verbose: 'VRB',
+  silly: 'SLY',
+};
 
 const logFormat = printf((info) => {
   if (info.stack) {
@@ -35,20 +43,7 @@ class Logger {
     const logger = winston.createLogger({
       format: combine(
         winston.format((info) => {
-          switch (info.level) {
-            case 'warn':
-              info.level = 'WRN';
-              break;
-            case 'verbose':
-              info.level = 'VRB';
-              break;
-            case 'debug':
-              info.level = 'DBG';
-              break;
-            default:
-              info.level = info.level.substring(0, 3).toUpperCase();
-          }
-
+          info.level = LEVELS_LOOKUP[info.level] || '???';
           return info;
         })(),
         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),

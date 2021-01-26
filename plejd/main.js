@@ -1,23 +1,31 @@
-const api = require('./api');
-const mqtt = require('./mqtt');
-const fs = require('fs');
-const PlejdService = require('./ble.bluez');
-const SceneManager = require('./scene.manager');
+const PlejdApi = require('./PlejdApi');
+const MqttClient = require('./MqttClient');
 
-const version = "0.4.8";
+const Logger = require('./Logger');
+const PlejdService = require('./PlejdService');
+const SceneManager = require('./SceneManager');
+const Configuration = require('./Configuration');
+
+const logger = Logger.getLogger('plejd-main');
+
+const version = '0.4.8';
 
 async function main() {
-  console.log('starting Plejd add-on v. ' + version);
+  logger.info(`Starting Plejd add-on v. ${version}`);
 
-  const rawData = fs.readFileSync('/data/plejd.json');
-  const config = JSON.parse(rawData);
+  const config = Configuration.getConfiguration();
 
   if (!config.connectionTimeout) {
     config.connectionTimeout = 2;
   }
 
-  const plejdApi = new api.PlejdApi(config.site, config.username, config.password, config.includeRoomsAsLights);
-  const client = new mqtt.MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
+  const plejdApi = new PlejdApi(
+    config.site,
+    config.username,
+    config.password,
+    config.includeRoomsAsLights,
+  );
+  const client = new MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
   plejdApi.login().then(() => {
     // load all sites and find the one that we want (from config)
@@ -28,83 +36,98 @@ async function main() {
         const devices = plejdApi.getDevices();
 
         client.on('connected', () => {
-          console.log('plejd-mqtt: connected to mqtt.');
-          client.discover(devices);
+          try {
+            logger.verbose('connected to mqtt.');
+            client.discover(devices);
+          } catch (err) {
+            logger.error('Error in MqttClient.connected callback in main.js', err);
+          }
         });
 
         client.init();
 
         // init the BLE interface
         const sceneManager = new SceneManager(plejdApi.site, devices);
-        const plejd = new PlejdService(cryptoKey, devices, sceneManager, config.connectionTimeout, config.writeQueueWaitTime, true);
+        const plejd = new PlejdService(
+          cryptoKey,
+          devices,
+          sceneManager,
+          config.connectionTimeout,
+          config.writeQueueWaitTime,
+        );
         plejd.on('connectFailed', () => {
-          console.log('plejd-ble: were unable to connect, will retry connection in 10 seconds.');
+          logger.verbose('Were unable to connect, will retry connection in 10 seconds.');
           setTimeout(() => {
-            plejd.init();
+            plejd
+              .init()
+              .catch((e) => logger.error('Error in init() from connectFailed in main.js', e));
           }, 10000);
         });
 
         plejd.init();
 
         plejd.on('authenticated', () => {
-          console.log('plejd: connected via bluetooth.');
+          logger.verbose('plejd: connected via bluetooth.');
         });
 
         // subscribe to changes from Plejd
         plejd.on('stateChanged', (deviceId, command) => {
-          client.updateState(deviceId, command);
+          try {
+            client.updateState(deviceId, command);
+          } catch (err) {
+            logger.error('Error in PlejdService.stateChanged callback in main.js', err);
+          }
         });
 
         plejd.on('sceneTriggered', (deviceId, scene) => {
-          client.sceneTriggered(scene);
+          try {
+            client.sceneTriggered(scene);
+          } catch (err) {
+            logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
+          }
         });
 
         // subscribe to changes from HA
         client.on('stateChanged', (device, command) => {
-          const deviceId = device.id;
+          try {
+            const deviceId = device.id;
 
-          if (device.typeName === 'Scene') {
-            // we're triggering a scene, lets do that and jump out.
-            // since scenes aren't "real" devices.
-            plejd.triggerScene(device.id);
-            return;
-          }
+            if (device.typeName === 'Scene') {
+              // we're triggering a scene, lets do that and jump out.
+              // since scenes aren't "real" devices.
+              plejd.triggerScene(device.id);
+              return;
+            }
 
-          let state = 'OFF';
-          let commandObj = {};
+            let state = 'OFF';
+            let commandObj = {};
 
-          if (typeof command === 'string') {
-            // switch command
-            state = command;
-            commandObj = {
-              state: state
-            };
+            if (typeof command === 'string') {
+              // switch command
+              state = command;
+              commandObj = {
+                state,
+              };
 
-            // since the switch doesn't get any updates on whether it's on or not,
-            // we fake this by directly send the updateState back to HA in order for
-            // it to change state.
-            client.updateState(deviceId, {
-              state: state === 'ON' ? 1 : 0
-            });
-          } else {
-            state = command.state;
-            commandObj = command;
-          }
+              // since the switch doesn't get any updates on whether it's on or not,
+              // we fake this by directly send the updateState back to HA in order for
+              // it to change state.
+              client.updateState(deviceId, {
+                state: state === 'ON' ? 1 : 0,
+              });
+            } else {
+              // eslint-disable-next-line prefer-destructuring
+              state = command.state;
+              commandObj = command;
+            }
 
-          if (state === 'ON') {
-            plejd.turnOn(deviceId, commandObj);
-          } else {
-            plejd.turnOff(deviceId, commandObj);
-          }
-        });
-
-        client.on('settingsChanged', (settings) => {
-          if (settings.module === 'mqtt') {
-            client.updateSettings(settings);
-          } else if (settings.module === 'ble') {
-            plejd.updateSettings(settings);
-          } else if (settings.module === 'api') {
-            plejdApi.updateSettings(settings);
+            if (state === 'ON') {
+              plejd.turnOn(deviceId, commandObj);
+            } else {
+              plejd.turnOff(deviceId, commandObj);
+            }
+          } catch (err) {
+            logger.error('Error in MqttClient.stateChanged callback in main.js', err);
           }
         });
       });

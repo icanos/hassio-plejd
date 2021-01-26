@@ -42,6 +42,8 @@ build/Release
 
 # Dependency directories
 node_modules/
+# npm install should not be done on dev machines, only on installation in HA
+package-lock.json
 jspm_packages/
 
 # TypeScript v1 declaration files

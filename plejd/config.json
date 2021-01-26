@@ -4,13 +4,7 @@
   "slug": "plejd",
   "description": "Adds support for the Swedish home automation devices from Plejd.",
   "url": "https://github.com/icanos/hassio-plejd/",
-  "arch": [
-    "armhf",
-    "armv7",
-    "aarch64",
-    "amd64",
-    "i386"
-  ],
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",
   "boot": "auto",
   "host_network": true,
@@ -24,6 +18,7 @@
     "mqttUsername": "",
     "mqttPassword": "",
     "includeRoomsAsLights": false,
+    "logLevel": "info",
     "connectionTimeout": 2,
     "writeQueueWaitTime": 400
   },
@@ -35,6 +30,7 @@
     "mqttUsername": "str",
     "mqttPassword": "str",
     "includeRoomsAsLights": "bool",
+    "logLevel": "list(error|warn|info|debug|verbose|silly)",
     "connectionTimeout": "int",
     "writeQueueWaitTime": "int"
   }

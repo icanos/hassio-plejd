@@ -1,13 +1,31 @@
 {
   "dependencies": {
     "@abandonware/bluetooth-hci-socket": "0.5.3-3",
-    "axios": "^0.21.1",
-    "buffer-xor": "^2.0.2",
-    "dbus-next": "^0.8.1",
+    "axios": "~0.21.1",
+    "buffer-xor": "~2.0.2",
+    "dbus-next": "~0.9.1",
     "fs": "0.0.1-security",
-    "jspack": "0.0.4",
-    "lodash": "^4.17.19",
-    "mqtt": "^3.0.0",
-    "sleep": "^6.1.0"
+    "jspack": "~0.0.4",
+    "mqtt": "~3.0.0",
+    "sleep": "~6.1.0",
+    "winston": "~3.3.3"
+  },
+  "devDependencies": {
+    "babel-eslint": "~10.1.0",
+    "eslint": "~7.18.0",
+    "eslint-config-airbnb": "~18.2.1",
+    "eslint-config-prettier": "~7.2.0",
+    "eslint-plugin-import": "~2.22.1",
+    "eslint-plugin-prettier": "~3.3.1",
+    "prettier": "~2.2.1"
+  },
+  "scripts": {
+    "lint": "prettier \"../*.{js*,md}\" --check & eslint **/*.js",
+    "lint:fix": "prettier .. --check --write & eslint **/*.js --fix",
+    "lint:prettier:fix": "npm run lint:prettier --write",
+    "lint:errors": "npm run lint:prettier & npm run lint:styles --quiet & npm run lint:types & npm run lint:scripts --quiet",
+    "lint:errors:fix": "npm run lint:prettier --write & npm run lint:scripts --quiet --fix",
+    "lint:prettier": "prettier --check \"**/*.js\"",
+    "lint:scripts": "eslint --config ./.eslintrc.js \"**/*.js\""
   }
 }

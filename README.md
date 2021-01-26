@@ -78,6 +78,15 @@ parse error: Expected string key before ':' at line 1, column 4
 
 However, the add-on still works as expected and this is something I'm looking into, but not with that much effort yet though.
 
+#### Running the Plejd add-on in VirtualBox on Windows
+
+If on Windows + VirtualBox or similar setup
+
+- Install VirtualBox extensions to get USB 2/3
+- Redirect correct USB device
+- Potentially try to replace BT drivers with WinUSB using Zadig
+- (Re)start VirtualBox HA machine
+
 #### Running the Plejd add-on outside of HassOS
 
 If you're planning on running this add-on outside of HassOS, you might need to turn off AppArmor in the `config.json` file. This is due to missing AppArmor configuration that is performed in HassOS (if you've manually done it, ignore this).
@@ -122,10 +131,30 @@ The plugin needs you to configure some settings before working. You find these o
 | mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                                                         |
 | mqttUsername         | Username of the MQTT broker                                                                                                                                                          |
 | mqttPassword         | Password of the MQTT broker                                                                                                                                                          |
-| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. _Added in v. 5_.                                    |
+| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms.                                                     |
 | logLevel             | Minimim log level. Supported values are `error`, `warn`, `info`, `debug`, `verbose`, `silly` with increasing amount of logging. Do not log more than `info` for production purposes. |
 | connectionTimeout    | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.                                              |
 | writeQueueWaitTime   | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.                                               |
+
+## Having issues to get the addon working?
+
+If you're having issues to get the addon working, there are a few things you can look into:
+
+- Increase log level of plugin to debug, verbose or silly in configuration and restart addon. Refer to the "Logs" section below for information on how to get the full logs.
+- Make sure MQTT is correctly configured. If using the HomeAssistant Supervisor (HassIO) Addon mosquitto, changing from `broker: "mqtt://localhost"` to `broker: "core-mosquitto"` can sometimes help (username and password as before)
+- Make sure that the MQTT integration works! Config => Integrations => MQTT => Configure => Listen to "#" (everything), then publish to topic `home-assistant/switch/1/power` and make sure you see the message below when listening
+- Make sure BT is working
+  - Go to HA console (login as "root", write `login` to access normal terminal (or SSH or similar)
+  - Start `bluetoothctl` interactive command
+  - Write `list` and make sure it finds the Bluetooth device. If no device is found you need to fix this first!
+  - Look in Plejd addon log and make sure there is no `unable to find a bluetooth adapter` line
+- Listen to `#` in the MQTT integration and watch Plejd mqtt messages come in
+  - Initial device discovery messages originate from the Plejd API, so if you set up that correctly you should get new devices in HA
+  - Plejd log will show something like `discovered light (DIM-01) named ....`
+  - State change messages originate from the Plejd Bluetooth connection, so if you get those you should be able to listen to Plejd state changes as well as being able to set states!
+  - Initial sync may take many minutes until all devices have the correct on/off/brightness states in HA
+- One Plejd device means max one BLE connection, meaning using the Plejd app over BT will disconnect the addon BLE connection
+  - It seems you can kick yourself out (by connecting using the app) even when you have multiple devices if the app happens to connect to the same device as the addon is using
 
 ## Transitions
 
@@ -158,6 +187,8 @@ The code in this project follows the [Airbnb JavaScript guide](https://github.co
 
 For a nice developer experience it is very convenient to have `eslint` and `prettier` installed in your favorite editor (such as VS Code) and use the "format on save" option (or invoke formatting by Alt+Shift+F in VS Code). Any code issues should appear in the problems window inside the editor, as well as when running the command above.
 
+When contributing, please do so by forking the repo and then using pull requests towards the dev branch.
+
 ### Logs
 
 Logs are color coded and can be accessed on the Log tab of the addon. If you set log level to debug, verbose or silly you will generate a lot of log output
@@ -175,7 +206,8 @@ Out of the box you can for example view elapsed time by selecting multiple lines
 
 ```JSON
 {
-  ... other settings,
+  // other settings
+  // ...
   "logFileHighlighter.customPatterns": [
     {
         "pattern": "ERR",

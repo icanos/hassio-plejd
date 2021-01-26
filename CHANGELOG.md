@@ -9,8 +9,9 @@
 
 **Implemented enhancements:**
 
-- Adjust code to airbnb style guid, including eslint rules and prettier config.
+- Adjust code to airbnb style guid, including eslint rules and prettier config
 - Updated dependencies
+- Improved readme with info about installation, debugging, and logging
 
 **Fixed bugs:**
 
@@ -21,6 +22,7 @@
 
 - Cannot read property 'length' of undefined - when turning of the light [\#134](https://github.com/icanos/hassio-plejd/issues/134)
 - Idea: Add device id and shouldRetry to writeQueue [\#128](https://github.com/icanos/hassio-plejd/issues/128)
+- Request: Clarify versions/readme [\#126](https://github.com/icanos/hassio-plejd/issues/126)
 - light.turn_off turns the lights on [\#124](https://github.com/icanos/hassio-plejd/issues/124)
 - Reverse transition: revisit [\#68](https://github.com/icanos/hassio-plejd/issues/68)
 
@@ -40,18 +42,23 @@
 - Bump bl from 1.2.2 to 1.2.3 in /plejd [\#112](https://github.com/icanos/hassio-plejd/pull/112) ([dependabot[bot]](https://github.com/apps/dependabot))
 - Bump lodash from 4.17.15 to 4.17.19 in /plejd [\#93](https://github.com/icanos/hassio-plejd/pull/93) ([dependabot[bot]](https://github.com/apps/dependabot))
 
-## 0.4.6 (2020-11-24)
+## 0.4.8 (2020-11-24)
 
 **Closed issues:**
 
 - Unable to install [\#111](https://github.com/icanos/hassio-plejd/issues/111)
+
+## 0.4.7 (2020-05-12)
+
+**Closed issues:**
+
 - Reverse transition: revisit [\#68](https://github.com/icanos/hassio-plejd/issues/68)
 
 **Merged pull requests:**
 
 - transitions work [\#89](https://github.com/icanos/hassio-plejd/pull/89) ([icanos](https://github.com/icanos))
 
-## 0.4.5 (2020-05-06)
+## 0.4.6 (2020-05-06)
 
 **Closed issues:**
 
@@ -61,6 +68,11 @@
 **Merged pull requests:**
 
 - fixed build error [\#84](https://github.com/icanos/hassio-plejd/pull/84) ([icanos](https://github.com/icanos))
+
+## 0.4.5 (2020-03-26)
+
+**Merged pull requests:**
+
 - fixed build error and upped version [\#81](https://github.com/icanos/hassio-plejd/pull/81) ([icanos](https://github.com/icanos))
 
 ## 0.4.4 (2020-03-19)

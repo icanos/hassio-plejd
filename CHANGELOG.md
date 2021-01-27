@@ -40,42 +40,69 @@
 - Bump ini from 1.3.5 to 1.3.8 in /plejd [\#116](https://github.com/icanos/hassio-plejd/pull/116) ([dependabot[bot]](https://github.com/apps/dependabot))
 - Remove dead code [\#113](https://github.com/icanos/hassio-plejd/pull/113) ([thomasloven](https://github.com/thomasloven))
 - Bump bl from 1.2.2 to 1.2.3 in /plejd [\#112](https://github.com/icanos/hassio-plejd/pull/112) ([dependabot[bot]](https://github.com/apps/dependabot))
-- Bump lodash from 4.17.15 to 4.17.19 in /plejd [\#93](https://github.com/icanos/hassio-plejd/pull/93) ([dependabot[bot]](https://github.com/apps/dependabot))
 
-## 0.4.8 (2020-11-24)
+## [0.4.8](https://github.com/icanos/hassio-plejd/tree/0.4.8) (2020-11-24)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.7...0.4.8)
 
 **Closed issues:**
 
 - Unable to install [\#111](https://github.com/icanos/hassio-plejd/issues/111)
+- No state change on scene [\#109](https://github.com/icanos/hassio-plejd/issues/109)
+- UnhandledPromiseRejectionWarning: DBusError: Failed to activate service 'org.bluez': timed out [\#108](https://github.com/icanos/hassio-plejd/issues/108)
+- UnhandledPromiseRejectionWarning: DBusError: Failed to activate service 'org.bluez': timed out  [\#107](https://github.com/icanos/hassio-plejd/issues/107)
+- UnhandledPromiseRejectionWarning: DBusError: Operation already in progress [\#106](https://github.com/icanos/hassio-plejd/issues/106)
+- failed to start discovery. Make sure no other add-on is currently scanning [\#103](https://github.com/icanos/hassio-plejd/issues/103)
+- \(node:294\) UnhandledPromiseRejectionWarning: DBusError: Does Not Exist [\#95](https://github.com/icanos/hassio-plejd/issues/95)
+- Error after RPI 3 B+ setup [\#94](https://github.com/icanos/hassio-plejd/issues/94)
+- Installation instruction needs to be changed [\#90](https://github.com/icanos/hassio-plejd/issues/90)
+- Losing connection [\#80](https://github.com/icanos/hassio-plejd/issues/80)
+- Looks like it detects my divices but i still get some errors [\#75](https://github.com/icanos/hassio-plejd/issues/75)
+- Support for Accesories [\#71](https://github.com/icanos/hassio-plejd/issues/71)
 
-## 0.4.7 (2020-05-12)
+**Merged pull requests:**
+
+- Bump lodash from 4.17.15 to 4.17.19 in /plejd [\#93](https://github.com/icanos/hassio-plejd/pull/93) ([dependabot[bot]](https://github.com/apps/dependabot))
+
+## [0.4.7](https://github.com/icanos/hassio-plejd/tree/0.4.7) (2020-06-12)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.6...0.4.7)
 
 **Closed issues:**
 
+- Plejd app cant find devices after hassio.plejd connected [\#87](https://github.com/icanos/hassio-plejd/issues/87)
+- plejd-ble: disconnecting / what do i do wrong:\( [\#82](https://github.com/icanos/hassio-plejd/issues/82)
 - Reverse transition: revisit [\#68](https://github.com/icanos/hassio-plejd/issues/68)
 
 **Merged pull requests:**
 
 - transitions work [\#89](https://github.com/icanos/hassio-plejd/pull/89) ([icanos](https://github.com/icanos))
 
-## 0.4.6 (2020-05-06)
+## [0.4.6](https://github.com/icanos/hassio-plejd/tree/0.4.6) (2020-05-06)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.5...0.4.6)
 
 **Closed issues:**
 
 - Installation issue [\#83](https://github.com/icanos/hassio-plejd/issues/83)
+- Addon needs to manually be restarted [\#79](https://github.com/icanos/hassio-plejd/issues/79)
 - Cant install v 0.4.4 [\#77](https://github.com/icanos/hassio-plejd/issues/77)
 
 **Merged pull requests:**
 
 - fixed build error [\#84](https://github.com/icanos/hassio-plejd/pull/84) ([icanos](https://github.com/icanos))
 
-## 0.4.5 (2020-03-26)
+## [0.4.5](https://github.com/icanos/hassio-plejd/tree/0.4.5) (2020-03-26)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.4...0.4.5)
 
 **Merged pull requests:**
 
 - fixed build error and upped version [\#81](https://github.com/icanos/hassio-plejd/pull/81) ([icanos](https://github.com/icanos))
 
-## 0.4.4 (2020-03-19)
+## [0.4.4](https://github.com/icanos/hassio-plejd/tree/0.4.4) (2020-03-19)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.3...0.4.4)
 
 **Implemented enhancements:**
 
@@ -90,7 +117,9 @@
 
 - disabled apparmor since lots of issues with that [\#76](https://github.com/icanos/hassio-plejd/pull/76) ([icanos](https://github.com/icanos))
 
-## 0.4.3 (2020-03-13)
+## [0.4.3](https://github.com/icanos/hassio-plejd/tree/0.4.3) (2020-03-13)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.2...0.4.3)
 
 **Fixed bugs:**
 
@@ -105,7 +134,9 @@
 
 - updated to comply with new api version [\#73](https://github.com/icanos/hassio-plejd/pull/73) ([icanos](https://github.com/icanos))
 
-## 0.4.2 (2020-03-03)
+## [0.4.2](https://github.com/icanos/hassio-plejd/tree/0.4.2) (2020-03-03)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.1...0.4.2)
 
 **Closed issues:**
 
@@ -115,13 +146,17 @@
 
 - reworked write queue and added configurable wait time [\#67](https://github.com/icanos/hassio-plejd/pull/67) ([icanos](https://github.com/icanos))
 
-## 0.4.1 (2020-02-29)
+## [0.4.1](https://github.com/icanos/hassio-plejd/tree/0.4.1) (2020-02-29)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.0...0.4.1)
 
 **Merged pull requests:**
 
 - added missing file to dockerfile [\#66](https://github.com/icanos/hassio-plejd/pull/66) ([icanos](https://github.com/icanos))
 
-## 0.4.0 (2020-02-29)
+## [0.4.0](https://github.com/icanos/hassio-plejd/tree/0.4.0) (2020-02-29)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.3.4...0.4.0)
 
 **New features:**
 
@@ -144,7 +179,9 @@
 
 - scene support, wph-01 and write queues [\#64](https://github.com/icanos/hassio-plejd/pull/64) ([icanos](https://github.com/icanos))
 
-## 0.3.4 (2020-01-27)
+## [0.3.4](https://github.com/icanos/hassio-plejd/tree/0.3.4) (2020-01-27)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.3.3...0.3.4)
 
 **New features:**
 
@@ -158,7 +195,9 @@
 
 - new config parameter [\#55](https://github.com/icanos/hassio-plejd/pull/55) ([icanos](https://github.com/icanos))
 
-## 0.3.3 (2020-01-24)
+## [0.3.3](https://github.com/icanos/hassio-plejd/tree/0.3.3) (2020-01-24)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.3.2...0.3.3)
 
 **Merged pull requests:**
 
@@ -168,19 +207,23 @@
 
 - v0.3.1, DBusError: Software caused connection abort [\#50](https://github.com/icanos/hassio-plejd/issues/50)
 
-## 0.3.2 (2020-01-24)
+## [0.3.2](https://github.com/icanos/hassio-plejd/tree/0.3.2) (2020-01-24)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.3.1...0.3.2)
 
 **Merged pull requests:**
 
 - potential bug fixed and new version [\#51](https://github.com/icanos/hassio-plejd/pull/51) ([icanos](https://github.com/icanos))
 
-## 0.3.1 (2020-01-24)
+## [0.3.1](https://github.com/icanos/hassio-plejd/tree/0.3.1) (2020-01-24)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.3.0...0.3.1)
 
 **Merged pull requests:**
 
 - added missing dbus access [\#49](https://github.com/icanos/hassio-plejd/pull/49) ([icanos](https://github.com/icanos))
 
-## 0.3.0 (2020-01-24)
+## [0.3.0](https://github.com/icanos/hassio-plejd/tree/0.3.0) (2020-01-24)
 
 **New features:**
 

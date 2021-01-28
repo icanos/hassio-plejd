@@ -2,7 +2,7 @@ const EventEmitter = require('events');
 const mqtt = require('mqtt');
 const Logger = require('./Logger');
 
-const startTopic = 'hass/status';
+const startTopics = ['hass/status', 'homeassistant/status'];
 
 const logger = Logger.getLogger('plejd-mqtt');
 
@@ -74,9 +74,9 @@ class MqttClient extends EventEmitter {
     this.client.on('connect', () => {
       logger.info('Connected to MQTT.');
 
-      this.client.subscribe(startTopic, (err) => {
+      this.client.subscribe(startTopics, (err) => {
         if (err) {
-          logger.error(`Unable to subscribe to ${startTopic}`);
+          logger.error(`Unable to subscribe to status topics`);
         }
 
         self.emit('connected');

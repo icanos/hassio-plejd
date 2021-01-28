@@ -93,7 +93,7 @@ If you restore a backup from a 32bit system to a new 64bit system, use the Rebui
 
 ### Configuration
 
-You need to add the following to your `configuration.yaml` file:
+You need to add the MQTT integration to Home Assistant either by going to Configuration -> Integrations and clicking the Add Integration button, or by adding the following to your `configuration.yaml` file:
 
 ```
 mqtt:
@@ -102,15 +102,7 @@ mqtt:
   password: !secret mqtt_password
   discovery: true
   discovery_prefix: homeassistant
-  birth_message:
-    topic: 'hass/status'
-    payload: 'online'
-  will_message:
-    topic: 'hass/status'
-    payload: 'offline'
 ```
-
-The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing all devices).
 
 The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 

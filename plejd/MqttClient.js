@@ -15,6 +15,7 @@ const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 const getPath = ({ id, type }) => `${discoveryPrefix}/${type}/${nodeId}/${id}`;
 const getConfigPath = (plug) => `${getPath(plug)}/config`;
 const getStateTopic = (plug) => `${getPath(plug)}/state`;
+const getAvailabilityTopic = plug => `${getPath(plug)}/availability`;
 const getCommandTopic = (plug) => `${getPath(plug)}/set`;
 const getSceneEventTopic = () => 'plejd/event/scene';
 
@@ -24,6 +25,7 @@ const getDiscoveryPayload = (device) => ({
   unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
   state_topic: getStateTopic(device),
   command_topic: getCommandTopic(device),
+  availability_topic: getAvailabilityTopic(device),
   optimistic: false,
   brightness: `${device.dimmable}`,
   device: {
@@ -125,6 +127,16 @@ class MqttClient extends EventEmitter {
     this.client.reconnect();
   }
 
+  disconnect(callback) {
+    this.devices.forEach((device) => {
+      this.client.publish(
+        getAvailabilityTopic(device),
+        "offline"
+      );
+    });
+    this.client.end(callback);
+  }
+
   discover(devices) {
     this.devices = devices;
 
@@ -142,6 +154,9 @@ class MqttClient extends EventEmitter {
       self.deviceMap[device.id] = payload.unique_id;
 
       self.client.publish(getConfigPath(device), JSON.stringify(payload));
+      setTimeout(() => {
+        self.client.publish(getAvailabilityTopic(device), "online");
+      }, 2000);
     });
   }
 
@@ -178,6 +193,7 @@ class MqttClient extends EventEmitter {
     }
 
     this.client.publish(getStateTopic(device), payload);
+    this.client.publish(getAvailabilityTopic(device), "online");
   }
 
   sceneTriggered(scene) {

@@ -100,7 +100,7 @@ class MqttClient extends EventEmitter {
         ? JSON.parse(message.toString())
         : message.toString();
 
-      if (topic === startTopic) {
+      if (startTopics.includes(topic)) {
         logger.info('Home Assistant has started. lets do discovery.');
         self.emit('connected');
       } else if (topic.includes('set')) {

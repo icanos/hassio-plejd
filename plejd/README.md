@@ -30,6 +30,7 @@ The add-on has been tested on the following platforms:
 
 - Mac OS Catalina 10.15.1 with Node v. 13.2.0
 - Raspberry Pi 4 with Hass.io
+- Raspberry Pi 4 with Hass.io/aarch64
 
 #### Tested Plejd devices
 
@@ -39,6 +40,7 @@ The add-on has been tested on the following platforms:
 - CTR-01
 - REL-01
 - REL-02
+- WPH-01
 
 ### Easy Installation
 
@@ -63,7 +65,13 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 - A new Local Add-on should appear named Plejd. Open that and install.
 - Enjoy!
 
-### NOTE
+### Install older versions or developemnt version
+
+To install older versions, follow the "Manual Installation" instructions above, but copy the code from [one of the releases](https://github.com/icanos/hassio-plejd/releases). To test new functionality you can download the development version, available in the [develop branch](https://github.com/icanos/hassio-plejd/tree/feature/develop).
+
+### IMPORTANT INFORMATION
+
+#### Startup error message
 
 When starting the add-on, the log displays this message:
 
@@ -74,9 +82,31 @@ parse error: Expected string key before ':' at line 1, column 4
 
 However, the add-on still works as expected and this is something I'm looking into, but not with that much effort yet though.
 
+#### Running the Plejd add-on in VirtualBox on Windows
+
+If on Windows + VirtualBox or similar setup
+
+- Install VirtualBox extensions to get USB 2/3
+- Redirect correct USB device
+- Potentially try to replace BT drivers with WinUSB using Zadig
+- (Re)start VirtualBox HA machine
+
+#### Running the Plejd add-on outside of HassOS
+
+If you're planning on running this add-on outside of HassOS, you might need to turn off AppArmor in the `config.json` file. This is due to missing AppArmor configuration that is performed in HassOS (if you've manually done it, ignore this).
+
+Open the `config.json` file and locate `host_dbus`, after that line, insert: `"apparmor": "no",` and then restart the add-on.
+
+More information about available parameters can be found here:
+https://developers.home-assistant.io/docs/en/hassio_addon_config.html
+
+#### Migration from 32bit to 64 bit
+
+If you restore a backup from a 32bit system to a new 64bit system, use the Rebuild option in the Add-on
+
 ### Configuration
 
-You need to add the following to your `configuration.yaml` file:
+You need to add the MQTT integration to Home Assistant either by going to Configuration -> Integrations and clicking the Add Integration button, or by adding the following to your `configuration.yaml` file:
 
 ```
 mqtt:
@@ -85,28 +115,59 @@ mqtt:
   password: !secret mqtt_password
   discovery: true
   discovery_prefix: homeassistant
-  birth_message:
-    topic: 'hass/status'
-    payload: 'online'
-  will_message:
-    topic: 'hass/status'
-    payload: 'offline'
 ```
 
-The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing all devices).
+The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing information about all Plejd devices found).
 
 The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 
-| Parameter            | Value                                                                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                        |
-| username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                              |
-| password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                              |
-| mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                      |
-| mqttUsername         | Username of the MQTT broker                                                                                                                       |
-| mqttPassword         | Password of the MQTT broker                                                                                                                       |
-| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms. _Added in v. 5_. |
-| connectionTimeout    | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.           |
+| Parameter            | Value                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                           |
+| username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                 |
+| password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                 |
+| mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                                                         |
+| mqttUsername         | Username of the MQTT broker                                                                                                                                                          |
+| mqttPassword         | Password of the MQTT broker                                                                                                                                                          |
+| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms.                                                     |
+| logLevel             | Minimim log level. Supported values are `error`, `warn`, `info`, `debug`, `verbose`, `silly` with increasing amount of logging. Do not log more than `info` for production purposes. |
+| connectionTimeout    | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.                                              |
+| writeQueueWaitTime   | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.                                               |
+
+## Having issues to get the addon working?
+
+If you're having issues to get the addon working, there are a few things you can look into:
+
+- Increase log level of plugin to debug, verbose or silly in configuration and restart addon. Refer to the "Logs" section below for information on how to get the full logs.
+- Make sure MQTT is correctly configured. If using the HomeAssistant Supervisor (HassIO) Addon mosquitto, changing from `broker: "mqtt://localhost"` to `broker: "core-mosquitto"` can sometimes help (username and password as before)
+- Make sure that the MQTT integration works! Config => Integrations => MQTT => Configure => Listen to "#" (everything), then publish to topic `home-assistant/switch/1/power` and make sure you see the message below when listening
+- Make sure BT is working
+  - Go to HA console (login as "root", write `login` to access normal terminal (or SSH or similar)
+  - Start `bluetoothctl` interactive command
+  - Write `list` and make sure it finds the Bluetooth device. If no device is found you need to fix this first!
+  - Look in Plejd addon log and make sure there is no `unable to find a bluetooth adapter` line
+- Listen to `#` in the MQTT integration and watch Plejd mqtt messages come in
+  - Initial device discovery messages originate from the Plejd API, so if you set up that correctly you should get new devices in HA
+  - Plejd log will show something like `discovered light (DIM-01) named ....`
+  - State change messages originate from the Plejd Bluetooth connection, so if you get those you should be able to listen to Plejd state changes as well as being able to set states!
+  - Initial sync may take many minutes until all devices have the correct on/off/brightness states in HA
+- One Plejd device means max one BLE connection, meaning using the Plejd app over BT will disconnect the addon BLE connection
+  - It seems you can kick yourself out (by connecting using the app) even when you have multiple devices if the app happens to connect to the same device as the addon is using
+
+## Transitions
+
+Transitions from Home Assistant are supported (for dimmable devices) when transition is longer than 1 second. Plejd will do a bit of internal transitioning (default soft start is 0.1 seconds).
+
+This implementation will transition each device independently, meaning that brightness change might be choppy if transitioning many devices at once or a changing brightness a lot in a limited time. Hassio-plejd's communication channel seems to handle a few updates per second, this is the combined value for all devices.
+
+Transition points will be skipped if the queue of messages to be sent is over a certain threshold, by default equal to the number of devices in the system. Total transition time is prioritized rather than smoothness.
+
+Recommendations
+
+- Only transition a few devices at a time when possible
+- Expect 5-10 brightness changes per second, meaning 5 devices => 1-2 updates per device per second
+- ... meaning that SLOW transitions will work well (wake-up light, gradually fade over a minute, ...), but quick ones will only work well for few devices or small relative changes in brightness
+- When experiencing choppy quick transitions, turn transitioning off and let the Plejd hardware do the work instead
 
 ## I want voice control!
 
@@ -118,69 +179,68 @@ https://www.home-assistant.io/integrations/google_assistant/
 Check this out for more information on how you can get your Plejd lights controlled using HomeKit:
 https://www.home-assistant.io/integrations/homekit/
 
-## Changelog
+## Developing
 
-_v 0.3.4_:
+The code in this project follows the [Airbnb JavaScript guide](https://github.com/airbnb/javascript) with a few exceptions. Do run the `npm run lint:fix` command in the `plejd` folder (after running `npm install`) and fix any remaining issues before committing. If copying the plugin locally to your Home Assistant instance _do not include the node_modules directory_, strange errors will happen during build!
 
-- NEW: `connectionTimeout` configuration parameter to enable tweaking of wait time on connection, usable for RPi 3B+.
-- FIX: Reworked some logging to get better understanding of what happens.
+For a nice developer experience it is very convenient to have `eslint` and `prettier` installed in your favorite editor (such as VS Code) and use the "format on save" option (or invoke formatting by Alt+Shift+F in VS Code). Any code issues should appear in the problems window inside the editor, as well as when running the command above.
 
-_v 0.3.0_:
+When contributing, please do so by forking the repo and then using pull requests towards the dev branch.
 
-- NEW: New BLE manager, DBus instead of noble
-- FIX: Adding entities as devices now as well
-- FIX: Bug fixes
+### Logs
 
-_v 0.2.8_:
+Logs are color coded and can be accessed on the Log tab of the addon. If you set log level to debug, verbose or silly you will generate a lot of log output
+that will quickly scroll out of view. Logs can be exported through Docker that hosts all Home Assistant addons. To do that:
 
-- FIX: Reset characteristic state on disconnect
+- SSH or console access the HA installation
+- Identify the docker container name using `docker container ls` (NAMES column). Example name used `addon_local_plejd`
+- tail logs: `tail -f addon_local_plejd`
+- tail logs, strip color coding and save to file `docker logs -f addon_local_plejd | sed 's/\x1b\[[0-9;]*m//g' > /config/plejd.log` (output file might need to be adjusted)
 
-_v 0.2.7_:
+### View logs in VS Code addon
 
-- FIX: Added exception handling to unsubscribing lastData characteristic if already disconnected
+Logs extracted as above can easily be viewed in the VS Code Home Assistant addon, which will default to using the excellent `Log File Highlighter` extension to parse the file.
+Out of the box you can for example view elapsed time by selecting multiple lines and keeping an eye in the status bar. If you're feeling fancy you can get back the removed color information by adding something like below to the the `settings.json` configuration of VS Code.
 
-_v 0.2.6_:
-
-- FIX: Added null check to remove listeners for characteristics
-
-_v 0.2.5_:
-
-- FIX: Invalid scene id in events/scene message
-
-_v 0.2.4_:
-
-- Stability improvements
-
-_v 0.2.3_:
-
-- FIX: Container build error fix
-
-_v 0.2.2_:
-
-- Stability improvements
-
-_v 0.2.1_:
-
-- Stability improvements
-
-_v 0.2.0_:
-
-- Stability improvements
-- Bugfixes
-
-_v 0.1.1_:
-
-- FIX: Fixed missing reference on startup, preventing add-on from starting
-
-_v 0.1.0_:
-
-- NEW: Rewrote the BLE integration for more stability
-- FIX: discovery wasn't always sent
-
-_previous_:
-
-- FIX: bug preventing add-on from building
-- NEW: Added support for Plejd devices with multiple outputs (such as DIM-02)
+```JSON
+{
+  // other settings
+  // ...
+  "logFileHighlighter.customPatterns": [
+    {
+        "pattern": "ERR",
+        "foreground": "#af1f1f",
+        "fontStyle": "bold",
+    },
+    {
+        "pattern": "WRN",
+        "foreground": "#af6f00",
+        "fontStyle": "bold",
+    },
+    {
+      "pattern": "INF",
+      "foreground": "#44d",
+      "fontStyle": "bold"
+    },
+    {
+      "pattern": "VRB",
+      "foreground": "#4a4",
+    },
+    {
+      "pattern": "DBG",
+      "foreground": "#4a4",
+    },
+    {
+      "pattern": "SIL",
+      "foreground": "#999"
+    },
+    {
+      "pattern": "\\[.*\\]",
+      "foreground": "#666"
+    }
+  ]
+}
+```
 
 ## License
 

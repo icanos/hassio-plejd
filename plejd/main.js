@@ -8,7 +8,7 @@ const Configuration = require('./Configuration');
 
 const logger = Logger.getLogger('plejd-main');
 
-const version = '0.4.8';
+const version = '0.5.0';
 
 async function main() {
   logger.info(`Starting Plejd add-on v. ${version}`);
@@ -27,7 +27,7 @@ async function main() {
   );
   const client = new MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
-  ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach(signal => {
+  ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach((signal) => {
     process.on(signal, () => {
       client.disconnect(() => process.exit(0));
     });

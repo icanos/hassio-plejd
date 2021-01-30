@@ -15,7 +15,7 @@ const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 const getPath = ({ id, type }) => `${discoveryPrefix}/${type}/${nodeId}/${id}`;
 const getConfigPath = (plug) => `${getPath(plug)}/config`;
 const getStateTopic = (plug) => `${getPath(plug)}/state`;
-const getAvailabilityTopic = plug => `${getPath(plug)}/availability`;
+const getAvailabilityTopic = (plug) => `${getPath(plug)}/availability`;
 const getCommandTopic = (plug) => `${getPath(plug)}/set`;
 const getSceneEventTopic = () => 'plejd/event/scene';
 
@@ -78,7 +78,7 @@ class MqttClient extends EventEmitter {
 
       this.client.subscribe(startTopics, (err) => {
         if (err) {
-          logger.error(`Unable to subscribe to status topics`);
+          logger.error('Unable to subscribe to status topics');
         }
 
         self.emit('connected');
@@ -129,10 +129,7 @@ class MqttClient extends EventEmitter {
 
   disconnect(callback) {
     this.devices.forEach((device) => {
-      this.client.publish(
-        getAvailabilityTopic(device),
-        "offline"
-      );
+      this.client.publish(getAvailabilityTopic(device), 'offline');
     });
     this.client.end(callback);
   }
@@ -155,7 +152,7 @@ class MqttClient extends EventEmitter {
 
       self.client.publish(getConfigPath(device), JSON.stringify(payload));
       setTimeout(() => {
-        self.client.publish(getAvailabilityTopic(device), "online");
+        self.client.publish(getAvailabilityTopic(device), 'online');
       }, 2000);
     });
   }
@@ -193,7 +190,7 @@ class MqttClient extends EventEmitter {
     }
 
     this.client.publish(getStateTopic(device), payload);
-    this.client.publish(getAvailabilityTopic(device), "online");
+    this.client.publish(getAvailabilityTopic(device), 'online');
   }
 
   sceneTriggered(scene) {

@@ -27,7 +27,7 @@ async function main() {
   );
   const client = new MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
-  ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach(signal => {
+  ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach((signal) => {
     process.on(signal, () => {
       client.disconnect(() => process.exit(0));
     });

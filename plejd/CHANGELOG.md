@@ -1,6 +1,8 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## 0.5.0
+## [0.5.0](https://github.com/icanos/hassio-plejd/tree/0.5.0) (2021-01-30)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.8...0.5.0)
 
 **New features:**
 

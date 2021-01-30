@@ -1,5 +1,13 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+### [0.5.1](https://github.com/icanos/hassio-plejd/tree/0.5.1) (2021-01-30)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.5.0...0.5.1)
+
+**Merged pull requests:**
+
+- Fix CRLF line endings that snuck into plejd.sh [\#155](https://github.com/icanos/hassio-plejd/pull/155) ([SweVictor](https://github.com/SweVictor))
+
 ## [0.5.0](https://github.com/icanos/hassio-plejd/tree/0.5.0) (2021-01-30)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.4.8...0.5.0)
@@ -23,6 +31,7 @@
 **Closed issues:**
 
 - Remove or fix mqtt settings code [\#147](https://github.com/icanos/hassio-plejd/issues/147)
+- Errors in BLE cause addon to reinitialize [\#143](https://github.com/icanos/hassio-plejd/issues/143)
 - Cannot read property 'length' of undefined - when turning of the light [\#134](https://github.com/icanos/hassio-plejd/issues/134)
 - Idea: Add device id and shouldRetry to writeQueue [\#128](https://github.com/icanos/hassio-plejd/issues/128)
 - Request: Clarify versions/readme [\#126](https://github.com/icanos/hassio-plejd/issues/126)

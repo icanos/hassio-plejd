@@ -20,10 +20,12 @@
 
 **Closed issues:**
 
+- Remove or fix mqtt settings code [\#147](https://github.com/icanos/hassio-plejd/issues/147)
 - Cannot read property 'length' of undefined - when turning of the light [\#134](https://github.com/icanos/hassio-plejd/issues/134)
 - Idea: Add device id and shouldRetry to writeQueue [\#128](https://github.com/icanos/hassio-plejd/issues/128)
 - Request: Clarify versions/readme [\#126](https://github.com/icanos/hassio-plejd/issues/126)
 - light.turn_off turns the lights on [\#124](https://github.com/icanos/hassio-plejd/issues/124)
+- startWriteQueue\(\) - Nothing happens [\#120](https://github.com/icanos/hassio-plejd/issues/120)
 - Reverse transition: revisit [\#68](https://github.com/icanos/hassio-plejd/issues/68)
 
 **Merged pull requests:**
@@ -38,6 +40,8 @@
 - Bump axios from 0.19.0 to 0.21.1 in /plejd [\#133](https://github.com/icanos/hassio-plejd/pull/133) ([dependabot[bot]](https://github.com/apps/dependabot))
 - Improve transitioning of brightness [\#127](https://github.com/icanos/hassio-plejd/pull/127) ([SweVictor](https://github.com/SweVictor))
 - Bump ini from 1.3.5 to 1.3.8 in /plejd [\#116](https://github.com/icanos/hassio-plejd/pull/116) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Publish availability of devices [\#115](https://github.com/icanos/hassio-plejd/pull/115) ([thomasloven](https://github.com/thomasloven))
+- Listen for Home Assistant default birth message [\#114](https://github.com/icanos/hassio-plejd/pull/114) ([thomasloven](https://github.com/thomasloven))
 - Remove dead code [\#113](https://github.com/icanos/hassio-plejd/pull/113) ([thomasloven](https://github.com/thomasloven))
 - Bump bl from 1.2.2 to 1.2.3 in /plejd [\#112](https://github.com/icanos/hassio-plejd/pull/112) ([dependabot[bot]](https://github.com/apps/dependabot))
 
@@ -50,7 +54,7 @@
 - Unable to install [\#111](https://github.com/icanos/hassio-plejd/issues/111)
 - No state change on scene [\#109](https://github.com/icanos/hassio-plejd/issues/109)
 - UnhandledPromiseRejectionWarning: DBusError: Failed to activate service 'org.bluez': timed out [\#108](https://github.com/icanos/hassio-plejd/issues/108)
-- UnhandledPromiseRejectionWarning: DBusError: Failed to activate service 'org.bluez': timed out  [\#107](https://github.com/icanos/hassio-plejd/issues/107)
+- UnhandledPromiseRejectionWarning: DBusError: Failed to activate service 'org.bluez': timed out [\#107](https://github.com/icanos/hassio-plejd/issues/107)
 - UnhandledPromiseRejectionWarning: DBusError: Operation already in progress [\#106](https://github.com/icanos/hassio-plejd/issues/106)
 - failed to start discovery. Make sure no other add-on is currently scanning [\#103](https://github.com/icanos/hassio-plejd/issues/103)
 - \(node:294\) UnhandledPromiseRejectionWarning: DBusError: Does Not Exist [\#95](https://github.com/icanos/hassio-plejd/issues/95)

@@ -27,6 +27,12 @@ async function main() {
   );
   const client = new MqttClient(config.mqttBroker, config.mqttUsername, config.mqttPassword);
 
+  ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach(signal => {
+    process.on(signal, () => {
+      client.disconnect(() => process.exit(0));
+    });
+  });
+
   plejdApi.login().then(() => {
     // load all sites and find the one that we want (from config)
     plejdApi.getSites().then((site) => {

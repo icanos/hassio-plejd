@@ -67,7 +67,7 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 
 ### Install older versions or developemnt version
 
-To install older versions, follow the "Manual Installation" instructions above, but copy the code from [one of the releases](https://github.com/icanos/hassio-plejd/releases). To test new functionality you can download the development version, available in the [develop branch](https://github.com/icanos/hassio-plejd/tree/feature/develop).
+To install older versions, follow the "Manual Installation" instructions above, but copy the code from [one of the releases](https://github.com/icanos/hassio-plejd/releases). To test new functionality you can download the development version, available in the [develop branch](https://github.com/icanos/hassio-plejd/tree/develop).
 
 ### IMPORTANT INFORMATION
 

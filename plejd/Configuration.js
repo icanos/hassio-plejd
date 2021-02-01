@@ -1,14 +1,26 @@
 const fs = require('fs');
 
 class Configuration {
-  static _config = null;
+  static _options = null;
 
-  static getConfiguration() {
-    if (!Configuration._config) {
+  static getOptions() {
+    if (!Configuration._options) {
       const rawData = fs.readFileSync('/data/options.json');
-      Configuration._config = JSON.parse(rawData);
+      const config = JSON.parse(rawData);
+
+      const defaultRawData = fs.readFileSync('/plejd/config.json');
+      const defaultConfig = JSON.parse(defaultRawData).options;
+
+      Configuration._options = { ...defaultConfig, ...config };
+
+      console.log('Config:', {
+        ...Configuration._options,
+        username: '---scrubbed---',
+        password: '---scrubbed---',
+        mqttPassword: '---scrubbed---',
+      });
     }
-    return Configuration._config;
+    return Configuration._options;
   }
 }
 

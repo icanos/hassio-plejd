@@ -9,12 +9,14 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Copy data for add-on
 COPY ./config.json /plejd/
 COPY ./Configuration.js /plejd/
+COPY ./DeviceRegistry.js /plejd/
 COPY ./Logger.js /plejd/
 COPY ./main.js /plejd/
 COPY ./MqttClient.js /plejd/
 COPY ./package.json /plejd/
+COPY ./PlejdAddon.js /plejd/
 COPY ./PlejdApi.js /plejd/
-COPY ./PlejdService.js /plejd/
+COPY ./PlejdBLE.js /plejd/
 COPY ./Scene.js /plejd/
 COPY ./SceneManager.js /plejd/
 COPY ./SceneStep.js /plejd/

@@ -1,48 +1,54 @@
-/* eslint-disable max-classes-per-file */
 const EventEmitter = require('events');
+const Logger = require('./Logger');
 const Scene = require('./Scene');
 
+const logger = Logger.getLogger('scene-manager');
 class SceneManager extends EventEmitter {
-  constructor(site, devices) {
+  deviceRegistry;
+  plejdBle;
+  scenes;
+
+  constructor(deviceRegistry, plejdBle) {
     super();
 
-    this.site = site;
-    this.scenes = [];
-    this.devices = devices;
-
-    this.init();
+    this.deviceRegistry = deviceRegistry;
+    this.plejdBle = plejdBle;
+    this.scenes = {};
   }
 
   init() {
-    const scenes = this.site.scenes.filter((x) => x.hiddenFromSceneList === false);
-    // eslint-disable-next-line no-restricted-syntax
-    for (const scene of scenes) {
-      const idx = this.site.sceneIndex[scene.sceneId];
-      this.scenes.push(new Scene(idx, scene, this.site.sceneSteps));
-    }
+    const scenes = this.deviceRegistry.apiSite.scenes.filter(
+      (x) => x.hiddenFromSceneList === false,
+    );
+
+    this.scenes = {};
+    scenes.forEach((scene) => {
+      const idx = this.deviceRegistry.apiSite.sceneIndex[scene.sceneId];
+      this.scenes[scene.sceneId] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
+    });
   }
 
-  executeScene(sceneIndex, ble) {
-    const scene = this.scenes.find((x) => x.id === sceneIndex);
+  executeScene(sceneIndex) {
+    const scene = this.scenes[sceneIndex];
     if (!scene) {
+      logger.info(`Scene with id ${sceneIndex} not found`);
+      logger.verbose(`Scenes: ${JSON.stringify(this.scenes, null, 2)}`);
       return;
     }
 
-    // eslint-disable-next-line no-restricted-syntax
-    for (const step of scene.steps) {
-      const device = this.devices.find((x) => x.serialNumber === step.deviceId);
+    scene.steps.forEach((step) => {
+      const device = this.deviceRegistry.getDeviceBySerialNumber(step.deviceId);
       if (device) {
         if (device.dimmable && step.state) {
-          ble.turnOn(device.id, { brightness: step.brightness });
+          this.plejdBle.turnOn(device.id, { brightness: step.brightness });
         } else if (!device.dimmable && step.state) {
-          ble.turnOn(device.id, {});
+          this.plejdBle.turnOn(device.id, {});
         } else if (!step.state) {
-          ble.turnOff(device.id, {});
+          this.plejdBle.turnOff(device.id, {});
         }
       }
-    }
+    });
   }
 }
 
 module.exports = SceneManager;
-/* eslint-disable */

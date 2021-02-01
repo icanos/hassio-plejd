@@ -23,6 +23,7 @@ module.exports = {
 
 function getRules() {
   return {
+    'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
     // Allows modification of properties passed to functions.
     // Notably used in array.forEach(e => {e.prop = val;})
     'no-param-reassign': ['error', { props: false }],

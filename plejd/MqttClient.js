@@ -109,12 +109,6 @@ class MqttClient extends EventEmitter {
     });
 
     this.client.on('message', (topic, message) => {
-      // const command = message.toString();
-      const command =
-        message.toString().substring(0, 1) === '{'
-          ? JSON.parse(message.toString())
-          : message.toString();
-
       if (startTopics.includes(topic)) {
         logger.info('Home Assistant has started. lets do discovery.');
         this.emit('connected');
@@ -123,6 +117,10 @@ class MqttClient extends EventEmitter {
         if (decodedTopic) {
           const device = this.deviceRegistry.getDevice(decodedTopic.id);
           const deviceName = device ? device.name : '';
+
+          const command = message.toString().substring(0, 1) === '{'
+            ? JSON.parse(message.toString())
+            : message.toString();
 
           switch (decodedTopic.command) {
             case 'set':
@@ -142,7 +140,11 @@ class MqttClient extends EventEmitter {
             case 'config':
             case 'availability':
               logger.verbose(
-                `Sent mqtt ${decodedTopic.command} command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}). ${decodedTopic.command === 'availability' ? message : ''}`,
+                `Sent mqtt ${decodedTopic.command} command for ${
+                  decodedTopic.type
+                }, ${deviceName} (${decodedTopic.id}). ${
+                  decodedTopic.command === 'availability' ? message : ''
+                }`,
               );
               break;
             default:
@@ -172,8 +174,7 @@ class MqttClient extends EventEmitter {
     this.deviceRegistry.allDevices.forEach((device) => {
       logger.debug(`Sending discovery for ${device.name}`);
 
-      const payload =
-        device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
+      const payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
       logger.info(
         `Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`,
       );

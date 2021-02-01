@@ -149,9 +149,7 @@ class PlejBLE extends EventEmitter {
     logger.verbose('All active BLE device connections cleaned up.');
 
     logger.verbose('Setting up interfacesAdded subscription and discovery filter');
-    this.objectManager.on('InterfacesAdded', (path, interfaces) =>
-      this.onInterfacesAdded(path, interfaces),
-    );
+    this.objectManager.on('InterfacesAdded', (path, interfaces) => this.onInterfacesAdded(path, interfaces));
 
     this.adapter.SetDiscoveryFilter({
       UUIDs: new dbus.Variant('as', [PLEJD_SERVICE]),
@@ -313,11 +311,11 @@ class PlejBLE extends EventEmitter {
     const isDimmable = this.deviceRegistry.getDevice(deviceId).dimmable;
 
     if (
-      transition > 1 &&
-      isDimmable &&
-      (initialBrightness || initialBrightness === 0) &&
-      (targetBrightness || targetBrightness === 0) &&
-      targetBrightness !== initialBrightness
+      transition > 1
+      && isDimmable
+      && (initialBrightness || initialBrightness === 0)
+      && (targetBrightness || targetBrightness === 0)
+      && targetBrightness !== initialBrightness
     ) {
       // Transition time set, known initial and target brightness
       // Calculate transition interval time based on delta brightness and max steps per second
@@ -452,23 +450,21 @@ class PlejBLE extends EventEmitter {
     this.characteristics.lastData.StartNotify();
   }
 
-  async throttledInit(delay) {
+  async throttledInit(delayMs) {
     if (this.initInProgress) {
       logger.debug(
         'ThrottledInit already in progress. Skipping this call and returning existing promise.',
       );
       return this.initInProgress;
     }
-    this.initInProgress = new Promise((resolve) =>
-      setTimeout(async () => {
-        const result = await this.init().catch((err) => {
-          logger.error('TrottledInit exception calling init(). Will re-throw.', err);
-          throw err;
-        });
-        this.initInProgress = null;
-        resolve(result);
-      }, delay),
-    );
+    this.initInProgress = new Promise((resolve) => setTimeout(async () => {
+      const result = await this.init().catch((err) => {
+        logger.error('TrottledInit exception calling init(). Will re-throw.', err);
+        throw err;
+      });
+      this.initInProgress = null;
+      resolve(result);
+    }, delayMs));
     return this.initInProgress;
   }
 
@@ -562,8 +558,8 @@ class PlejBLE extends EventEmitter {
 
         if (this.writeQueue.some((item) => item.deviceId === queueItem.deviceId)) {
           logger.verbose(
-            `Skipping ${deviceName} (${queueItem.deviceId}) ` +
-              `${queueItem.log} due to more recent command in queue.`,
+            `Skipping ${deviceName} (${queueItem.deviceId}) `
+              + `${queueItem.log} due to more recent command in queue.`,
           );
           // Skip commands if new ones exist for the same deviceId
           // still process all messages in order

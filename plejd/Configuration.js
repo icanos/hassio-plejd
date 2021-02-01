@@ -13,6 +13,7 @@ class Configuration {
 
       Configuration._options = { ...defaultConfig, ...config };
 
+      // eslint-disable-next-line no-console
       console.log('Config:', {
         ...Configuration._options,
         username: '---scrubbed---',

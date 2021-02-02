@@ -25,8 +25,26 @@ const logFormat = printf((info) => {
 
 /** Winston-based logger */
 class Logger {
+  static shouldLogLookup = {};
+
   constructor() {
     throw new Error('Please call createLogger instead');
+  }
+
+  static getLogLevel() {
+    const config = Configuration.getConfiguration();
+    // eslint-disable-next-line max-len
+    const level = (config.logLevel && LEVELS.find((l) => l.startsWith(config.logLevel[0].toLowerCase())))
+      || 'info';
+    return level;
+  }
+
+  static shouldLog(logLevel) {
+    if (!Logger.shouldLogLookup[logLevel]) {
+      // eslint-disable-next-line max-len
+      Logger.shouldLogLookup[logLevel] = Logger.logLevels().levels[logLevel] <= Logger.logLevels().levels[Logger.getLogLevel()];
+    }
+    return Logger.shouldLogLookup[logLevel];
   }
 
   /** Created logger will follow Winston createLogger, but
@@ -35,10 +53,7 @@ class Logger {
    * Levels (in order): error, warn, info, debug, verbose, silly
    * */
   static getLogger(moduleName) {
-    const config = Configuration.getConfiguration();
-    // eslint-disable-next-line max-len
-    const level = (config.logLevel && LEVELS.find((l) => l.startsWith(config.logLevel[0].toLowerCase())))
-      || 'info';
+    const level = Logger.getLogLevel();
 
     const logger = winston.createLogger({
       format: combine(

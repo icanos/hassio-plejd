@@ -13,10 +13,10 @@ const LAST_DATA_UUID = '31ba0005-6085-4726-be45-040c957391b5';
 const AUTH_UUID = '31ba0009-6085-4726-be45-040c957391b5';
 const PING_UUID = '31ba000a-6085-4726-be45-040c957391b5';
 
-const BLE_CMD_DIM_CHANGE = '00c8';
-const BLE_CMD_DIM2_CHANGE = '0098';
-const BLE_CMD_STATE_CHANGE = '0097';
-const BLE_CMD_SCENE_TRIG = '0021';
+const BLE_CMD_DIM_CHANGE = 0xc8;
+const BLE_CMD_DIM2_CHANGE = 0x98;
+const BLE_CMD_STATE_CHANGE = 0x97;
+const BLE_CMD_SCENE_TRIG = 0x21;
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
 const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
@@ -688,28 +688,31 @@ class PlejdService extends EventEmitter {
     const data = value.value;
     const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
 
-    const deviceId = parseInt(decoded[0], 10);
-    // What is bytes 2-3?
-    const cmd = decoded.toString('hex', 3, 5);
-    const state = parseInt(decoded.toString('hex', 5, 6), 10); // Overflows for command 0x001b, scene command
-    // eslint-disable-next-line no-bitwise
-    const data2 = parseInt(decoded.toString('hex', 6, 8), 16) >> 8;
-
     if (decoded.length < 5) {
-      logger.debug(`Too short raw event ignored: ${decoded.toString('hex')}`);
+      if (Logger.shouldLog('debug')) {
+        // decoded.toString() could potentially be expensive
+        logger.debug(`Too short raw event ignored: ${decoded.toString('hex')}`);
+      }
       // ignore the notification since too small
       return;
     }
 
+    const deviceId = decoded.readUInt8(0);
+    // What is bytes 2-3?
+    const cmd = decoded.readUInt8(4);
+    const state = decoded.length > 5 ? decoded.readUInt8(5) : 0;
+    // What is byte 6?
+    const dim = decoded.length > 7 ? decoded.readUInt8(7) : 0;
+    // Bytes 8-9 are sometimes present, what are they?
+
     const deviceName = this._getDeviceName(deviceId);
-    logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
-    logger.verbose(
-      `Device ${deviceId}, cmd ${cmd.toString('hex')}, state ${state}, dim/data2 ${data2}`,
-    );
+    if (Logger.shouldLog('debug')) {
+      // decoded.toString() could potentially be expensive
+      logger.debug(`Raw event received: ${decoded.toString('hex')}`);
+      logger.verbose(`Device ${deviceId}, cmd ${cmd.toString(16)}, state ${state}, dim ${dim}`);
+    }
 
     if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
-      const dim = data2;
-
       logger.debug(`${deviceName} (${deviceId}) got state+dim update. S: ${state}, D: ${dim}`);
 
       this.emit('stateChanged', deviceId, {
@@ -733,7 +736,7 @@ class PlejdService extends EventEmitter {
       };
       logger.verbose(`All states: ${this.plejdDevices}`);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
-      const sceneId = parseInt(decoded.toString('hex', 5, 6), 16);
+      const sceneId = state;
       const sceneName = this._getDeviceName(sceneId);
 
       logger.debug(
@@ -741,10 +744,14 @@ class PlejdService extends EventEmitter {
       );
 
       this.emit('sceneTriggered', deviceId, sceneId);
-    } else if (cmd === '001b') {
+    } else if (cmd === 0x1b) {
       logger.silly('Command 001b seems to be some kind of often repeating ping/mesh data');
     } else {
-      logger.verbose(`Command ${cmd.toString('hex')} unknown. Device ${deviceName} (${deviceId})`);
+      logger.verbose(
+        `Command ${cmd.toString(16)} unknown. ${decoded.toString(
+          'hex',
+        )}. Device ${deviceName} (${deviceId})`,
+      );
     }
   }
 

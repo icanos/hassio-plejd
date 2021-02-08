@@ -141,87 +141,91 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _inspectDevicesDiscovered() {
-    if (this.bleDevices.length === 0) {
-      logger.error('Discovery timeout elapsed, no devices found. Starting reconnect loop...');
-      this.startReconnectPeriodicallyLoop();
-      return;
-    }
+    try {
+      if (this.bleDevices.length === 0) {
+        logger.error('Discovery timeout elapsed, no devices found. Starting reconnect loop...');
+        throw new Error('Discovery timeout elapsed');
+      }
 
-    logger.info(`Device discovery done, found ${this.bleDevices.length} Plejd devices`);
+      logger.info(`Device discovery done, found ${this.bleDevices.length} Plejd devices`);
 
-    const sortedDevices = this.bleDevices.sort((a, b) => b.rssi - a.rssi);
+      const sortedDevices = this.bleDevices.sort((a, b) => b.rssi - a.rssi);
 
-    // eslint-disable-next-line no-restricted-syntax
-    for (const plejd of sortedDevices) {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const plejd of sortedDevices) {
+        try {
+          logger.verbose(`Inspecting ${plejd.path}`);
+          if (plejd.instance) {
+            logger.info(`Connecting to ${plejd.path}`);
+            // eslint-disable-next-line no-await-in-loop
+            await plejd.instance.Connect();
+
+            logger.verbose('Connected. Waiting for timeout before reading characteristics...');
+            // eslint-disable-next-line no-await-in-loop
+            await delay(this.config.connectionTimeout * 1000);
+
+            // eslint-disable-next-line no-await-in-loop
+            const connectedPlejdDevice = await this._onDeviceConnected(plejd);
+            if (connectedPlejdDevice) {
+              break;
+            }
+          }
+        } catch (err) {
+          logger.warn('Unable to connect.', err);
+        }
+      }
+
       try {
-        logger.verbose(`Inspecting ${plejd.path}`);
-        if (plejd.instance) {
-          logger.info(`Connecting to ${plejd.path}`);
-          // eslint-disable-next-line no-await-in-loop
-          await plejd.instance.Connect();
-
-          logger.verbose('Connected. Waiting for timeout before reading characteristics...');
-          // eslint-disable-next-line no-await-in-loop
-          await delay(this.config.connectionTimeout * 1000);
-
-          // eslint-disable-next-line no-await-in-loop
-          const connectedPlejdDevice = await this._onDeviceConnected(plejd);
-          if (connectedPlejdDevice) {
-            break;
+        logger.verbose('Stopping discovery...');
+        await this.adapter.StopDiscovery();
+        logger.verbose('Stopped BLE discovery');
+      } catch (err) {
+        logger.error('Failed to stop discovery.', err);
+        if (err.message.includes('Operation already in progress')) {
+          logger.info(
+            'If you continue to get "operation already in progress" error, you can try power cycling the bluetooth adapter. Get root console access, run "bluetoothctl" => "power off" => "power on" => "exit" => restart addon.',
+          );
+          try {
+            await delay(250);
+            logger.verbose('Power cycling...');
+            await this._powerCycleAdapter();
+            logger.verbose('Trying again...');
+            await this._startGetPlejdDevice();
+          } catch (errInner) {
+            logger.error('Failed to retry internalInit. Starting reconnect loop', errInner);
+            throw new Error('Failed to retry internalInit');
           }
         }
-      } catch (err) {
-        logger.warn('Unable to connect.', err);
+        logger.error('Failed to start discovery. Make sure no other add-on is currently scanning.');
+        throw new Error('Failed to start discovery');
       }
-    }
 
-    try {
-      logger.verbose('Stopping discovery...');
-      await this.adapter.StopDiscovery();
-      logger.verbose('Stopped BLE discovery');
+      if (!this.connectedDevice) {
+        logger.error('Could not connect to any Plejd device. Starting reconnect loop...');
+        throw new Error('Could not connect to any Plejd device');
+      }
+
+      logger.info(`BLE Connected to ${this.connectedDevice.name}`);
+      this.emit('connected');
+
+      // Connected and authenticated, start ping
+      this.startPing();
+      this.startWriteQueue();
+
+      // After we've authenticated, we need to hook up the event listener
+      // for changes to lastData.
+      this.characteristics.lastDataProperties.on('PropertiesChanged', (
+        iface,
+        properties,
+        // invalidated (third param),
+      ) => this.onLastDataUpdated(iface, properties));
+      this.characteristics.lastData.StartNotify();
     } catch (err) {
-      logger.error('Failed to stop discovery.', err);
-      if (err.message.includes('Operation already in progress')) {
-        logger.info(
-          'If you continue to get "operation already in progress" error, you can try power cycling the bluetooth adapter. Get root console access, run "bluetoothctl" => "power off" => "power on" => "exit" => restart addon.',
-        );
-        try {
-          await delay(250);
-          logger.verbose('Power cycling...');
-          await this._powerCycleAdapter();
-          logger.verbose('Trying again...');
-          await this._startGetPlejdDevice();
-        } catch (errInner) {
-          logger.error('Failed to retry internalInit. Starting reconnect loop');
-          this.startReconnectPeriodicallyLoop();
-          return;
-        }
-      }
-      logger.error('Failed to start discovery. Make sure no other add-on is currently scanning.');
-      return;
-    }
-
-    if (!this.connectedDevice) {
-      logger.error('Could not connect to any Plejd device. Starting reconnect loop...');
+      // This method is run on a timer, so errors can't e re-thrown.
+      // Start reconnect loop if errors occur here
+      logger.debug(`Starting reconnect loop due to ${err.message}`);
       this.startReconnectPeriodicallyLoop();
-      return;
     }
-
-    logger.info(`BLE Connected to ${this.connectedDevice.name}`);
-    this.emit('connected');
-
-    // Connected and authenticated, start ping
-    this.startPing();
-    this.startWriteQueue();
-
-    // After we've authenticated, we need to hook up the event listener
-    // for changes to lastData.
-    this.characteristics.lastDataProperties.on('PropertiesChanged', (
-      iface,
-      properties,
-      // invalidated (third param),
-    ) => this.onLastDataUpdated(iface, properties));
-    this.characteristics.lastData.StartNotify();
   }
 
   async _getInterface() {

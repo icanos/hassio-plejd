@@ -1,4 +1,5 @@
 const axios = require('axios').default;
+const fs = require('fs');
 
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
@@ -25,10 +26,72 @@ class PlejdApi {
 
   async init() {
     logger.info('init()');
-    await this.login();
-    await this.getSites();
-    await this.getSiteDetails();
+    const cache = await this.getCachedCopy();
+    const cacheExists = cache && cache.siteId && cache.siteDetails && cache.sessionToken;
+
+    logger.debug(`Prefer cache? ${this.config.preferCachedApiResponse}`);
+    logger.debug(`Cache exists? ${cacheExists ? `Yes, created ${cache.dtCache}` : 'No'}`);
+
+    if (this.config.preferCachedApiResponse && cacheExists) {
+      logger.info(
+        `Cache preferred. Skipping api requests and setting api data to response from ${cache.dtCache}`,
+      );
+      logger.silly(`Cached response: ${JSON.stringify(cache, null, 2)}`);
+      this.siteId = cache.siteId;
+      this.siteDetails = cache.siteDetails;
+      this.sessionToken = cache.sessionToken;
+    } else {
+      try {
+        await this.login();
+        await this.getSites();
+        await this.getSiteDetails();
+        this.saveCachedCopy();
+      } catch (err) {
+        if (cacheExists) {
+          logger.warn('Failed to get api response, using cached copy instead');
+          this.siteId = cache.siteId;
+          this.siteDetails = cache.siteDetails;
+          this.sessionToken = cache.sessionToken;
+        } else {
+          logger.error('Api request failed, no cached fallback available', err);
+          throw err;
+        }
+      }
+    }
+    this.deviceRegistry.setApiSite(this.siteDetails);
+    this.deviceRegistry.cryptoKey = this.siteDetails.plejdMesh.cryptoKey;
+
     this.getDevices();
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  async getCachedCopy() {
+    logger.info('Getting cached api response from disk');
+
+    try {
+      const rawData = await fs.promises.readFile('/data/cachedApiResponse.json');
+      const cachedCopy = JSON.parse(rawData);
+
+      return cachedCopy;
+    } catch (err) {
+      logger.warn('No cached api response could be read. This is normal on the first run', err);
+      return null;
+    }
+  }
+
+  async saveCachedCopy() {
+    logger.info('Saving cached copy');
+    try {
+      const rawData = JSON.stringify({
+        siteId: this.siteId,
+        siteDetails: this.siteDetails,
+        sessionToken: this.sessionToken,
+        dtCache: new Date().toISOString(),
+      });
+      await fs.promises.writeFile('/data/cachedApiResponse.json', rawData);
+    } catch (err) {
+      logger.error('Failed to save cache of api response', err);
+    }
   }
 
   async login() {
@@ -115,13 +178,11 @@ class PlejdApi {
       }
 
       this.siteDetails = response.data.result[0];
-      this.deviceRegistry.setApiSite(this.siteDetails);
 
       logger.info(`Site details for site id ${this.siteId} found`);
       logger.silly(JSON.stringify(this.siteDetails, null, 2));
 
-      this.deviceRegistry.cryptoKey = this.siteDetails.plejdMesh.cryptoKey;
-      if (!this.deviceRegistry.cryptoKey) {
+      if (!this.siteDetails.plejdMesh.cryptoKey) {
         throw new Error('API: No crypto key set for site');
       }
     } catch (error) {

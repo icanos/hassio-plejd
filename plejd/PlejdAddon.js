@@ -99,16 +99,11 @@ class PlejdAddon extends EventEmitter {
 
     this.mqttClient.init();
 
-    // init the BLE interface
-    this.plejdBLEHandler.on('connectFailed', () => {
-      logger.verbose('Were unable to connect, will retry.');
-      this._bleInitLoop();
+    this.plejdBLEHandler.on('connected', () => {
+      logger.info('Bluetooth connected. Plejd BLE up and running!');
     });
-
-    // this.plejdBLE.init();
-
-    this.plejdBLEHandler.on('authenticated', () => {
-      logger.verbose('plejd: connected via bluetooth.');
+    this.plejdBLEHandler.on('reconnecting', () => {
+      logger.info('Bluetooth reconnecting...');
     });
 
     // subscribe to changes from Plejd
@@ -128,25 +123,13 @@ class PlejdAddon extends EventEmitter {
       }
     });
 
-    await this._bleInitLoop();
-  }
-
-  async _bleInitLoop() {
     try {
-      if (this.bleInitTimeout) {
-        clearTimeout(this.bleInitTimeout);
-      }
       await this.plejdBLEHandler.init();
     } catch (err) {
-      logger.warn('Failed BLE init, trying again in 35s', err);
-      this.bleInitTimer = setTimeout(() => {
-        try {
-          this._bleInitLoop();
-        } catch (err2) {
-          logger.warn('Why do we need to catch error here?', err2);
-        }
-      }, 35000);
+      logger.error('Failed init() of BLE. Starting reconnect loop.');
+      await this.plejdBLEHandler.startReconnectPeriodicallyLoop();
     }
+    logger.info('Main init done');
   }
 }
 

@@ -28,7 +28,7 @@ class DeviceRegistry {
   }
 
   addScene(scene) {
-    this.plejdDevices[scene.id] = scene;
+    this.sceneDevices[scene.id] = scene;
   }
 
   setApiSite(siteDetails) {

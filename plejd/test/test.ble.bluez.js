@@ -1,4 +1,4 @@
-const PlejdBLE = require('../PlejdBLE');
+const PlejdBLE = require('../PlejdBLEHandler');
 
 const cryptoKey = '';
 

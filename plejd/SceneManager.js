@@ -24,14 +24,14 @@ class SceneManager extends EventEmitter {
     this.scenes = {};
     scenes.forEach((scene) => {
       const idx = this.deviceRegistry.apiSite.sceneIndex[scene.sceneId];
-      this.scenes[scene.sceneId] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
+      this.scenes[scene.id] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
     });
   }
 
-  executeScene(sceneIndex) {
-    const scene = this.scenes[sceneIndex];
+  executeScene(sceneId) {
+    const scene = this.scenes[sceneId];
     if (!scene) {
-      logger.info(`Scene with id ${sceneIndex} not found`);
+      logger.info(`Scene with id ${sceneId} not found`);
       logger.verbose(`Scenes: ${JSON.stringify(this.scenes, null, 2)}`);
       return;
     }

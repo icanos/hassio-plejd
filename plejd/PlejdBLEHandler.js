@@ -39,8 +39,19 @@ class PlejBLEHandler extends EventEmitter {
   adapter;
   adapterProperties;
   config;
-  deviceRegistry;
+  bleDevices = [];
+  bleDeviceTransitionTimers = {};
+  bus = null;
+  connectedDevice = null;
   consecutiveWriteFails;
+  deviceRegistry;
+  discoveryTimeout = null;
+  plejdService = null;
+  plejdDevices = {};
+  pingRef = null;
+  writeQueue = {};
+  writeQueueRef = null;
+  reconnectInProgress = false;
 
   // Refer to BLE-states.md regarding the internal BLE/bluez state machine of Bluetooth states
   // These states refer to the state machine of this file
@@ -54,18 +65,7 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('Starting Plejd BLE Handler, resetting all device states.');
 
     this.config = Configuration.getOptions();
-
-    this.connectedDevice = null;
     this.deviceRegistry = deviceRegistry;
-    this.plejdService = null;
-    this.bleDevices = [];
-    this.bleDeviceTransitionTimers = {};
-    this.discoveryTimeout = null;
-    this.plejdDevices = {};
-    this.connectEventHooked = false;
-    this.writeQueue = [];
-    this.writeQueueRef = null;
-    this.reconnectInProgress = false;
 
     // Holds a reference to all characteristics
     this.characteristics = {
@@ -76,15 +76,23 @@ class PlejBLEHandler extends EventEmitter {
       ping: null,
     };
 
-    this.bus = null;
-
     this.on('writeFailed', (error) => this.onWriteFailed(error));
     this.on('writeSuccess', () => this.onWriteSuccess());
   }
 
   async init() {
     logger.info('init()');
+
     this.bus = dbus.systemBus();
+    this.bus.on('connect', () => {
+      logger.verbose('dbus-next connected');
+    });
+    this.bus.on('error', (err) => {
+      // Uncaught error events will show UnhandledPromiseRejection logs
+      logger.verbose(`dbus-next error event: ${err.message}`);
+    });
+    // this.bus also has a 'message' event that gets emitted _very_ frequently
+
     this.adapter = null;
     this.adapterProperties = null;
     this.consecutiveWriteFails = 0;
@@ -171,7 +179,7 @@ class PlejBLEHandler extends EventEmitter {
             }
           }
         } catch (err) {
-          logger.warn('Unable to connect.', err);
+          logger.warn('Unable to connect. ', err);
         }
       }
 
@@ -350,7 +358,10 @@ class PlejBLEHandler extends EventEmitter {
 
   _scheduleInternalInit() {
     clearTimeout(this.discoveryTimeout);
-    setTimeout(() => this._inspectDevicesDiscovered(), this.config.connectionTimeout * 1000);
+    this.discoveryTimeout = setTimeout(
+      () => this._inspectDevicesDiscovered(),
+      this.config.connectionTimeout * 1000,
+    );
   }
 
   async onInterfacesAdded(path, interfaces) {
@@ -535,10 +546,9 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async startReconnectPeriodicallyLoop() {
+    logger.verbose('startReconnectPeriodicallyLoop');
     if (this.reconnectInProgress) {
-      logger.debug(
-        'Reconnect already in progress. Skipping this call and returning existing promise.',
-      );
+      logger.debug('Reconnect already in progress. Skipping this call.');
       return;
     }
     clearInterval(this.pingRef);
@@ -549,13 +559,13 @@ class PlejBLEHandler extends EventEmitter {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        await delay(5000);
         this.emit('reconnecting');
         logger.info('Reconnecting BLE...');
         await this.init();
         break;
       } catch (err) {
-        logger.warn('Failed reconnecting', err);
-        await delay(1000);
+        logger.warn('Failed reconnecting.', err);
       }
     }
     /* eslint-enable no-await-in-loop */
@@ -604,28 +614,26 @@ class PlejBLEHandler extends EventEmitter {
   async onWriteFailed(error) {
     this.consecutiveWriteFails++;
     logger.debug(`onWriteFailed #${this.consecutiveWriteFails} in a row.`, error);
+    logger.verbose(`Error message: ${error.message}`);
 
     let errorIndicatesDisconnected = false;
     if (error.message.contains('error: 0x0e')) {
-      logger.error("'Unlikely error' (0x0e) pinging Plejd. Will retry.", error);
+      logger.error("'Unlikely error' (0x0e) writing to Plejd. Will retry.", error);
     } else if (error.message.contains('Not connected')) {
-      logger.error("'Not connected' (0x0e) pinging Plejd. Plejd device is probably disconnected.");
+      logger.error(
+        "'Not connected' (0x0e) writing to Plejd. Plejd device is probably disconnected.",
+      );
       errorIndicatesDisconnected = true;
-    } else if (
-      error.message.contains(
-        'Method "WriteValue" with signature "aya{sv}" on interface "org.bluez.GattCharacteristic1" doesn\'t exist',
-      )
-    ) {
+    } else if (error.message.contains('Method "WriteValue" with signature')) {
       logger.error("'Method \"WriteValue\" doesn't exist'. Plejd device is probably disconnected.");
       errorIndicatesDisconnected = true;
     }
 
-    if (errorIndicatesDisconnected) {
-      logger.warn('Write error indicates BLE is disconnected. Reconnecting...');
-      await this.startReconnectPeriodicallyLoop();
-    } else if (this.consecutiveWriteFails >= 5) {
-      logger.warn('Write failed 5 times in a row, reconnecting....');
-      await this.startReconnectPeriodicallyLoop();
+    if (errorIndicatesDisconnected || this.consecutiveWriteFails >= 5) {
+      logger.warn(
+        `Write error indicates BLE is disconnected. Retry count ${this.consecutiveWriteFails}. Reconnecting...`,
+      );
+      this.startReconnectPeriodicallyLoop();
     }
   }
 
@@ -882,7 +890,7 @@ class PlejBLEHandler extends EventEmitter {
         state,
         dim: 0,
       };
-      logger.verbose(`All states: ${this.plejdDevices}`);
+      logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
       const sceneId = state;
       const sceneName = this.deviceRegistry.getSceneName(sceneId);

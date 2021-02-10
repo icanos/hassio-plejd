@@ -49,7 +49,7 @@ class PlejBLEHandler extends EventEmitter {
   plejdService = null;
   plejdDevices = {};
   pingRef = null;
-  writeQueue = {};
+  writeQueue = [];
   writeQueueRef = null;
   reconnectInProgress = false;
 

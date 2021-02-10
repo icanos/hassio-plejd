@@ -65,6 +65,10 @@ class DeviceRegistry {
     return (this.plejdDevices[deviceId] || {}).name;
   }
 
+  getScene(sceneId) {
+    return this.sceneDevices[sceneId];
+  }
+
   getSceneName(sceneId) {
     return (this.sceneDevices[sceneId] || {}).name;
   }

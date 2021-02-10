@@ -24,7 +24,7 @@ class SceneManager extends EventEmitter {
     this.scenes = {};
     scenes.forEach((scene) => {
       const idx = this.deviceRegistry.apiSite.sceneIndex[scene.sceneId];
-      this.scenes[scene.id] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
+      this.scenes[idx] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
     });
   }
 

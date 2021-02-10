@@ -118,7 +118,7 @@ class PlejdApi {
         logger.error('Server returned status 400. probably invalid credentials, please verify.');
       } else if (error.response.status === 403) {
         logger.error(
-          'Server returned status 403, forbidden. Plejd seems to do this sometimes, despite correct credentials. Possibly waiting a long time will fix this.',
+          'Server returned status 403, forbidden. Plejd service does this sometimes, despite correct credentials. Possibly throttling logins. Waiting a long time often fixes this.',
         );
       } else {
         logger.error('Unable to retrieve session token response: ', error);

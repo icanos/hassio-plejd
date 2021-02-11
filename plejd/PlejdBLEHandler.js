@@ -617,17 +617,17 @@ class PlejBLEHandler extends EventEmitter {
     logger.verbose(`Error message: ${error.message}`);
 
     let errorIndicatesDisconnected = false;
-    if (error.message.contains('error: 0x0e')) {
+
+    if (error.message.includes('error: 0x0e')) {
       logger.error("'Unlikely error' (0x0e) writing to Plejd. Will retry.", error);
-    } else if (error.message.contains('Not connected')) {
-      logger.error(
-        "'Not connected' (0x0e) writing to Plejd. Plejd device is probably disconnected.",
-      );
+    } else if (error.message.includes('Not connected')) {
+      logger.error("'Not connected' writing to Plejd. Plejd device is probably disconnected.");
       errorIndicatesDisconnected = true;
-    } else if (error.message.contains('Method "WriteValue" with signature')) {
+    } else if (error.message.includes('Method "WriteValue" with signature')) {
       logger.error("'Method \"WriteValue\" doesn't exist'. Plejd device is probably disconnected.");
       errorIndicatesDisconnected = true;
     }
+    logger.verbose(`Made it ${errorIndicatesDisconnected} || ${this.consecutiveWriteFails >= 5}`);
 
     if (errorIndicatesDisconnected || this.consecutiveWriteFails >= 5) {
       logger.warn(
@@ -647,14 +647,14 @@ class PlejBLEHandler extends EventEmitter {
       await this.characteristics.ping.WriteValue([...ping], {});
       pong = await this.characteristics.ping.ReadValue({});
     } catch (err) {
-      logger.error(`Error pinging Plejd ${err.message}`);
+      logger.verbose(`Error pinging Plejd, calling onWriteFailed... ${err.message}`);
       await this.onWriteFailed(err);
       return;
     }
 
     // eslint-disable-next-line no-bitwise
     if (((ping[0] + 1) & 0xff) !== pong[0]) {
-      logger.error('Plejd ping failed');
+      logger.verbose('Plejd ping failed, pong contains wrong data. Calling onWriteFailed...');
       await this.onWriteFailed(new Error(`plejd ping failed ${ping[0]} - ${pong[0]}`));
       return;
     }
@@ -901,7 +901,9 @@ class PlejBLEHandler extends EventEmitter {
 
       this.emit('sceneTriggered', deviceId, sceneId);
     } else if (cmd === 0x1b) {
-      logger.silly('Command 001b seems to be some kind of often repeating ping/mesh data');
+      logger.silly(
+        'Command 001b is the time of the Plejd devices command, not implemented currently',
+      );
     } else {
       logger.verbose(
         `Command ${cmd.toString(16)} unknown. ${decoded.toString(

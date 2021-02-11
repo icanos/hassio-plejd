@@ -123,14 +123,19 @@ class MqttClient extends EventEmitter {
 
           const messageString = message.toString();
           const isJsonMessage = messageString.startsWith('{');
-          const command = isJsonMessage
-            ? JSON.parse(messageString)
-            : messageString;
+          const command = isJsonMessage ? JSON.parse(messageString) : messageString;
 
-          if (!isJsonMessage && messageString === 'ON' && this.deviceRegistry.getScene(decodedTopic.id)) {
+          if (
+            !isJsonMessage
+            && messageString === 'ON'
+            && this.deviceRegistry.getScene(decodedTopic.id)
+          ) {
             // Guess that id that got state command without dim value belongs to Scene, not Device
             // This guess could very well be wrong depending on the installation...
-            logger.warn(`Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON. OFF commands still sent to device.`);
+            logger.warn(
+              `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON.`
+                + 'OFF commands still sent to device.',
+            );
             device = this.deviceRegistry.getScene(decodedTopic.id);
           }
           const deviceName = device ? device.name : '';
@@ -164,7 +169,9 @@ class MqttClient extends EventEmitter {
               logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
           }
         } else {
-          logger.verbose(`Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`);
+          logger.verbose(
+            `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
+          );
         }
       }
     });

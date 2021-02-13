@@ -1,13 +1,17 @@
+const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 const PlejdAddon = require('./PlejdAddon');
 
-const logger = Logger.getLogger('plejd-main');
-
-const version = '0.5.1';
-
 async function main() {
   try {
-    logger.info(`Starting Plejd add-on v. ${version}`);
+    // eslint-disable-next-line no-console
+    console.log('Starting Plejd addon and reading configuration...');
+
+    const addonInfo = Configuration.getAddonInfo();
+    const logger = Logger.getLogger('plejd-main');
+
+    logger.info(`Plejd add-on, version ${addonInfo.version}`);
+    logger.verbose(`Addon info: ${JSON.stringify(addonInfo)}`);
 
     const addon = new PlejdAddon();
 
@@ -15,7 +19,8 @@ async function main() {
 
     logger.info('main() finished');
   } catch (err) {
-    logger.error('Catastrophic error. Resetting entire addon in 1 minute', err);
+    // eslint-disable-next-line no-console
+    console.log('Catastrophic error. Resetting entire addon in 1 minute', err);
     setTimeout(() => main(), 60000);
   }
 }

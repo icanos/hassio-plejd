@@ -1,5 +1,27 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+### [0.6.0](https://github.com/icanos/hassio-plejd/tree/0.6.0) (2021-01-30)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.5.1...0.6.0)
+
+**Implemented enhancements:**
+
+- Code restructure testing/input/code review [\#158](https://github.com/icanos/hassio-plejd/issues/158)
+- Offline mode [\#148](https://github.com/icanos/hassio-plejd/issues/148)
+
+**Fixed bugs:**
+
+- Brightness level incorrect with RTR-01 and WPH-01 [\#159](https://github.com/icanos/hassio-plejd/issues/159)
+
+**Closed issues:**
+
+- \[plejd-api\] Unable to retrieve session token response:  Request failed with status code 403 Error: Request failed with status code 403 [\#162](https://github.com/icanos/hassio-plejd/issues/162)
+- Can't turn on/off lights after last update [\#157](https://github.com/icanos/hassio-plejd/issues/157)
+- Brightness level incorrect when changing with RTR-01 or WPH-01 [\#138](https://github.com/icanos/hassio-plejd/issues/138)
+- plejd-ble reconnect attempts [\#123](https://github.com/icanos/hassio-plejd/issues/123)
+- unable to retrieve session token response: Error: Request failed with status code 404 \(and 403\) [\#99](https://github.com/icanos/hassio-plejd/issues/99)
+- Unable to scan BT Plejd [\#97](https://github.com/icanos/hassio-plejd/issues/97)
+
 ### [0.5.1](https://github.com/icanos/hassio-plejd/tree/0.5.1) (2021-01-30)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.5.0...0.5.1)
@@ -19,7 +41,7 @@
 
 **Implemented enhancements:**
 
-- Adjust code to airbnb style guid, including eslint rules and prettier config
+- Adjust code to airbnb style guide, including eslint rules and prettier config
 - Updated dependencies
 - Improved readme with info about installation, debugging, and logging
 

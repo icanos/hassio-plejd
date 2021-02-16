@@ -32,7 +32,7 @@ class Logger {
   }
 
   static getLogLevel() {
-    const config = Configuration.getConfiguration();
+    const config = Configuration.getOptions();
     // eslint-disable-next-line max-len
     const level = (config.logLevel && LEVELS.find((l) => l.startsWith(config.logLevel[0].toLowerCase())))
       || 'info';

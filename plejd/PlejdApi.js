@@ -1,5 +1,7 @@
-const axios = require('axios');
-const EventEmitter = require('events');
+const axios = require('axios').default;
+const fs = require('fs');
+
+const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
 const API_APP_ID = 'zHtVqXt8k4yFyk2QGmgp48D9xZr2G94xWYnF4dak';
@@ -10,271 +12,207 @@ const API_SITE_DETAILS_URL = 'functions/getSiteById';
 
 const logger = Logger.getLogger('plejd-api');
 
-class PlejdApi extends EventEmitter {
-  constructor(siteName, username, password, includeRoomsAsLights) {
-    super();
+class PlejdApi {
+  config;
+  deviceRegistry;
+  sessionToken;
+  siteId;
+  siteDetails;
 
-    this.includeRoomsAsLights = includeRoomsAsLights;
-    this.siteName = siteName;
-    this.username = username;
-    this.password = password;
-
-    this.sessionToken = '';
-    this.site = null;
+  constructor(deviceRegistry) {
+    this.config = Configuration.getOptions();
+    this.deviceRegistry = deviceRegistry;
   }
 
-  login() {
+  async init() {
+    logger.info('init()');
+    const cache = await this.getCachedCopy();
+    const cacheExists = cache && cache.siteId && cache.siteDetails && cache.sessionToken;
+
+    logger.debug(`Prefer cache? ${this.config.preferCachedApiResponse}`);
+    logger.debug(`Cache exists? ${cacheExists ? `Yes, created ${cache.dtCache}` : 'No'}`);
+
+    if (this.config.preferCachedApiResponse && cacheExists) {
+      logger.info(
+        `Cache preferred. Skipping api requests and setting api data to response from ${cache.dtCache}`,
+      );
+      logger.silly(`Cached response: ${JSON.stringify(cache, null, 2)}`);
+      this.siteId = cache.siteId;
+      this.siteDetails = cache.siteDetails;
+      this.sessionToken = cache.sessionToken;
+    } else {
+      try {
+        await this.login();
+        await this.getSites();
+        await this.getSiteDetails();
+        this.saveCachedCopy();
+      } catch (err) {
+        if (cacheExists) {
+          logger.warn('Failed to get api response, using cached copy instead');
+          this.siteId = cache.siteId;
+          this.siteDetails = cache.siteDetails;
+          this.sessionToken = cache.sessionToken;
+        } else {
+          logger.error('Api request failed, no cached fallback available', err);
+          throw err;
+        }
+      }
+    }
+    this.deviceRegistry.setApiSite(this.siteDetails);
+    this.deviceRegistry.cryptoKey = this.siteDetails.plejdMesh.cryptoKey;
+
+    this.getDevices();
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  async getCachedCopy() {
+    logger.info('Getting cached api response from disk');
+
+    try {
+      const rawData = await fs.promises.readFile('/data/cachedApiResponse.json');
+      const cachedCopy = JSON.parse(rawData);
+
+      return cachedCopy;
+    } catch (err) {
+      logger.warn('No cached api response could be read. This is normal on the first run', err);
+      return null;
+    }
+  }
+
+  async saveCachedCopy() {
+    logger.info('Saving cached copy');
+    try {
+      const rawData = JSON.stringify({
+        siteId: this.siteId,
+        siteDetails: this.siteDetails,
+        sessionToken: this.sessionToken,
+        dtCache: new Date().toISOString(),
+      });
+      await fs.promises.writeFile('/data/cachedApiResponse.json', rawData);
+    } catch (err) {
+      logger.error('Failed to save cache of api response', err);
+    }
+  }
+
+  async login() {
     logger.info('login()');
-    logger.info(`logging into ${this.siteName}`);
-    const self = this;
+    logger.info(`logging into ${this.config.site}`);
 
-    const instance = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'X-Parse-Application-Id': API_APP_ID,
-        'Content-Type': 'application/json',
-      },
-    });
+    logger.debug(`sending POST to ${API_BASE_URL}${API_LOGIN_URL}`);
 
-    return new Promise((resolve, reject) => {
-      logger.debug(`sending POST to ${API_BASE_URL}${API_LOGIN_URL}`);
+    try {
+      const response = await this._getAxiosInstance().post(API_LOGIN_URL, {
+        username: this.config.username,
+        password: this.config.password,
+      });
 
-      instance
-        .post(API_LOGIN_URL, {
-          username: this.username,
-          password: this.password,
-        })
-        .then((response) => {
-          logger.info('got session token response');
-          self.sessionToken = response.data.sessionToken;
+      logger.info('got session token response');
+      this.sessionToken = response.data.sessionToken;
 
-          if (!self.sessionToken) {
-            logger.error('No session token received');
-            reject(new Error('no session token received.'));
-          }
+      if (!this.sessionToken) {
+        logger.error('No session token received');
+        throw new Error('API: No session token received.');
+      }
+    } catch (error) {
+      if (error.response.status === 400) {
+        logger.error('Server returned status 400. probably invalid credentials, please verify.');
+      } else if (error.response.status === 403) {
+        logger.error(
+          'Server returned status 403, forbidden. Plejd service does this sometimes, despite correct credentials. Possibly throttling logins. Waiting a long time often fixes this.',
+        );
+      } else {
+        logger.error('Unable to retrieve session token response: ', error);
+      }
+      logger.verbose(`Error details: ${JSON.stringify(error.response, null, 2)}`);
 
-          resolve();
-        })
-        .catch((error) => {
-          if (error.response.status === 400) {
-            logger.error(
-              'Server returned status 400. probably invalid credentials, please verify.',
-            );
-          } else {
-            logger.error('Unable to retrieve session token response: ', error);
-          }
-
-          reject(new Error(`unable to retrieve session token response: ${error}`));
-        });
-    });
+      throw new Error(`API: Unable to retrieve session token response: ${error}`);
+    }
   }
 
-  getSites() {
+  async getSites() {
     logger.info('Get all Plejd sites for account...');
-    const self = this;
 
-    const instance = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'X-Parse-Application-Id': API_APP_ID,
-        'X-Parse-Session-Token': this.sessionToken,
-        'Content-Type': 'application/json',
-      },
-    });
+    logger.debug(`sending POST to ${API_BASE_URL}${API_SITE_LIST_URL}`);
 
-    return new Promise((resolve, reject) => {
-      logger.debug(`sending POST to ${API_BASE_URL}${API_SITE_LIST_URL}`);
+    try {
+      const response = await this._getAxiosInstance().post(API_SITE_LIST_URL);
 
-      instance
-        .post(API_SITE_LIST_URL)
-        .then((response) => {
-          logger.info('got site list response');
-          const site = response.data.result.find((x) => x.site.title === self.siteName);
+      const sites = response.data.result;
+      logger.info(
+        `Got site list response with ${sites.length}: ${sites.map((s) => s.site.title).join(', ')}`,
+      );
+      logger.silly('All sites found:');
+      logger.silly(JSON.stringify(sites, null, 2));
 
-          if (!site) {
-            logger.error(`error: failed to find a site named ${self.siteName}`);
-            reject(new Error(`failed to find a site named ${self.siteName}`));
-            return;
-          }
+      const site = sites.find((x) => x.site.title === this.config.site);
 
-          resolve(site);
-        })
-        .catch((error) => {
-          logger.error('error: unable to retrieve list of sites. error: ', error);
-          return reject(new Error(`plejd-api: unable to retrieve list of sites. error: ${error}`));
-        });
-    });
+      if (!site) {
+        logger.error(`Failed to find a site named ${this.config.site}`);
+        throw new Error(`API: Failed to find a site named ${this.config.site}`);
+      }
+
+      logger.info(`Site found matching configuration name ${this.config.site}`);
+      logger.silly(JSON.stringify(site, null, 2));
+      this.siteId = site.site.siteId;
+    } catch (error) {
+      logger.error('error: unable to retrieve list of sites. error: ', error);
+      throw new Error(`API: unable to retrieve list of sites. error: ${error}`);
+    }
   }
 
-  getSite(siteId) {
-    logger.info('Get site details...');
-    const self = this;
+  async getSiteDetails() {
+    logger.info(`Get site details for ${this.siteId}...`);
 
-    const instance = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'X-Parse-Application-Id': API_APP_ID,
-        'X-Parse-Session-Token': this.sessionToken,
-        'Content-Type': 'application/json',
-      },
-    });
+    logger.debug(`sending POST to ${API_BASE_URL}${API_SITE_DETAILS_URL}`);
 
-    return new Promise((resolve, reject) => {
-      logger.debug(`sending POST to ${API_BASE_URL}${API_SITE_DETAILS_URL}`);
+    try {
+      const response = await this._getAxiosInstance().post(API_SITE_DETAILS_URL, {
+        siteId: this.siteId,
+      });
 
-      instance
-        .post(API_SITE_DETAILS_URL, { siteId })
-        .then((response) => {
-          logger.info('got site details response');
-          if (response.data.result.length === 0) {
-            const msg = `no site with ID ${siteId} was found.`;
-            logger.error(`error: ${msg}`);
-            reject(msg);
-            return;
-          }
+      logger.info('got site details response');
 
-          self.site = response.data.result[0];
-          self.cryptoKey = self.site.plejdMesh.cryptoKey;
+      if (response.data.result.length === 0) {
+        logger.error(`No site with ID ${this.siteId} was found.`);
+        throw new Error(`API: No site with ID ${this.siteId} was found.`);
+      }
 
-          resolve(self.cryptoKey);
-        })
-        .catch((error) => {
-          logger.error('error: unable to retrieve the crypto key. error: ', error);
-          return reject(new Error(`plejd-api: unable to retrieve the crypto key. error: ${error}`));
-        });
-    });
+      this.siteDetails = response.data.result[0];
+
+      logger.info(`Site details for site id ${this.siteId} found`);
+      logger.silly(JSON.stringify(this.siteDetails, null, 2));
+
+      if (!this.siteDetails.plejdMesh.cryptoKey) {
+        throw new Error('API: No crypto key set for site');
+      }
+    } catch (error) {
+      logger.error(`Unable to retrieve site details for ${this.siteId}. error: `, error);
+      throw new Error(`API: Unable to retrieve site details. error: ${error}`);
+    }
   }
 
   getDevices() {
-    const devices = [];
+    logger.info('Getting devices from site details response...');
 
-    logger.verbose(JSON.stringify(this.site));
+    this._getPlejdDevices();
+    this._getRoomDevices();
+    this._getSceneDevices();
+  }
 
-    const roomDevices = {};
+  _getAxiosInstance() {
+    const headers = {
+      'X-Parse-Application-Id': API_APP_ID,
+      'Content-Type': 'application/json',
+    };
 
-    for (let i = 0; i < this.site.devices.length; i++) {
-      const device = this.site.devices[i];
-      const { deviceId } = device;
-
-      const settings = this.site.outputSettings.find((x) => x.deviceParseId === device.objectId);
-      let deviceNum = this.site.deviceAddress[deviceId];
-
-      if (settings) {
-        const outputs = this.site.outputAddress[deviceId];
-        deviceNum = outputs[settings.output];
-      }
-
-      // check if device is dimmable
-      const plejdDevice = this.site.plejdDevices.find((x) => x.deviceId === deviceId);
-      const deviceType = this._getDeviceType(plejdDevice.hardwareId);
-      const { name, type } = deviceType;
-      let { dimmable } = deviceType;
-
-      if (settings) {
-        dimmable = settings.dimCurve !== 'NonDimmable';
-      }
-
-      const newDevice = {
-        id: deviceNum,
-        name: device.title,
-        type,
-        typeName: name,
-        dimmable,
-        version: plejdDevice.firmware.version,
-        serialNumber: plejdDevice.deviceId,
-      };
-
-      if (newDevice.typeName === 'WPH-01') {
-        // WPH-01 is special, it has two buttons which needs to be
-        // registered separately.
-        const inputs = this.site.inputAddress[deviceId];
-        const first = inputs[0];
-        const second = inputs[1];
-
-        let switchDevice = {
-          id: first,
-          name: `${device.title} knapp vä`,
-          type,
-          typeName: name,
-          dimmable,
-          version: plejdDevice.firmware.version,
-          serialNumber: plejdDevice.deviceId,
-        };
-
-        if (roomDevices[device.roomId]) {
-          roomDevices[device.roomId].push(switchDevice);
-        } else {
-          roomDevices[device.roomId] = [switchDevice];
-        }
-        devices.push(switchDevice);
-
-        switchDevice = {
-          id: second,
-          name: `${device.title} knapp hö`,
-          type,
-          typeName: name,
-          dimmable,
-          version: plejdDevice.firmware.version,
-          serialNumber: plejdDevice.deviceId,
-        };
-
-        if (roomDevices[device.roomId]) {
-          roomDevices[device.roomId].push(switchDevice);
-        } else {
-          roomDevices[device.roomId] = [switchDevice];
-        }
-        devices.push(switchDevice);
-      } else {
-        if (roomDevices[device.roomId]) {
-          roomDevices[device.roomId].push(newDevice);
-        } else {
-          roomDevices[device.roomId] = [newDevice];
-        }
-
-        devices.push(newDevice);
-      }
+    if (this.sessionToken) {
+      headers['X-Parse-Session-Token'] = this.sessionToken;
     }
 
-    if (this.includeRoomsAsLights) {
-      logger.debug('includeRoomsAsLights is set to true, adding rooms too.');
-      for (let i = 0; i < this.site.rooms.length; i++) {
-        const room = this.site.rooms[i];
-        const { roomId } = room;
-        const roomAddress = this.site.roomAddress[roomId];
-
-        const newDevice = {
-          id: roomAddress,
-          name: room.title,
-          type: 'light',
-          typeName: 'Room',
-          dimmable: roomDevices[roomId].filter((x) => x.dimmable).length > 0,
-        };
-
-        devices.push(newDevice);
-      }
-      logger.debug('includeRoomsAsLights done.');
-    }
-
-    // add scenes as switches
-    const scenes = this.site.scenes.filter((x) => x.hiddenFromSceneList === false);
-
-    // eslint-disable-next-line no-restricted-syntax
-    for (const scene of scenes) {
-      const sceneNum = this.site.sceneIndex[scene.sceneId];
-      const newScene = {
-        id: sceneNum,
-        name: scene.title,
-        type: 'switch',
-        typeName: 'Scene',
-        dimmable: false,
-        version: '1.0',
-        serialNumber: scene.objectId,
-      };
-
-      devices.push(newScene);
-    }
-
-    return devices;
+    return axios.create({
+      baseURL: API_BASE_URL,
+      headers,
+    });
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -323,6 +261,111 @@ class PlejdApi extends EventEmitter {
       default:
         throw new Error(`Unknown device type with id ${hardwareId}`);
     }
+  }
+
+  _getPlejdDevices() {
+    this.deviceRegistry.clearPlejdDevices();
+
+    this.siteDetails.devices.forEach((device) => {
+      const { deviceId } = device;
+
+      const settings = this.siteDetails.outputSettings.find(
+        (x) => x.deviceParseId === device.objectId,
+      );
+
+      let deviceNum = this.siteDetails.deviceAddress[deviceId];
+
+      if (settings) {
+        const outputs = this.siteDetails.outputAddress[deviceId];
+        deviceNum = outputs[settings.output];
+      }
+
+      // check if device is dimmable
+      const plejdDevice = this.siteDetails.plejdDevices.find((x) => x.deviceId === deviceId);
+      const deviceType = this._getDeviceType(plejdDevice.hardwareId);
+      const { name, type } = deviceType;
+      let { dimmable } = deviceType;
+
+      if (settings) {
+        dimmable = settings.dimCurve !== 'NonDimmable';
+      }
+
+      const newDevice = {
+        id: deviceNum,
+        name: device.title,
+        type,
+        typeName: name,
+        dimmable,
+        roomId: device.roomId,
+        version: plejdDevice.firmware.version,
+        serialNumber: plejdDevice.deviceId,
+      };
+
+      if (newDevice.typeName === 'WPH-01') {
+        // WPH-01 is special, it has two buttons which needs to be
+        // registered separately.
+        const inputs = this.siteDetails.inputAddress[deviceId];
+        const first = inputs[0];
+        const second = inputs[1];
+
+        this.deviceRegistry.addPlejdDevice({
+          ...newDevice,
+          id: first,
+          name: `${device.title} left`,
+        });
+
+        this.deviceRegistry.addPlejdDevice({
+          ...newDevice,
+          id: second,
+          name: `${device.title} right`,
+        });
+      } else {
+        this.deviceRegistry.addPlejdDevice(newDevice);
+      }
+    });
+  }
+
+  _getRoomDevices() {
+    if (this.config.includeRoomsAsLights) {
+      logger.debug('includeRoomsAsLights is set to true, adding rooms too.');
+      this.siteDetails.rooms.forEach((room) => {
+        const { roomId } = room;
+        const roomAddress = this.siteDetails.roomAddress[roomId];
+
+        const newDevice = {
+          id: roomAddress,
+          name: room.title,
+          type: 'light',
+          typeName: 'Room',
+          dimmable: this.deviceIdsByRoom[roomId].some(
+            (deviceId) => this.plejdDevices[deviceId].dimmable,
+          ),
+        };
+
+        this.deviceRegistry.addRoomDevice(newDevice);
+      });
+      logger.debug('includeRoomsAsLights done.');
+    }
+  }
+
+  _getSceneDevices() {
+    // add scenes as switches
+    const scenes = this.siteDetails.scenes.filter((x) => x.hiddenFromSceneList === false);
+
+    scenes.forEach((scene) => {
+      const sceneNum = this.siteDetails.sceneIndex[scene.sceneId];
+      const newScene = {
+        id: sceneNum,
+        name: scene.title,
+        type: 'switch',
+        typeName: 'Scene',
+        dimmable: false,
+        version: '1.0',
+        serialNumber: scene.objectId,
+      };
+
+      this.deviceRegistry.addScene(newScene);
+    });
   }
 }
 

@@ -220,7 +220,7 @@ class PlejBLEHandler extends EventEmitter {
       this.emit('connected');
 
       // Connected and authenticated, request current time and start ping
-      this.requestCurrentPlejdTime();
+      this._requestCurrentPlejdTime();
       this.startPing();
       this.startWriteQueue();
 
@@ -667,7 +667,7 @@ class PlejBLEHandler extends EventEmitter {
     await this.onWriteSuccess();
   }
 
-  async requestCurrentPlejdTime() {
+  async _requestCurrentPlejdTime() {
     logger.info('Requesting current Plejd time...');
 
     // Eg: 0b0102001b: 0b: id, 0102: read, 001b: time
@@ -683,7 +683,7 @@ class PlejBLEHandler extends EventEmitter {
       shouldRetry: true,
       payload,
     });
-    setTimeout(() => this.requestCurrentPlejdTime(), 1000 * 3600); // Once per hour
+    setTimeout(() => this._requestCurrentPlejdTime(), 1000 * 3600); // Once per hour
   }
 
   startWriteQueue() {
@@ -946,22 +946,24 @@ class PlejBLEHandler extends EventEmitter {
         logger.debug(`Plejd time update ${plejdTime.toString()}, diff ${diffSeconds} seconds`);
         if (Math.abs(diffSeconds) > 60) {
           logger.warn(
-            `Plejd time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds`,
+            `Plejd time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
-          const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
-          logger.info(`Setting time to ${now.toString()}`);
-          const payload = Buffer.alloc(10);
-          // E.g: 00 0110 001b 38df2360 00
-          // 00: set?, 0110: don't respond, 001b: time command, 38df236000: the time
-          payload.write('000110001b', 0, 'hex');
-          payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5);
-          payload.write('00', 9, 'hex');
-          this.writeQueue.unshift({
-            deviceId: this.connectedDevice.id,
-            log: 'SetTime',
-            shouldRetry: true,
-            payload,
-          });
+          if (this.connectedDevice && deviceId === this.connectedDevice.id) {
+            const newLocalTimestamp = (now.getTime() - offsetSecondsGuess) / 1000;
+            logger.info(`Setting time to ${now.toString()}`);
+            const payload = Buffer.alloc(10);
+            // E.g: 00 0110 001b 38df2360 00
+            // 00: set?, 0110: don't respond, 001b: time command, 38df236000: the time
+            payload.write('000110001b', 0, 'hex');
+            payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5);
+            payload.write('00', 9, 'hex');
+            this.writeQueue.unshift({
+              deviceId: this.connectedDevice.id,
+              log: 'SetTime',
+              shouldRetry: true,
+              payload,
+            });
+          }
         } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
           logger.info('Got time response. Plejd time in sync with Home Assistant time');
         }

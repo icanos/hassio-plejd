@@ -19,6 +19,7 @@
     "mqttPassword": "",
     "includeRoomsAsLights": false,
     "preferCachedApiResponse": false,
+    "updatePlejdClock": false,
     "logLevel": "info",
     "connectionTimeout": 2,
     "writeQueueWaitTime": 400
@@ -32,6 +33,7 @@
     "mqttPassword": "str",
     "includeRoomsAsLights": "bool",
     "preferCachedApiResponse": "bool",
+    "updatePlejdClock": "bool",
     "logLevel": "list(error|warn|info|debug|verbose|silly)",
     "connectionTimeout": "int",
     "writeQueueWaitTime": "int"

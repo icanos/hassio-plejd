@@ -220,7 +220,11 @@ class PlejBLEHandler extends EventEmitter {
       this.emit('connected');
 
       // Connected and authenticated, request current time and start ping
-      this._requestCurrentPlejdTime();
+      if (this.config.updatePlejdClock) {
+        this._requestCurrentPlejdTime();
+      } else {
+        logger.info('Plejd clock updates disabled in configuration.');
+      }
       this.startPing();
       this.startWriteQueue();
 
@@ -668,7 +672,7 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _requestCurrentPlejdTime() {
-    logger.info('Requesting current Plejd time...');
+    logger.info('Requesting current Plejd clock time...');
 
     // Eg: 0b0102001b: 0b: id, 0102: read, 001b: time
     const payload = Buffer.from(
@@ -943,10 +947,12 @@ class PlejBLEHandler extends EventEmitter {
         || Math.abs(diffSeconds) > 60
       ) {
         const plejdTime = new Date(plejdTimestampUTC);
-        logger.debug(`Plejd time update ${plejdTime.toString()}, diff ${diffSeconds} seconds`);
-        if (Math.abs(diffSeconds) > 60) {
+        logger.debug(
+          `Plejd clock time update ${plejdTime.toString()}, diff ${diffSeconds} seconds`,
+        );
+        if (this.config.updatePlejdClock && Math.abs(diffSeconds) > 60) {
           logger.warn(
-            `Plejd time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
+            `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
           if (this.connectedDevice && deviceId === this.connectedDevice.id) {
             const newLocalTimestamp = (now.getTime() - offsetSecondsGuess) / 1000;
@@ -965,7 +971,7 @@ class PlejBLEHandler extends EventEmitter {
             });
           }
         } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
-          logger.info('Got time response. Plejd time in sync with Home Assistant time');
+          logger.info('Got time response. Plejd clock time in sync with Home Assistant time');
         }
       }
     } else {

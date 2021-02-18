@@ -955,7 +955,7 @@ class PlejBLEHandler extends EventEmitter {
             `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
           if (this.connectedDevice && deviceId === this.connectedDevice.id) {
-            const newLocalTimestamp = (now.getTime() - offsetSecondsGuess) / 1000;
+            const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
             logger.info(`Setting time to ${now.toString()}`);
             const payload = Buffer.alloc(10);
             // E.g: 00 0110 001b 38df2360 00

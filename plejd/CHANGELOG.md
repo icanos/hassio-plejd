@@ -15,7 +15,7 @@
 
 **Closed issues:**
 
-- \[plejd-api\] Unable to retrieve session token response:  Request failed with status code 403 Error: Request failed with status code 403 [\#162](https://github.com/icanos/hassio-plejd/issues/162)
+- \[plejd-api\] Unable to retrieve session token response: Request failed with status code 403 Error: Request failed with status code 403 [\#162](https://github.com/icanos/hassio-plejd/issues/162)
 - Can't turn on/off lights after last update [\#157](https://github.com/icanos/hassio-plejd/issues/157)
 - Brightness level incorrect when changing with RTR-01 or WPH-01 [\#138](https://github.com/icanos/hassio-plejd/issues/138)
 - plejd-ble reconnect attempts [\#123](https://github.com/icanos/hassio-plejd/issues/123)

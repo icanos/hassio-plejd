@@ -23,6 +23,9 @@ const BLE_CMD_SCENE_TRIG = 0x0021;
 const BLE_CMD_TIME_UPDATE = 0x001b;
 
 const BLE_BROADCAST_DEVICE_ID = 0x01;
+const BLE_REQUEST_NO_RESPONSE = 0x0110;
+const BLE_REQUEST_RESPONSE = 0x0102;
+// const BLE_REQUEST_READ_VALUE = 0x0103;
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
 const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
@@ -498,19 +501,26 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   _setBrightness(deviceId, brightness, shouldRetry, deviceName) {
-    let payload = null;
-    let log = '';
-
     if (!brightness && brightness !== 0) {
       logger.debug(
         `Queueing turn on ${deviceName} (${deviceId}). No brightness specified, setting DIM to previous.`,
       );
-      payload = Buffer.from(`${deviceId.toString(16).padStart(2, '0')}0110009701`, 'hex');
-      log = 'ON';
+      this._appendHexPayloadToWriteQueue(
+        deviceId,
+        BLE_CMD_STATE_CHANGE,
+        '01',
+        'TurnOn',
+        shouldRetry,
+      );
     } else if (brightness <= 0) {
       logger.debug(`Queueing turn off ${deviceId}`);
-      payload = Buffer.from(`${deviceId.toString(16).padStart(2, '0')}0110009700`, 'hex');
-      log = 'OFF';
+      this._appendHexPayloadToWriteQueue(
+        deviceId,
+        BLE_CMD_STATE_CHANGE,
+        '00',
+        'TurnOff',
+        shouldRetry,
+      );
     } else {
       if (brightness > 255) {
         // eslint-disable-next-line no-param-reassign
@@ -520,20 +530,14 @@ class PlejBLEHandler extends EventEmitter {
       logger.debug(`Queueing ${deviceId} set brightness to ${brightness}`);
       // eslint-disable-next-line no-bitwise
       const brightnessVal = (brightness << 8) | brightness;
-      payload = Buffer.from(
-        `${deviceId.toString(16).padStart(2, '0')}0110009801${brightnessVal
-          .toString(16)
-          .padStart(4, '0')}`,
-        'hex',
+      this._appendHexPayloadToWriteQueue(
+        deviceId,
+        BLE_CMD_DIM2_CHANGE,
+        `01${brightnessVal.toString(16).padStart(4, '0')}`,
+        `Dim ${brightness}`,
+        shouldRetry,
       );
-      log = `DIM ${brightness}`;
     }
-    this.writeQueue.unshift({
-      deviceId,
-      log,
-      shouldRetry,
-      payload,
-    });
   }
 
   async authenticate() {
@@ -672,21 +676,20 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _requestCurrentPlejdTime() {
-    logger.info('Requesting current Plejd clock time...');
+    if (!this.connectedDevice) {
+      logger.warn('Cannot request current Plejd time, not connected.');
+      return;
+    }
+    logger.info('Requesting current Plejd time...');
 
-    // Eg: 0b0102001b: 0b: id, 0102: read, 001b: time
-    const payload = Buffer.from(
-      `${this.connectedDevice.id.toString(16).padStart(2, '0')}0102${BLE_CMD_TIME_UPDATE.toString(
-        16,
-      ).padStart(4, '0')}`,
-      'hex',
+    this._appendHexPayloadToWriteQueue(
+      this.connectedDevice.id,
+      BLE_CMD_TIME_UPDATE,
+      '',
+      'RequestTime',
+      true,
+      BLE_REQUEST_RESPONSE,
     );
-    this.writeQueue.unshift({
-      deviceId: this.connectedDevice.id,
-      log: 'RequestTime',
-      shouldRetry: true,
-      payload,
-    });
     setTimeout(() => this._requestCurrentPlejdTime(), 1000 * 3600); // Once per hour
   }
 
@@ -936,7 +939,7 @@ class PlejBLEHandler extends EventEmitter {
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
       const now = new Date();
       // Guess Plejd timezone based on HA time zone
-      const offsetSecondsGuess = now.getTimezoneOffset() * 60;
+      const offsetSecondsGuess = now.getTimezoneOffset() * 60 + 250; // Todo: 4 min off
 
       // Plejd reports local unix timestamp adjust to local time zone
       const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
@@ -955,20 +958,16 @@ class PlejBLEHandler extends EventEmitter {
             `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
           if (this.connectedDevice && deviceId === this.connectedDevice.id) {
-            const newLocalTimestamp = (now.getTime() - offsetSecondsGuess) / 1000;
+            // Requested time sync by us
+            const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
             logger.info(`Setting time to ${now.toString()}`);
-            const payload = Buffer.alloc(10);
-            // E.g: 00 0110 001b 38df2360 00
-            // 00: set?, 0110: don't respond, 001b: time command, 38df236000: the time
-            payload.write('000110001b', 0, 'hex');
-            payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5);
-            payload.write('00', 9, 'hex');
-            this.writeQueue.unshift({
-              deviceId: this.connectedDevice.id,
-              log: 'SetTime',
-              shouldRetry: true,
-              payload,
-            });
+            this._appendPayloadToWriteQueue(
+              this.connectedDevice.id,
+              BLE_CMD_TIME_UPDATE,
+              10,
+              (payload) => payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5),
+              'SetTime',
+            );
           }
         } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
           logger.info('Got time response. Plejd clock time in sync with Home Assistant time');
@@ -981,6 +980,47 @@ class PlejBLEHandler extends EventEmitter {
         )}. Device ${deviceName} (${deviceId})`,
       );
     }
+  }
+
+  _appendHexPayloadToWriteQueue(
+    deviceId,
+    command,
+    hexDataString,
+    log,
+    shouldRetry = true,
+    requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
+  ) {
+    this._appendPayloadToWriteQueue(
+      deviceId,
+      command,
+      5 + Math.ceil(hexDataString.length / 2),
+      (payload) => payload.write(hexDataString, 5, 'hex'),
+      log,
+      shouldRetry,
+      requestResponseCommand,
+    );
+  }
+
+  _appendPayloadToWriteQueue(
+    deviceId,
+    command,
+    bufferLength,
+    payloadBufferAddDataFunc,
+    log,
+    shouldRetry = true,
+    requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
+  ) {
+    const payload = Buffer.alloc(bufferLength);
+    payload.writeUInt8(deviceId);
+    payload.writeUInt16BE(requestResponseCommand, 1);
+    payload.writeUInt16BE(command, 3);
+    payloadBufferAddDataFunc(payload);
+    this.writeQueue.unshift({
+      deviceId,
+      log,
+      shouldRetry,
+      payload,
+    });
   }
 
   // eslint-disable-next-line class-methods-use-this

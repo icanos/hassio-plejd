@@ -16,10 +16,13 @@ const LAST_DATA_UUID = `31ba0005-${BLE_UUID_SUFFIX}`;
 const AUTH_UUID = `31ba0009-${BLE_UUID_SUFFIX}`;
 const PING_UUID = `31ba000a-${BLE_UUID_SUFFIX}`;
 
-const BLE_CMD_DIM_CHANGE = 0xc8;
-const BLE_CMD_DIM2_CHANGE = 0x98;
-const BLE_CMD_STATE_CHANGE = 0x97;
-const BLE_CMD_SCENE_TRIG = 0x21;
+const BLE_CMD_DIM_CHANGE = 0x00c8;
+const BLE_CMD_DIM2_CHANGE = 0x0098;
+const BLE_CMD_STATE_CHANGE = 0x0097;
+const BLE_CMD_SCENE_TRIG = 0x0021;
+const BLE_CMD_TIME_UPDATE = 0x001b;
+
+const BLE_BROADCAST_DEVICE_ID = 0x01;
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
 const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
@@ -84,12 +87,12 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('init()');
 
     this.bus = dbus.systemBus();
-    this.bus.on('connect', () => {
-      logger.verbose('dbus-next connected');
-    });
     this.bus.on('error', (err) => {
       // Uncaught error events will show UnhandledPromiseRejection logs
       logger.verbose(`dbus-next error event: ${err.message}`);
+    });
+    this.bus.on('connect', () => {
+      logger.verbose('dbus-next connected');
     });
     // this.bus also has a 'message' event that gets emitted _very_ frequently
 
@@ -216,7 +219,8 @@ class PlejBLEHandler extends EventEmitter {
       logger.info(`BLE Connected to ${this.connectedDevice.name}`);
       this.emit('connected');
 
-      // Connected and authenticated, start ping
+      // Connected and authenticated, request current time and start ping
+      this.requestCurrentPlejdTime();
       this.startPing();
       this.startWriteQueue();
 
@@ -663,6 +667,25 @@ class PlejBLEHandler extends EventEmitter {
     await this.onWriteSuccess();
   }
 
+  async requestCurrentPlejdTime() {
+    logger.info('Requesting current Plejd time...');
+
+    // Eg: 0b0102001b: 0b: id, 0102: read, 001b: time
+    const payload = Buffer.from(
+      `${this.connectedDevice.id.toString(16).padStart(2, '0')}0102${BLE_CMD_TIME_UPDATE.toString(
+        16,
+      ).padStart(4, '0')}`,
+      'hex',
+    );
+    this.writeQueue.unshift({
+      deviceId: this.connectedDevice.id,
+      log: 'RequestTime',
+      shouldRetry: true,
+      payload,
+    });
+    setTimeout(() => this.requestCurrentPlejdTime(), 1000 * 3600); // Once per hour
+  }
+
   startWriteQueue() {
     logger.info('startWriteQueue()');
     clearTimeout(this.writeQueueRef);
@@ -852,15 +875,21 @@ class PlejBLEHandler extends EventEmitter {
     }
 
     const deviceId = decoded.readUInt8(0);
-    // What is bytes 2-3?
-    const cmd = decoded.readUInt8(4);
+    // Bytes 2-3 is Command/Request
+    const cmd = decoded.readUInt16BE(3);
+
     const state = decoded.length > 5 ? decoded.readUInt8(5) : 0;
-    // What is byte 6?
+
     const dim = decoded.length > 7 ? decoded.readUInt8(7) : 0;
-    // Bytes 8-9 are sometimes present, what are they?
+
+    if (Logger.shouldLog('silly')) {
+      // Full dim level is 2 bytes, we could potentially use this
+      const dimFull = decoded.length > 7 ? decoded.readUInt16LE(6) : 0;
+      logger.silly(`Dim: ${dim.toString(16)}, full precision: ${dimFull.toString(16)}`);
+    }
 
     const deviceName = this.deviceRegistry.getDeviceName(deviceId);
-    if (Logger.shouldLog('debug')) {
+    if (Logger.shouldLog('verbose')) {
       // decoded.toString() could potentially be expensive
       logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
       logger.verbose(
@@ -900,10 +929,43 @@ class PlejBLEHandler extends EventEmitter {
       );
 
       this.emit('sceneTriggered', deviceId, sceneId);
-    } else if (cmd === 0x1b) {
-      logger.silly(
-        'Command 001b is the time of the Plejd devices command, not implemented currently',
-      );
+    } else if (cmd === BLE_CMD_TIME_UPDATE) {
+      const now = new Date();
+      // Guess Plejd timezone based on HA time zone
+      const offsetSecondsGuess = now.getTimezoneOffset() * 60;
+
+      // Plejd reports local unix timestamp adjust to local time zone
+      const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
+      const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
+      if (
+        deviceId !== BLE_BROADCAST_DEVICE_ID
+        || Logger.shouldLog('verbose')
+        || Math.abs(diffSeconds) > 60
+      ) {
+        const plejdTime = new Date(plejdTimestampUTC);
+        logger.debug(`Plejd time update ${plejdTime.toString()}, diff ${diffSeconds} seconds`);
+        if (Math.abs(diffSeconds) > 60) {
+          logger.warn(
+            `Plejd time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds`,
+          );
+          const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
+          logger.info(`Setting time to ${now.toString()}`);
+          const payload = Buffer.alloc(10);
+          // E.g: 00 0110 001b 38df2360 00
+          // 00: set?, 0110: don't respond, 001b: time command, 38df236000: the time
+          payload.write('000110001b', 0, 'hex');
+          payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5);
+          payload.write('00', 9, 'hex');
+          this.writeQueue.unshift({
+            deviceId: this.connectedDevice.id,
+            log: 'SetTime',
+            shouldRetry: true,
+            payload,
+          });
+        } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
+          logger.info('Got time response. Plejd time in sync with Home Assistant time');
+        }
+      }
     } else {
       logger.verbose(
         `Command ${cmd.toString(16)} unknown. ${decoded.toString(

@@ -1,5 +1,17 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+### [0.6.1](https://github.com/icanos/hassio-plejd/tree/HEAD) (2021-02-20)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.0...0.6.1)
+
+**Implemented enhancements:**
+
+- Feature Request: Support setting the Plejd Network System Clock [\#130](https://github.com/icanos/hassio-plejd/issues/130)
+
+**Closed issues:**
+
+- Set Plejd devices' clock hourly [\#165](https://github.com/icanos/hassio-plejd/issues/165)
+
 ### [0.6.0](https://github.com/icanos/hassio-plejd/tree/0.6.0) (2021-01-30)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.5.1...0.6.0)

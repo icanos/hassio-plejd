@@ -1,6 +1,6 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-### [0.6.1](https://github.com/icanos/hassio-plejd/tree/HEAD) (2021-02-20)
+### [0.6.1](https://github.com/icanos/hassio-plejd/tree/0.6.1) (2021-02-20)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.0...0.6.1)
 

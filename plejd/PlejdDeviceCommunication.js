@@ -88,12 +88,21 @@ class PlejdDeviceCommunication extends EventEmitter {
         });
       } else if (command === COMMANDS.TURN_ON) {
         this.plejdDevices[deviceId] = {
-          state: data.state,
+          state: 1,
           dim: 0,
         };
         logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
-          state: data.state,
+          state: 1,
+        });
+      } else if (command === COMMANDS.TURN_OFF) {
+        this.plejdDevices[deviceId] = {
+          state: 0,
+          dim: 0,
+        };
+        logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
+          state: 0,
         });
       } else if (command === COMMANDS.TRIGGER_SCENE) {
         this.emit(PlejdDeviceCommunication.EVENTS.sceneTriggered, deviceId, data.sceneId);
@@ -237,7 +246,9 @@ class PlejdDeviceCommunication extends EventEmitter {
         logger.debug(
           `Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${
             queueItem.command
-          }${queueItem.data ? ` ${queueItem.data}` : ''}. Total queue length: ${this.writeQueue.length}`,
+          }${queueItem.data ? ` ${queueItem.data}` : ''}. Total queue length: ${
+            this.writeQueue.length
+          }`,
         );
 
         if (this.writeQueue.some((item) => item.deviceId === queueItem.deviceId)) {

@@ -133,7 +133,7 @@ class MqttClient extends EventEmitter {
             // Guess that id that got state command without dim value belongs to Scene, not Device
             // This guess could very well be wrong depending on the installation...
             logger.warn(
-              `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON.`
+              `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON. `
                 + 'OFF commands still sent to device.',
             );
             device = this.deviceRegistry.getScene(decodedTopic.id);

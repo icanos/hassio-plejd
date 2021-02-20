@@ -142,7 +142,6 @@ class PlejBLEHandler extends EventEmitter {
           deviceId,
           BLE_CMD_DIM2_CHANGE,
           `01${brightnessVal.toString(16).padStart(4, '0')}`,
-          `Dim ${data}`,
         );
         break;
       default:
@@ -799,7 +798,9 @@ class PlejBLEHandler extends EventEmitter {
             try {
               this.write(payload);
             } catch (err) {
-              logger.error('Failed writing new time to Plejd. Will try again in one hour or at restart.');
+              logger.error(
+                'Failed writing new time to Plejd. Will try again in one hour or at restart.',
+              );
             }
           }
         } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {

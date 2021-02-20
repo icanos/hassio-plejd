@@ -540,7 +540,6 @@ class PlejBLEHandler extends EventEmitter {
       logger.error("'Method \"WriteValue\" doesn't exist'. Plejd device is probably disconnected.");
       errorIndicatesDisconnected = true;
     }
-    logger.verbose(`Made it ${errorIndicatesDisconnected} || ${this.consecutiveWriteFails >= 5}`);
 
     if (errorIndicatesDisconnected || this.consecutiveWriteFails >= 5) {
       logger.warn(

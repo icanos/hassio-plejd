@@ -171,9 +171,12 @@ class PlejBLEHandler extends EventEmitter {
       fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
       plejd.device = this.deviceRegistry.getDeviceBySerialNumber(fixedPlejdPath);
 
-      logger.debug(`Discovered ${plejd.path} with rssi ${plejd.rssi}, name ${plejd.device.name}`);
-      // Todo: Connect should probably be done here
-      this.bleDevices.push(plejd);
+      if (plejd.device) {
+        logger.debug(`Discovered ${plejd.path} with rssi ${plejd.rssi}, name ${plejd.device.name}`);
+        this.bleDevices.push(plejd);
+      } else {
+        logger.warn(`Device registry does not contain device with serial ${fixedPlejdPath}`);
+      }
     } catch (err) {
       logger.error(`Failed inspecting ${path}. `, err);
     }

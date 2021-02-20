@@ -30,22 +30,31 @@ class PlejdDeviceCommunication extends EventEmitter {
     this.plejdBleHandler = new PlejBLEHandler(deviceRegistry);
     this.config = Configuration.getOptions();
     this.deviceRegistry = deviceRegistry;
+  }
 
-    // eslint-disable-next-line max-len
-    this.plejdBleHandler.on(PlejBLEHandler.EVENTS.commandReceived, (deviceId, command, data) => this._bleCommandReceived(deviceId, command, data));
-
-    this.plejdBleHandler.on('connected', () => {
-      logger.info('Bluetooth connected. Plejd BLE up and running!');
-      this.startWriteQueue();
-    });
-    this.plejdBleHandler.on('reconnecting', () => {
-      logger.info('Bluetooth reconnecting...');
-      clearTimeout(this.writeQueueRef);
-    });
+  cleanup() {
+    this.plejdBleHandler.cleanup();
+    this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.commandReceived);
+    this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.connected);
+    this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.reconnecting);
   }
 
   async init() {
     try {
+      // eslint-disable-next-line max-len
+      this.plejdBleHandler.on(PlejBLEHandler.EVENTS.commandReceived, (deviceId, command, data) => this._bleCommandReceived(deviceId, command, data));
+
+      this.plejdBleHandler.on(PlejBLEHandler.EVENTS.connected, () => {
+        logger.info('Bluetooth connected. Plejd BLE up and running!');
+        logger.verbose('Starting writeQueue loop.');
+        this.startWriteQueue();
+      });
+      this.plejdBleHandler.on(PlejBLEHandler.EVENTS.reconnecting, () => {
+        logger.info('Bluetooth reconnecting...');
+        logger.verbose('Stopping writeQueue loop until connection is established.');
+        clearTimeout(this.writeQueueRef);
+      });
+
       await this.plejdBleHandler.init();
     } catch (err) {
       logger.error('Failed init() of BLE. Starting reconnect loop.');
@@ -108,9 +117,8 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   _transitionTo(deviceId, targetBrightness, transition, deviceName) {
-    const initialBrightness = this.plejdDevices[deviceId]
-      ? this.plejdDevices[deviceId].state && this.plejdDevices[deviceId].dim
-      : null;
+    const device = this.deviceRegistry.getDevice(deviceId);
+    const initialBrightness = device ? device.state && device.dim : null;
     this._clearDeviceTransitionTimer(deviceId);
 
     const isDimmable = this.deviceRegistry.getDevice(deviceId).dimmable;

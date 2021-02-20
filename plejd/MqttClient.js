@@ -70,6 +70,11 @@ const getSwitchPayload = (device) => ({
 class MqttClient extends EventEmitter {
   deviceRegistry;
 
+  static EVENTS = {
+    connected: 'connected',
+    stateChanged: 'stateChanged',
+  };
+
   constructor(deviceRegistry) {
     super();
 
@@ -97,7 +102,7 @@ class MqttClient extends EventEmitter {
           logger.error('Unable to subscribe to status topics');
         }
 
-        this.emit('connected');
+        this.emit(MqttClient.EVENTS.connected);
       });
 
       this.client.subscribe(getSubscribePath(), (err) => {
@@ -115,7 +120,7 @@ class MqttClient extends EventEmitter {
     this.client.on('message', (topic, message) => {
       if (startTopics.includes(topic)) {
         logger.info('Home Assistant has started. lets do discovery.');
-        this.emit('connected');
+        this.emit(MqttClient.EVENTS.connected);
       } else {
         const decodedTopic = decodeTopic(topic);
         if (decodedTopic) {
@@ -148,7 +153,7 @@ class MqttClient extends EventEmitter {
               );
 
               if (device) {
-                this.emit('stateChanged', device, command);
+                this.emit(MqttClient.EVENTS.stateChanged, device, command);
               } else {
                 logger.warn(
                   `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
@@ -180,6 +185,10 @@ class MqttClient extends EventEmitter {
 
   reconnect() {
     this.client.reconnect();
+  }
+
+  cleanup() {
+    this.client.removeAllListeners();
   }
 
   disconnect(callback) {

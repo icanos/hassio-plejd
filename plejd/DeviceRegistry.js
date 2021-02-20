@@ -34,14 +34,20 @@ class DeviceRegistry {
 
     this.deviceIdsBySerial[added.serialNumber] = added.id;
 
-    logger.verbose(`Added/updated device: ${JSON.stringify(added)}`);
+    logger.verbose(
+      `Added/updated device: ${JSON.stringify(added)}. ${
+        Object.keys(this.plejdDevices).length
+      } plejd devices in total.`,
+    );
 
     if (added.roomId) {
       this.deviceIdsByRoom[added.roomId] = [
         ...(this.deviceIdsByRoom[added.roomId] || []),
         added.id,
       ];
-      logger.verbose(`Added to room: ${JSON.stringify(this.deviceIdsByRoom[added.roomId])}`);
+      logger.verbose(
+        `Added to room #${added.roomId}: ${JSON.stringify(this.deviceIdsByRoom[added.roomId])}`,
+      );
     }
 
     return added;
@@ -54,10 +60,14 @@ class DeviceRegistry {
     };
     this.roomDevices = {
       ...this.roomDevices,
-      [device.id]: added,
+      [added.id]: added,
     };
 
-    logger.verbose(`Added/updated room device: ${JSON.stringify(added)}`);
+    logger.verbose(
+      `Added/updated room device: ${JSON.stringify(added)}. ${
+        Object.keys(this.roomDevices).length
+      } room devices total.`,
+    );
     return added;
   }
 
@@ -68,9 +78,13 @@ class DeviceRegistry {
     };
     this.sceneDevices = {
       ...this.sceneDevices,
-      added,
+      [added.id]: added,
     };
-    logger.verbose(`Added/updated scene: ${JSON.stringify(added)}`);
+    logger.verbose(
+      `Added/updated scene: ${JSON.stringify(added)}. ${
+        Object.keys(this.sceneDevices).length
+      } scenes in total.`,
+    );
     return added;
   }
 
@@ -130,7 +144,8 @@ class DeviceRegistry {
   }
 
   setState(deviceId, state, dim) {
-    const device = this.addPlejdDevice({ id: deviceId, state });
+    const device = this.getDevice(deviceId) || this.addPlejdDevice({ id: deviceId });
+    device.state = state;
     if (dim && device.dimmable) {
       device.dim = dim;
     }

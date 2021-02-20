@@ -62,6 +62,8 @@ class PlejBLEHandler extends EventEmitter {
     connected: 'connected',
     reconnecting: 'reconnecting',
     commandReceived: 'commandReceived',
+    writeFailed: 'writeFailed',
+    writeSuccess: 'writeSuccess',
   };
 
   constructor(deviceRegistry) {
@@ -80,13 +82,29 @@ class PlejBLEHandler extends EventEmitter {
       auth: null,
       ping: null,
     };
+  }
 
-    this.on('writeFailed', (error) => this._onWriteFailed(error));
-    this.on('writeSuccess', () => this._onWriteSuccess());
+  cleanup() {
+    this.removeAllListeners(PlejBLEHandler.EVENTS.writeFailed);
+    this.removeAllListeners(PlejBLEHandler.EVENTS.writeSuccess);
+
+    if (this.bus) {
+      this.bus.removeAllListeners('error');
+      this.bus.removeAllListeners('connect');
+    }
+    if (this.characteristics.lastDataProperties) {
+      this.characteristics.lastDataProperties.removeAllListeners('PropertiesChanged');
+    }
+    if (this.objectManager) {
+      this.objectManager.removeAllListeners('InterfacesAdded');
+    }
   }
 
   async init() {
     logger.info('init()');
+
+    this.on(PlejBLEHandler.EVENTS.writeFailed, (error) => this._onWriteFailed(error));
+    this.on(PlejBLEHandler.EVENTS.writeSuccess, () => this._onWriteSuccess());
 
     this.bus = dbus.systemBus();
     this.bus.on('error', (err) => {
@@ -276,6 +294,7 @@ class PlejBLEHandler extends EventEmitter {
 
   async _getInterface() {
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
+
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
 
     // We need to find the ble interface which implements the Adapter1 interface
@@ -404,13 +423,12 @@ class PlejBLEHandler extends EventEmitter {
 
   async _onInterfacesAdded(path, interfaces) {
     logger.silly(`Interface added ${path}, inspecting...`);
-    // const [adapter, dev, service, characteristic] = path.split('/').slice(3);
     const interfaceKeys = Object.keys(interfaces);
 
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID].UUIDs.value.indexOf(PLEJD_SERVICE) > -1) {
         logger.debug(`Found Plejd service on ${path}`);
-
+        this.objectManager.removeAllListeners('InterfacesAdded');
         await this._initDiscoveredPlejdDevice(path);
       } else {
         logger.error('Uh oh, no Plejd device!');
@@ -452,6 +470,7 @@ class PlejBLEHandler extends EventEmitter {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        this.cleanup();
         await delay(5000);
         this.emit(PlejBLEHandler.EVENTS.reconnecting);
         logger.info('Reconnecting BLE...');

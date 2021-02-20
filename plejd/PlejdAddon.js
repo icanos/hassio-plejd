@@ -17,6 +17,7 @@ class PlejdAddon extends EventEmitter {
   plejdApi;
   plejdDeviceCommunication;
   mqttClient;
+  processCleanupFunc;
   sceneManager;
 
   constructor() {
@@ -31,19 +32,30 @@ class PlejdAddon extends EventEmitter {
     this.mqttClient = new MqttClient(this.deviceRegistry);
   }
 
+  cleanup() {
+    this.mqttClient.cleanup();
+    this.mqttClient.removeAllListeners();
+    this.plejdDeviceCommunication.cleanup();
+    this.plejdDeviceCommunication.removeAllListeners();
+  }
+
   async init() {
     logger.info('Main Plejd addon init()...');
 
     await this.plejdApi.init();
     this.sceneManager.init();
 
+    this.processCleanupFunc = () => {
+      this.cleanup();
+      this.processCleanupFunc = () => {};
+      this.mqttClient.disconnect(() => process.exit(0));
+    };
+
     ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach((signal) => {
-      process.on(signal, () => {
-        this.mqttClient.disconnect(() => process.exit(0));
-      });
+      process.on(signal, this.processCleanupFunc);
     });
 
-    this.mqttClient.on('connected', () => {
+    this.mqttClient.on(MqttClient.EVENTS.connected, () => {
       try {
         logger.verbose('connected to mqtt.');
         this.mqttClient.sendDiscoveryToHomeAssistant();
@@ -53,7 +65,7 @@ class PlejdAddon extends EventEmitter {
     });
 
     // subscribe to changes from HA
-    this.mqttClient.on('stateChanged', (device, command) => {
+    this.mqttClient.on(MqttClient.EVENTS.stateChanged, (device, command) => {
       try {
         const deviceId = device.id;
 
@@ -99,21 +111,27 @@ class PlejdAddon extends EventEmitter {
     this.mqttClient.init();
 
     // subscribe to changes from Plejd
-    this.plejdDeviceCommunication.on('stateChanged', (deviceId, command) => {
-      try {
-        this.mqttClient.updateState(deviceId, command);
-      } catch (err) {
-        logger.error('Error in PlejdService.stateChanged callback in main.js', err);
-      }
-    });
+    this.plejdDeviceCommunication.on(
+      PlejdDeviceCommunication.EVENTS.stateChanged,
+      (deviceId, command) => {
+        try {
+          this.mqttClient.updateState(deviceId, command);
+        } catch (err) {
+          logger.error('Error in PlejdService.stateChanged callback in main.js', err);
+        }
+      },
+    );
 
-    this.plejdDeviceCommunication.on('sceneTriggered', (deviceId, sceneId) => {
-      try {
-        this.mqttClient.sceneTriggered(sceneId);
-      } catch (err) {
-        logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
-      }
-    });
+    this.plejdDeviceCommunication.on(
+      PlejdDeviceCommunication.EVENTS.sceneTriggered,
+      (deviceId, sceneId) => {
+        try {
+          this.mqttClient.sceneTriggered(sceneId);
+        } catch (err) {
+          logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
+        }
+      },
+    );
 
     await this.plejdDeviceCommunication.init();
     logger.info('Main init done');

@@ -3,8 +3,7 @@ const EventEmitter = require('events');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 const PlejdApi = require('./PlejdApi');
-// const PlejdBLE = require('./PlejdBLE');
-const PlejdBLEHandler = require('./PlejdBLEHandler');
+const PlejdDeviceCommunication = require('./PlejdDeviceCommunication');
 const MqttClient = require('./MqttClient');
 const SceneManager = require('./SceneManager');
 const DeviceRegistry = require('./DeviceRegistry');
@@ -16,7 +15,7 @@ class PlejdAddon extends EventEmitter {
   config;
   deviceRegistry;
   plejdApi;
-  plejdBLEHandler;
+  plejdDeviceCommunication;
   mqttClient;
   sceneManager;
 
@@ -27,8 +26,8 @@ class PlejdAddon extends EventEmitter {
     this.deviceRegistry = new DeviceRegistry();
 
     this.plejdApi = new PlejdApi(this.deviceRegistry);
-    this.plejdBLEHandler = new PlejdBLEHandler(this.deviceRegistry);
-    this.sceneManager = new SceneManager(this.deviceRegistry, this.plejdBLEHandler);
+    this.plejdDeviceCommunication = new PlejdDeviceCommunication(this.deviceRegistry);
+    this.sceneManager = new SceneManager(this.deviceRegistry, this.plejdDeviceCommunication);
     this.mqttClient = new MqttClient(this.deviceRegistry);
   }
 
@@ -88,9 +87,9 @@ class PlejdAddon extends EventEmitter {
         }
 
         if (state === 'ON') {
-          this.plejdBLEHandler.turnOn(deviceId, commandObj);
+          this.plejdDeviceCommunication.turnOn(deviceId, commandObj);
         } else {
-          this.plejdBLEHandler.turnOff(deviceId, commandObj);
+          this.plejdDeviceCommunication.turnOff(deviceId, commandObj);
         }
       } catch (err) {
         logger.error('Error in MqttClient.stateChanged callback in main.js', err);
@@ -99,15 +98,8 @@ class PlejdAddon extends EventEmitter {
 
     this.mqttClient.init();
 
-    this.plejdBLEHandler.on('connected', () => {
-      logger.info('Bluetooth connected. Plejd BLE up and running!');
-    });
-    this.plejdBLEHandler.on('reconnecting', () => {
-      logger.info('Bluetooth reconnecting...');
-    });
-
     // subscribe to changes from Plejd
-    this.plejdBLEHandler.on('stateChanged', (deviceId, command) => {
+    this.plejdDeviceCommunication.on('stateChanged', (deviceId, command) => {
       try {
         this.mqttClient.updateState(deviceId, command);
       } catch (err) {
@@ -115,7 +107,7 @@ class PlejdAddon extends EventEmitter {
       }
     });
 
-    this.plejdBLEHandler.on('sceneTriggered', (deviceId, sceneId) => {
+    this.plejdDeviceCommunication.on('sceneTriggered', (deviceId, sceneId) => {
       try {
         this.mqttClient.sceneTriggered(sceneId);
       } catch (err) {
@@ -123,12 +115,7 @@ class PlejdAddon extends EventEmitter {
       }
     });
 
-    try {
-      await this.plejdBLEHandler.init();
-    } catch (err) {
-      logger.error('Failed init() of BLE. Starting reconnect loop.');
-      await this.plejdBLEHandler.startReconnectPeriodicallyLoop();
-    }
+    await this.plejdDeviceCommunication.init();
     logger.info('Main init done');
   }
 }

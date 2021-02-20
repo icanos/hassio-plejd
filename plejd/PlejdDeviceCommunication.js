@@ -15,7 +15,6 @@ class PlejdDeviceCommunication extends EventEmitter {
   plejdBleHandler;
   config;
   deviceRegistry;
-  plejdDevices = {}; // Todo: Move to deviceRegistry?
   writeQueue = [];
   writeQueueRef = null;
 
@@ -77,30 +76,18 @@ class PlejdDeviceCommunication extends EventEmitter {
   _bleCommandReceived(deviceId, command, data) {
     try {
       if (command === COMMANDS.DIM) {
-        this.plejdDevices[deviceId] = {
-          state: data.state,
-          dim: data.dim,
-        };
-        logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+        this.deviceRegistry.setState(deviceId, data.state, data.dim);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
           state: data.state,
           brightness: data.dim,
         });
       } else if (command === COMMANDS.TURN_ON) {
-        this.plejdDevices[deviceId] = {
-          state: 1,
-          dim: 0,
-        };
-        logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+        this.deviceRegistry.setState(deviceId, 1);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
           state: 1,
         });
       } else if (command === COMMANDS.TURN_OFF) {
-        this.plejdDevices[deviceId] = {
-          state: 0,
-          dim: 0,
-        };
-        logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+        this.deviceRegistry.setState(deviceId, 0);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
           state: 0,
         });

@@ -104,7 +104,7 @@ class PlejdAddon extends EventEmitter {
           this.plejdDeviceCommunication.turnOff(deviceId, commandObj);
         }
       } catch (err) {
-        logger.error('Error in MqttClient.stateChanged callback in main.js', err);
+        logger.error('Error in MqttClient.stateChanged callback', err);
       }
     });
 
@@ -117,18 +117,18 @@ class PlejdAddon extends EventEmitter {
         try {
           this.mqttClient.updateState(deviceId, command);
         } catch (err) {
-          logger.error('Error in PlejdService.stateChanged callback in main.js', err);
+          logger.error('Error in PlejdService.stateChanged callback', err);
         }
       },
     );
 
     this.plejdDeviceCommunication.on(
       PlejdDeviceCommunication.EVENTS.sceneTriggered,
-      (deviceId, sceneId) => {
+      (sceneId) => {
         try {
           this.mqttClient.sceneTriggered(sceneId);
         } catch (err) {
-          logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
+          logger.error('Error in PlejdService.sceneTriggered callback', err);
         }
       },
     );

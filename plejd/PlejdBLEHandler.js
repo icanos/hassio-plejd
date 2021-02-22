@@ -85,6 +85,12 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   cleanup() {
+    logger.verbose('cleanup() - Clearing ping interval and clock update timer');
+    clearInterval(this.pingRef);
+    clearTimeout(this.requestCurrentPlejdTimeRef);
+
+    logger.verbose('Removing listeners to write events, bus events and objectManager...');
+
     this.removeAllListeners(PlejBLEHandler.EVENTS.writeFailed);
     this.removeAllListeners(PlejBLEHandler.EVENTS.writeSuccess);
 
@@ -456,23 +462,21 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async startReconnectPeriodicallyLoop() {
-    logger.verbose('startReconnectPeriodicallyLoop');
+    logger.info('Starting reconnect loop...');
     if (this.reconnectInProgress) {
       logger.debug('Reconnect already in progress. Skipping this call.');
       return;
     }
-    clearInterval(this.pingRef);
-    clearTimeout(this.writeQueueRef);
-    clearTimeout(this.requestCurrentPlejdTimeRef);
     this.reconnectInProgress = true;
 
     /* eslint-disable no-await-in-loop */
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        logger.verbose('Reconnect: Clean up, emit reconnect event, wait 5s and the re-init...');
         this.cleanup();
-        await delay(5000);
         this.emit(PlejBLEHandler.EVENTS.reconnecting);
+        await delay(5000);
         logger.info('Reconnecting BLE...');
         await this.init();
         break;

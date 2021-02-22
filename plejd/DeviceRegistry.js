@@ -41,10 +41,10 @@ class DeviceRegistry {
     );
 
     if (added.roomId) {
-      this.deviceIdsByRoom[added.roomId] = [
-        ...(this.deviceIdsByRoom[added.roomId] || []),
-        added.id,
-      ];
+      const room = this.deviceIdsByRoom[added.roomId] || [];
+      if (!room.includes(added.roomId)) {
+        this.deviceIdsByRoom[added.roomId] = [...room, added.roomId];
+      }
       logger.verbose(
         `Added to room #${added.roomId}: ${JSON.stringify(this.deviceIdsByRoom[added.roomId])}`,
       );

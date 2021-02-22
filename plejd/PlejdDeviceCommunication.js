@@ -8,9 +8,10 @@ const { COMMANDS } = constants;
 const logger = Logger.getLogger('device-comm');
 
 const MAX_TRANSITION_STEPS_PER_SECOND = 5; // Could be made a setting
-const MAX_RETRY_COUNT = 5; // Could be made a setting
+const MAX_RETRY_COUNT = 10; // Could be made a setting
 
 class PlejdDeviceCommunication extends EventEmitter {
+  bleConnected;
   bleDeviceTransitionTimers = {};
   plejdBleHandler;
   config;
@@ -33,6 +34,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   cleanup() {
+    Object.values(this.bleDeviceTransitionTimers).forEach((t) => clearTimeout(t));
     this.plejdBleHandler.cleanup();
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.commandReceived);
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.connected);
@@ -41,17 +43,21 @@ class PlejdDeviceCommunication extends EventEmitter {
 
   async init() {
     try {
+      this.cleanup();
+      this.bleConnected = false;
       // eslint-disable-next-line max-len
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.commandReceived, (deviceId, command, data) => this._bleCommandReceived(deviceId, command, data));
 
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.connected, () => {
         logger.info('Bluetooth connected. Plejd BLE up and running!');
-        logger.verbose('Starting writeQueue loop.');
-        this.startWriteQueue();
+        logger.verbose(`Starting writeQueue loop. Write queue length: ${this.writeQueue.length}`);
+        this.bleConnected = true;
+        this._startWriteQueue();
       });
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.reconnecting, () => {
         logger.info('Bluetooth reconnecting...');
-        logger.verbose('Stopping writeQueue loop until connection is established.');
+        logger.verbose(`Stopping writeQueue loop until connection is established. Write queue length: ${this.writeQueue.length}`);
+        this.bleConnected = false;
         clearTimeout(this.writeQueueRef);
       });
 
@@ -101,7 +107,7 @@ class PlejdDeviceCommunication extends EventEmitter {
           state: 0,
         });
       } else if (command === COMMANDS.TRIGGER_SCENE) {
-        this.emit(PlejdDeviceCommunication.EVENTS.sceneTriggered, deviceId, data.sceneId);
+        this.emit(PlejdDeviceCommunication.EVENTS.sceneTriggered, data.sceneId);
       } else {
         logger.warn(`Unknown ble command ${command}`);
       }
@@ -226,16 +232,20 @@ class PlejdDeviceCommunication extends EventEmitter {
     });
   }
 
-  startWriteQueue() {
+  _startWriteQueue() {
     logger.info('startWriteQueue()');
     clearTimeout(this.writeQueueRef);
 
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.config.writeQueueWaitTime);
+    this.writeQueueRef = setTimeout(() => this._runWriteQueue(), this.config.writeQueueWaitTime);
   }
 
-  async runWriteQueue() {
+  async _runWriteQueue() {
     try {
       while (this.writeQueue.length > 0) {
+        if (!this.bleConnected) {
+          logger.warn('BLE not connected, stopping write queue until connection is up again.');
+          return;
+        }
         const queueItem = this.writeQueue.pop();
         const deviceName = this.deviceRegistry.getDeviceName(queueItem.deviceId);
         logger.debug(
@@ -285,7 +295,7 @@ class PlejdDeviceCommunication extends EventEmitter {
       logger.error('Error in writeQueue loop, values probably not written to Plejd', e);
     }
 
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.config.writeQueueWaitTime);
+    this.writeQueueRef = setTimeout(() => this._runWriteQueue(), this.config.writeQueueWaitTime);
   }
 }
 

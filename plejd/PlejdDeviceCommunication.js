@@ -56,7 +56,9 @@ class PlejdDeviceCommunication extends EventEmitter {
       });
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.reconnecting, () => {
         logger.info('Bluetooth reconnecting...');
-        logger.verbose(`Stopping writeQueue loop until connection is established. Write queue length: ${this.writeQueue.length}`);
+        logger.verbose(
+          `Stopping writeQueue loop until connection is established. Write queue length: ${this.writeQueue.length}`,
+        );
         this.bleConnected = false;
         clearTimeout(this.writeQueueRef);
       });

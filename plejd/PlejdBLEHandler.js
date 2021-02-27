@@ -48,6 +48,7 @@ class PlejBLEHandler extends EventEmitter {
   bus = null;
   connectedDevice = null;
   consecutiveWriteFails;
+  consecutiveReconnectAttempts = 0;
   discoveryTimeout = null;
   plejdService = null;
   pingRef = null;
@@ -291,6 +292,7 @@ class PlejBLEHandler extends EventEmitter {
         // invalidated (third param),
       ) => this._onLastDataUpdated(iface, properties));
       this.characteristics.lastData.StartNotify();
+      this.consecutiveReconnectAttempts = 0;
       this.emit(PlejBLEHandler.EVENTS.connected);
 
       clearTimeout(this.emergencyReconnectTimeout);
@@ -345,18 +347,21 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _powerCycleAdapter() {
+    logger.verbose('Power cycling BLE adapter');
     await this._powerOffAdapter();
     await this._powerOnAdapter();
   }
 
   async _powerOnAdapter() {
+    logger.verbose('Powering on BLE adapter and waiting 5 seconds');
     await this.adapterProperties.Set(BLUEZ_ADAPTER_ID, 'Powered', new dbus.Variant('b', 1));
-    await delay(1000);
+    await delay(5000);
   }
 
   async _powerOffAdapter() {
+    logger.verbose('Powering off BLE adapter and waiting 5 seconds');
     await this.adapterProperties.Set(BLUEZ_ADAPTER_ID, 'Powered', new dbus.Variant('b', 0));
-    await delay(1000);
+    await delay(5000);
   }
 
   async _cleanExistingConnections(managedObjects) {
@@ -494,6 +499,19 @@ class PlejBLEHandler extends EventEmitter {
       try {
         logger.verbose('Reconnect: Clean up, emit reconnect event, wait 5s and the re-init...');
         this.cleanup();
+
+        this.consecutiveReconnectAttempts++;
+        if (this.consecutiveReconnectAttempts % 10 === 0) {
+          logger.warn(
+            `Tried reconnecting ${this.consecutiveReconnectAttempts} times. Try power cycling the BLE adapter every 10th time...`,
+          );
+          await this._powerCycleAdapter();
+        } else {
+          logger.verbose(
+            `Reconnect attempt ${this.consecutiveReconnectAttempts} in a row. Will power cycle every 10th time.`,
+          );
+        }
+
         this.emit(PlejBLEHandler.EVENTS.reconnecting);
 
         // Emergency 2 minute timer if reconnect silently fails somewhere

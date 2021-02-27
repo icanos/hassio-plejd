@@ -54,7 +54,11 @@ class DeviceRegistry {
   }
 
   getDevice(deviceId) {
-    return this.plejdDevices[deviceId];
+    return this.plejdDevices[deviceId] || this.roomDevices[deviceId];
+  }
+
+  getDeviceIdsByRoom(roomId) {
+    return this.deviceIdsByRoom[roomId];
   }
 
   getDeviceBySerialNumber(serialNumber) {

@@ -332,14 +332,17 @@ class PlejdApi {
         const { roomId } = room;
         const roomAddress = this.siteDetails.roomAddress[roomId];
 
+        const deviceIdsByRoom = this.deviceRegistry.getDeviceIdsByRoom(roomId);
+
+        const dimmable = deviceIdsByRoom
+          && deviceIdsByRoom.some((deviceId) => this.deviceRegistry.getDevice(deviceId).dimmable);
+
         const newDevice = {
           id: roomAddress,
           name: room.title,
           type: 'light',
           typeName: 'Room',
-          dimmable: this.deviceIdsByRoom[roomId].some(
-            (deviceId) => this.plejdDevices[deviceId].dimmable,
-          ),
+          dimmable,
         };
 
         this.deviceRegistry.addRoomDevice(newDevice);

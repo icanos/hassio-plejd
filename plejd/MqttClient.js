@@ -138,6 +138,7 @@ class MqttClient extends EventEmitter {
             );
             device = this.deviceRegistry.getScene(decodedTopic.id);
           }
+
           const deviceName = device ? device.name : '';
 
           switch (decodedTopic.command) {

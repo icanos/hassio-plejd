@@ -53,6 +53,7 @@ class PlejBLEHandler extends EventEmitter {
   pingRef = null;
   requestCurrentPlejdTimeRef = null;
   reconnectInProgress = false;
+  emergencyReconnectTimeout = null;
 
   // Refer to BLE-states.md regarding the internal BLE/bluez state machine of Bluetooth states
   // These states refer to the state machine of this file
@@ -82,6 +83,8 @@ class PlejBLEHandler extends EventEmitter {
       auth: null,
       ping: null,
     };
+
+    this.bus = dbus.systemBus();
   }
 
   cleanup() {
@@ -112,7 +115,6 @@ class PlejBLEHandler extends EventEmitter {
     this.on(PlejBLEHandler.EVENTS.writeFailed, (error) => this._onWriteFailed(error));
     this.on(PlejBLEHandler.EVENTS.writeSuccess, () => this._onWriteSuccess());
 
-    this.bus = dbus.systemBus();
     this.bus.on('error', (err) => {
       // Uncaught error events will show UnhandledPromiseRejection logs
       logger.verbose(`dbus-next error event: ${err.message}`);
@@ -290,6 +292,9 @@ class PlejBLEHandler extends EventEmitter {
       ) => this._onLastDataUpdated(iface, properties));
       this.characteristics.lastData.StartNotify();
       this.emit(PlejBLEHandler.EVENTS.connected);
+
+      clearTimeout(this.emergencyReconnectTimeout);
+      this.emergencyReconnectTimeout = null;
     } catch (err) {
       // This method is run on a timer, so errors can't e re-thrown.
       // Start reconnect loop if errors occur here
@@ -463,10 +468,24 @@ class PlejBLEHandler extends EventEmitter {
 
   async startReconnectPeriodicallyLoop() {
     logger.info('Starting reconnect loop...');
-    if (this.reconnectInProgress) {
+    clearTimeout(this.emergencyReconnectTimeout);
+    this.emergencyReconnectTimeout = null;
+    await this._startReconnectPeriodicallyLoopInternal();
+  }
+
+  async _startReconnectPeriodicallyLoopInternal() {
+    logger.verbose('Starting internal reconnect loop...');
+
+    if (this.reconnectInProgress && !this.emergencyReconnectTimeout) {
       logger.debug('Reconnect already in progress. Skipping this call.');
       return;
     }
+    if (this.emergencyReconnectTimeout) {
+      logger.warn(
+        'Restarting reconnect loop due to emergency reconnect timer elapsed. This should very rarely happen!',
+      );
+    }
+
     this.reconnectInProgress = true;
 
     /* eslint-disable no-await-in-loop */
@@ -476,6 +495,14 @@ class PlejBLEHandler extends EventEmitter {
         logger.verbose('Reconnect: Clean up, emit reconnect event, wait 5s and the re-init...');
         this.cleanup();
         this.emit(PlejBLEHandler.EVENTS.reconnecting);
+
+        // Emergency 2 minute timer if reconnect silently fails somewhere
+        clearTimeout(this.emergencyReconnectTimeout);
+        this.emergencyReconnectTimeout = setTimeout(
+          () => this._startReconnectPeriodicallyLoopInternal(),
+          120 * 1000,
+        );
+
         await delay(5000);
         logger.info('Reconnecting BLE...');
         await this.init();

@@ -1,6 +1,6 @@
-const PlejdService = require('../PlejdService');
+const PlejdBLE = require('../PlejdBLEHandler');
 
 const cryptoKey = '';
 
-const plejd = new PlejdService(cryptoKey, true);
+const plejd = new PlejdBLE(cryptoKey, true);
 plejd.init();

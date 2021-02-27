@@ -67,7 +67,7 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 
 ### Install older versions or developemnt version
 
-To install older versions, follow the "Manual Installation" instructions above, but copy the code from [one of the releases](https://github.com/icanos/hassio-plejd/releases). To test new functionality you can download the development version, available in the [develop branch](https://github.com/icanos/hassio-plejd/tree/feature/develop).
+To install older versions, follow the "Manual Installation" instructions above, but copy the code from [one of the releases](https://github.com/icanos/hassio-plejd/releases). To test new functionality you can download the development version, available in the [develop branch](https://github.com/icanos/hassio-plejd/tree/develop).
 
 ### IMPORTANT INFORMATION
 
@@ -121,20 +121,21 @@ The above is used to notify the add-on when Home Assistant has started successfu
 
 The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 
-| Parameter            | Value                                                                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                           |
-| username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                 |
-| password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                 |
-| mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                                                         |
-| mqttUsername         | Username of the MQTT broker                                                                                                                                                          |
-| mqttPassword         | Password of the MQTT broker                                                                                                                                                          |
-| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms.                                                     |
-| logLevel             | Minimim log level. Supported values are `error`, `warn`, `info`, `debug`, `verbose`, `silly` with increasing amount of logging. Do not log more than `info` for production purposes. |
-| connectionTimeout    | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.                                              |
-| writeQueueWaitTime   | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.                                               |
+| Parameter            | Value                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                               |
+| username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
+| password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
+| mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                                                             |
+| mqttUsername         | Username of the MQTT broker                                                                                                                                                              |
+| mqttPassword         | Password of the MQTT broker                                                                                                                                                              |
+| includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms.                                                         |
+| updatePlejdClock     | Hourly update Plejd devices' clock if out of sync. Clock is used for time-based scenes. Not recommended if you have a Plejd gateway. Clock updates may flicker scene-controlled devices. |
+| logLevel             | Minimim log level. Supported values are `error`, `warn`, `info`, `debug`, `verbose`, `silly` with increasing amount of logging. Do not log more than `info` for production purposes.     |
+| connectionTimeout    | Number of seconds to wait when scanning and connecting. Might need to be tweaked on platforms other than RPi 4. Defaults to: 2 seconds.                                                  |
+| writeQueueWaitTime   | Wait time between message sent to Plejd over BLE, defaults to 400. If that doesn't work, try changing the value higher in steps of 50.                                                   |
 
-## Having issues to get the addon working?
+## Troubleshooting
 
 If you're having issues to get the addon working, there are a few things you can look into:
 

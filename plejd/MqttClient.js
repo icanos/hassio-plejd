@@ -1,5 +1,7 @@
 const EventEmitter = require('events');
 const mqtt = require('mqtt');
+
+const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
 const startTopics = ['hass/status', 'homeassistant/status'];
@@ -18,6 +20,18 @@ const getStateTopic = (plug) => `${getPath(plug)}/state`;
 const getAvailabilityTopic = (plug) => `${getPath(plug)}/availability`;
 const getCommandTopic = (plug) => `${getPath(plug)}/set`;
 const getSceneEventTopic = () => 'plejd/event/scene';
+
+const decodeTopicRegexp = new RegExp(
+  /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/,
+);
+
+const decodeTopic = (topic) => {
+  const matches = decodeTopicRegexp.exec(topic);
+  if (!matches) {
+    return null;
+  }
+  return matches.groups;
+};
 
 const getDiscoveryPayload = (device) => ({
   schema: 'json',
@@ -54,23 +68,25 @@ const getSwitchPayload = (device) => ({
 // #endregion
 
 class MqttClient extends EventEmitter {
-  constructor(mqttBroker, username, password) {
+  deviceRegistry;
+
+  constructor(deviceRegistry) {
     super();
 
-    this.mqttBroker = mqttBroker;
-    this.username = username;
-    this.password = password;
-    this.deviceMap = {};
-    this.devices = [];
+    this.config = Configuration.getOptions();
+    this.deviceRegistry = deviceRegistry;
   }
 
   init() {
     logger.info('Initializing MQTT connection for Plejd addon');
-    const self = this;
 
-    this.client = mqtt.connect(this.mqttBroker, {
-      username: this.username,
-      password: this.password,
+    this.client = mqtt.connect(this.config.mqttBroker, {
+      username: this.config.mqttUsername,
+      password: this.config.mqttPassword,
+    });
+
+    this.client.on('error', (err) => {
+      logger.warn('Error emitted from mqtt client', err);
     });
 
     this.client.on('connect', () => {
@@ -81,7 +97,7 @@ class MqttClient extends EventEmitter {
           logger.error('Unable to subscribe to status topics');
         }
 
-        self.emit('connected');
+        this.emit('connected');
       });
 
       this.client.subscribe(getSubscribePath(), (err) => {
@@ -93,32 +109,70 @@ class MqttClient extends EventEmitter {
 
     this.client.on('close', () => {
       logger.verbose('Warning: mqtt channel closed event, reconnecting...');
-      self.reconnect();
+      this.reconnect();
     });
 
     this.client.on('message', (topic, message) => {
-      // const command = message.toString();
-      const command = message.toString().substring(0, 1) === '{'
-        ? JSON.parse(message.toString())
-        : message.toString();
-
       if (startTopics.includes(topic)) {
         logger.info('Home Assistant has started. lets do discovery.');
-        self.emit('connected');
-      } else if (topic.includes('set')) {
-        logger.verbose(`Got mqtt command on ${topic} - ${message}`);
-        const device = self.devices.find((x) => getCommandTopic(x) === topic);
-        if (device) {
-          self.emit('stateChanged', device, command);
+        this.emit('connected');
+      } else {
+        const decodedTopic = decodeTopic(topic);
+        if (decodedTopic) {
+          let device = this.deviceRegistry.getDevice(decodedTopic.id);
+
+          const messageString = message.toString();
+          const isJsonMessage = messageString.startsWith('{');
+          const command = isJsonMessage ? JSON.parse(messageString) : messageString;
+
+          if (
+            !isJsonMessage
+            && messageString === 'ON'
+            && this.deviceRegistry.getScene(decodedTopic.id)
+          ) {
+            // Guess that id that got state command without dim value belongs to Scene, not Device
+            // This guess could very well be wrong depending on the installation...
+            logger.warn(
+              `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON.`
+                + 'OFF commands still sent to device.',
+            );
+            device = this.deviceRegistry.getScene(decodedTopic.id);
+          }
+          const deviceName = device ? device.name : '';
+
+          switch (decodedTopic.command) {
+            case 'set':
+              logger.verbose(
+                `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
+              );
+
+              if (device) {
+                this.emit('stateChanged', device, command);
+              } else {
+                logger.warn(
+                  `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+                );
+              }
+              break;
+            case 'state':
+            case 'config':
+            case 'availability':
+              logger.verbose(
+                `Sent mqtt ${decodedTopic.command} command for ${
+                  decodedTopic.type
+                }, ${deviceName} (${decodedTopic.id}). ${
+                  decodedTopic.command === 'availability' ? messageString : ''
+                }`,
+              );
+              break;
+            default:
+              logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
+          }
         } else {
-          logger.warn(
-            `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+          logger.verbose(
+            `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
           );
         }
-      } else if (topic.includes('state')) {
-        logger.verbose(`State update sent over mqtt to HA ${topic} - ${message}`);
-      } else {
-        logger.verbose(`Warning: Got unrecognized mqtt command on ${topic} - ${message}`);
       }
     });
   }
@@ -128,19 +182,16 @@ class MqttClient extends EventEmitter {
   }
 
   disconnect(callback) {
-    this.devices.forEach((device) => {
+    this.deviceRegistry.allDevices.forEach((device) => {
       this.client.publish(getAvailabilityTopic(device), 'offline');
     });
     this.client.end(callback);
   }
 
-  discover(devices) {
-    this.devices = devices;
+  sendDiscoveryToHomeAssistant() {
+    logger.debug(`Sending discovery of ${this.deviceRegistry.allDevices.length} device(s).`);
 
-    const self = this;
-    logger.debug(`Sending discovery of ${devices.length} device(s).`);
-
-    devices.forEach((device) => {
+    this.deviceRegistry.allDevices.forEach((device) => {
       logger.debug(`Sending discovery for ${device.name}`);
 
       const payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
@@ -148,17 +199,15 @@ class MqttClient extends EventEmitter {
         `Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`,
       );
 
-      self.deviceMap[device.id] = payload.unique_id;
-
-      self.client.publish(getConfigPath(device), JSON.stringify(payload));
+      this.client.publish(getConfigPath(device), JSON.stringify(payload));
       setTimeout(() => {
-        self.client.publish(getAvailabilityTopic(device), 'online');
+        this.client.publish(getAvailabilityTopic(device), 'online');
       }, 2000);
     });
   }
 
   updateState(deviceId, data) {
-    const device = this.devices.find((x) => x.id === deviceId);
+    const device = this.deviceRegistry.getDevice(deviceId);
 
     if (!device) {
       logger.warn(`Unknown device id ${deviceId} - not handled by us.`);
@@ -193,9 +242,9 @@ class MqttClient extends EventEmitter {
     this.client.publish(getAvailabilityTopic(device), 'online');
   }
 
-  sceneTriggered(scene) {
-    logger.verbose(`Scene triggered: ${scene}`);
-    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene }));
+  sceneTriggered(sceneId) {
+    logger.verbose(`Scene triggered: ${sceneId}`);
+    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene: sceneId }));
   }
 }
 

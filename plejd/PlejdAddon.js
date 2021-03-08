@@ -3,8 +3,7 @@ const EventEmitter = require('events');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 const PlejdApi = require('./PlejdApi');
-// const PlejdBLE = require('./PlejdBLE');
-const PlejdBLEHandler = require('./PlejdBLEHandler');
+const PlejdDeviceCommunication = require('./PlejdDeviceCommunication');
 const MqttClient = require('./MqttClient');
 const SceneManager = require('./SceneManager');
 const DeviceRegistry = require('./DeviceRegistry');
@@ -16,8 +15,9 @@ class PlejdAddon extends EventEmitter {
   config;
   deviceRegistry;
   plejdApi;
-  plejdBLEHandler;
+  plejdDeviceCommunication;
   mqttClient;
+  processCleanupFunc;
   sceneManager;
 
   constructor() {
@@ -27,9 +27,16 @@ class PlejdAddon extends EventEmitter {
     this.deviceRegistry = new DeviceRegistry();
 
     this.plejdApi = new PlejdApi(this.deviceRegistry);
-    this.plejdBLEHandler = new PlejdBLEHandler(this.deviceRegistry);
-    this.sceneManager = new SceneManager(this.deviceRegistry, this.plejdBLEHandler);
+    this.plejdDeviceCommunication = new PlejdDeviceCommunication(this.deviceRegistry);
+    this.sceneManager = new SceneManager(this.deviceRegistry, this.plejdDeviceCommunication);
     this.mqttClient = new MqttClient(this.deviceRegistry);
+  }
+
+  cleanup() {
+    this.mqttClient.cleanup();
+    this.mqttClient.removeAllListeners();
+    this.plejdDeviceCommunication.cleanup();
+    this.plejdDeviceCommunication.removeAllListeners();
   }
 
   async init() {
@@ -38,13 +45,17 @@ class PlejdAddon extends EventEmitter {
     await this.plejdApi.init();
     this.sceneManager.init();
 
+    this.processCleanupFunc = () => {
+      this.cleanup();
+      this.processCleanupFunc = () => {};
+      this.mqttClient.disconnect(() => process.exit(0));
+    };
+
     ['SIGINT', 'SIGHUP', 'SIGTERM'].forEach((signal) => {
-      process.on(signal, () => {
-        this.mqttClient.disconnect(() => process.exit(0));
-      });
+      process.on(signal, this.processCleanupFunc);
     });
 
-    this.mqttClient.on('connected', () => {
+    this.mqttClient.on(MqttClient.EVENTS.connected, () => {
       try {
         logger.verbose('connected to mqtt.');
         this.mqttClient.sendDiscoveryToHomeAssistant();
@@ -54,7 +65,7 @@ class PlejdAddon extends EventEmitter {
     });
 
     // subscribe to changes from HA
-    this.mqttClient.on('stateChanged', (device, command) => {
+    this.mqttClient.on(MqttClient.EVENTS.stateChanged, (device, command) => {
       try {
         const deviceId = device.id;
 
@@ -88,47 +99,38 @@ class PlejdAddon extends EventEmitter {
         }
 
         if (state === 'ON') {
-          this.plejdBLEHandler.turnOn(deviceId, commandObj);
+          this.plejdDeviceCommunication.turnOn(deviceId, commandObj);
         } else {
-          this.plejdBLEHandler.turnOff(deviceId, commandObj);
+          this.plejdDeviceCommunication.turnOff(deviceId, commandObj);
         }
       } catch (err) {
-        logger.error('Error in MqttClient.stateChanged callback in main.js', err);
+        logger.error('Error in MqttClient.stateChanged callback', err);
       }
     });
 
     this.mqttClient.init();
 
-    this.plejdBLEHandler.on('connected', () => {
-      logger.info('Bluetooth connected. Plejd BLE up and running!');
-    });
-    this.plejdBLEHandler.on('reconnecting', () => {
-      logger.info('Bluetooth reconnecting...');
-    });
-
     // subscribe to changes from Plejd
-    this.plejdBLEHandler.on('stateChanged', (deviceId, command) => {
-      try {
-        this.mqttClient.updateState(deviceId, command);
-      } catch (err) {
-        logger.error('Error in PlejdService.stateChanged callback in main.js', err);
-      }
-    });
+    this.plejdDeviceCommunication.on(
+      PlejdDeviceCommunication.EVENTS.stateChanged,
+      (deviceId, command) => {
+        try {
+          this.mqttClient.updateState(deviceId, command);
+        } catch (err) {
+          logger.error('Error in PlejdService.stateChanged callback', err);
+        }
+      },
+    );
 
-    this.plejdBLEHandler.on('sceneTriggered', (deviceId, sceneId) => {
+    this.plejdDeviceCommunication.on(PlejdDeviceCommunication.EVENTS.sceneTriggered, (sceneId) => {
       try {
         this.mqttClient.sceneTriggered(sceneId);
       } catch (err) {
-        logger.error('Error in PlejdService.sceneTriggered callback in main.js', err);
+        logger.error('Error in PlejdService.sceneTriggered callback', err);
       }
     });
 
-    try {
-      await this.plejdBLEHandler.init();
-    } catch (err) {
-      logger.error('Failed init() of BLE. Starting reconnect loop.');
-      await this.plejdBLEHandler.startReconnectPeriodicallyLoop();
-    }
+    await this.plejdDeviceCommunication.init();
     logger.info('Main init done');
   }
 }

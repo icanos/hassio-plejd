@@ -1,5 +1,13 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+### [0.6.2](https://github.com/icanos/hassio-plejd/tree/0.6.2) (2021-02-27)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.1...0.6.2)
+
+**Closed issues:**
+
+- Include rooms as lights does not work in 0.6.1 [\#169](https://github.com/icanos/hassio-plejd/issues/169)
+
 ### [0.6.1](https://github.com/icanos/hassio-plejd/tree/0.6.1) (2021-02-20)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.0...0.6.1)

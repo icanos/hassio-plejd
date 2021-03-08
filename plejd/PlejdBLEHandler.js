@@ -2,10 +2,12 @@ const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
 const EventEmitter = require('events');
-const Logger = require('./Logger');
 
 const Configuration = require('./Configuration');
+const constants = require('./constants');
+const Logger = require('./Logger');
 
+const { COMMANDS } = constants;
 const logger = Logger.getLogger('plejd-ble');
 
 // UUIDs
@@ -23,6 +25,9 @@ const BLE_CMD_SCENE_TRIG = 0x0021;
 const BLE_CMD_TIME_UPDATE = 0x001b;
 
 const BLE_BROADCAST_DEVICE_ID = 0x01;
+const BLE_REQUEST_NO_RESPONSE = 0x0110;
+const BLE_REQUEST_RESPONSE = 0x0102;
+// const BLE_REQUEST_READ_VALUE = 0x0103;
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
 const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
@@ -33,9 +38,6 @@ const BLUEZ_DEVICE_ID = 'org.bluez.Device1';
 const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
-const MAX_TRANSITION_STEPS_PER_SECOND = 5; // Could be made a setting
-const MAX_RETRY_COUNT = 5; // Could be made a setting
-
 const delay = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 class PlejBLEHandler extends EventEmitter {
@@ -43,24 +45,28 @@ class PlejBLEHandler extends EventEmitter {
   adapterProperties;
   config;
   bleDevices = [];
-  bleDeviceTransitionTimers = {};
   bus = null;
   connectedDevice = null;
   consecutiveWriteFails;
-  deviceRegistry;
+  consecutiveReconnectAttempts = 0;
   discoveryTimeout = null;
   plejdService = null;
-  plejdDevices = {};
   pingRef = null;
-  writeQueue = [];
-  writeQueueRef = null;
+  requestCurrentPlejdTimeRef = null;
   reconnectInProgress = false;
+  emergencyReconnectTimeout = null;
 
   // Refer to BLE-states.md regarding the internal BLE/bluez state machine of Bluetooth states
   // These states refer to the state machine of this file
   static STATES = ['MAIN_INIT', 'GET_ADAPTER_PROXY'];
 
-  static EVENTS = ['connected', 'reconnecting', 'sceneTriggered', 'stateChanged'];
+  static EVENTS = {
+    connected: 'connected',
+    reconnecting: 'reconnecting',
+    commandReceived: 'commandReceived',
+    writeFailed: 'writeFailed',
+    writeSuccess: 'writeSuccess',
+  };
 
   constructor(deviceRegistry) {
     super();
@@ -79,14 +85,37 @@ class PlejBLEHandler extends EventEmitter {
       ping: null,
     };
 
-    this.on('writeFailed', (error) => this.onWriteFailed(error));
-    this.on('writeSuccess', () => this.onWriteSuccess());
+    this.bus = dbus.systemBus();
+  }
+
+  cleanup() {
+    logger.verbose('cleanup() - Clearing ping interval and clock update timer');
+    clearInterval(this.pingRef);
+    clearTimeout(this.requestCurrentPlejdTimeRef);
+
+    logger.verbose('Removing listeners to write events, bus events and objectManager...');
+
+    this.removeAllListeners(PlejBLEHandler.EVENTS.writeFailed);
+    this.removeAllListeners(PlejBLEHandler.EVENTS.writeSuccess);
+
+    if (this.bus) {
+      this.bus.removeAllListeners('error');
+      this.bus.removeAllListeners('connect');
+    }
+    if (this.characteristics.lastDataProperties) {
+      this.characteristics.lastDataProperties.removeAllListeners('PropertiesChanged');
+    }
+    if (this.objectManager) {
+      this.objectManager.removeAllListeners('InterfacesAdded');
+    }
   }
 
   async init() {
     logger.info('init()');
 
-    this.bus = dbus.systemBus();
+    this.on(PlejBLEHandler.EVENTS.writeFailed, (error) => this._onWriteFailed(error));
+    this.on(PlejBLEHandler.EVENTS.writeSuccess, () => this._onWriteSuccess());
+
     this.bus.on('error', (err) => {
       // Uncaught error events will show UnhandledPromiseRejection logs
       logger.verbose(`dbus-next error event: ${err.message}`);
@@ -123,6 +152,32 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('BLE init done, waiting for devices.');
   }
 
+  async sendCommand(command, deviceId, data) {
+    let payload;
+    let brightnessVal;
+    switch (command) {
+      case COMMANDS.TURN_ON:
+        payload = this._createHexPayload(deviceId, BLE_CMD_STATE_CHANGE, '01');
+        break;
+      case COMMANDS.TURN_OFF:
+        payload = this._createHexPayload(deviceId, BLE_CMD_STATE_CHANGE, '00');
+        break;
+      case COMMANDS.DIM:
+        // eslint-disable-next-line no-bitwise
+        brightnessVal = (data << 8) | data;
+        payload = this._createHexPayload(
+          deviceId,
+          BLE_CMD_DIM2_CHANGE,
+          `01${brightnessVal.toString(16).padStart(4, '0')}`,
+        );
+        break;
+      default:
+        logger.error(`Unknown command ${command}`);
+        throw new Error(`Unknown command ${command}`);
+    }
+    await this._write(payload);
+  }
+
   async _initDiscoveredPlejdDevice(path) {
     logger.debug(`initDiscoveredPlejdDevice(). Got ${path} device`);
 
@@ -143,9 +198,12 @@ class PlejBLEHandler extends EventEmitter {
       fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
       plejd.device = this.deviceRegistry.getDeviceBySerialNumber(fixedPlejdPath);
 
-      logger.debug(`Discovered ${plejd.path} with rssi ${plejd.rssi}, name ${plejd.device.name}`);
-      // Todo: Connect should probably be done here
-      this.bleDevices.push(plejd);
+      if (plejd.device) {
+        logger.debug(`Discovered ${plejd.path} with rssi ${plejd.rssi}, name ${plejd.device.name}`);
+        this.bleDevices.push(plejd);
+      } else {
+        logger.warn(`Device registry does not contain device with serial ${fixedPlejdPath}`);
+      }
     } catch (err) {
       logger.error(`Failed inspecting ${path}. `, err);
     }
@@ -217,7 +275,6 @@ class PlejBLEHandler extends EventEmitter {
       }
 
       logger.info(`BLE Connected to ${this.connectedDevice.name}`);
-      this.emit('connected');
 
       // Connected and authenticated, request current time and start ping
       if (this.config.updatePlejdClock) {
@@ -225,8 +282,7 @@ class PlejBLEHandler extends EventEmitter {
       } else {
         logger.info('Plejd clock updates disabled in configuration.');
       }
-      this.startPing();
-      this.startWriteQueue();
+      this._startPing();
 
       // After we've authenticated, we need to hook up the event listener
       // for changes to lastData.
@@ -234,8 +290,13 @@ class PlejBLEHandler extends EventEmitter {
         iface,
         properties,
         // invalidated (third param),
-      ) => this.onLastDataUpdated(iface, properties));
+      ) => this._onLastDataUpdated(iface, properties));
       this.characteristics.lastData.StartNotify();
+      this.consecutiveReconnectAttempts = 0;
+      this.emit(PlejBLEHandler.EVENTS.connected);
+
+      clearTimeout(this.emergencyReconnectTimeout);
+      this.emergencyReconnectTimeout = null;
     } catch (err) {
       // This method is run on a timer, so errors can't e re-thrown.
       // Start reconnect loop if errors occur here
@@ -246,6 +307,7 @@ class PlejBLEHandler extends EventEmitter {
 
   async _getInterface() {
     const bluez = await this.bus.getProxyObject(BLUEZ_SERVICE_NAME, '/');
+
     this.objectManager = await bluez.getInterface(DBUS_OM_INTERFACE);
 
     // We need to find the ble interface which implements the Adapter1 interface
@@ -285,18 +347,21 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _powerCycleAdapter() {
+    logger.verbose('Power cycling BLE adapter');
     await this._powerOffAdapter();
     await this._powerOnAdapter();
   }
 
   async _powerOnAdapter() {
+    logger.verbose('Powering on BLE adapter and waiting 5 seconds');
     await this.adapterProperties.Set(BLUEZ_ADAPTER_ID, 'Powered', new dbus.Variant('b', 1));
-    await delay(1000);
+    await delay(5000);
   }
 
   async _powerOffAdapter() {
+    logger.verbose('Powering off BLE adapter and waiting 5 seconds');
     await this.adapterProperties.Set(BLUEZ_ADAPTER_ID, 'Powered', new dbus.Variant('b', 0));
-    await delay(1000);
+    await delay(5000);
   }
 
   async _cleanExistingConnections(managedObjects) {
@@ -339,7 +404,7 @@ class PlejBLEHandler extends EventEmitter {
 
   async _startGetPlejdDevice() {
     logger.verbose('Setting up interfacesAdded subscription and discovery filter');
-    this.objectManager.on('InterfacesAdded', (path, interfaces) => this.onInterfacesAdded(path, interfaces));
+    this.objectManager.on('InterfacesAdded', (path, interfaces) => this._onInterfacesAdded(path, interfaces));
 
     this.adapter.SetDiscoveryFilter({
       UUIDs: new dbus.Variant('as', [PLEJD_SERVICE]),
@@ -372,15 +437,14 @@ class PlejBLEHandler extends EventEmitter {
     );
   }
 
-  async onInterfacesAdded(path, interfaces) {
+  async _onInterfacesAdded(path, interfaces) {
     logger.silly(`Interface added ${path}, inspecting...`);
-    // const [adapter, dev, service, characteristic] = path.split('/').slice(3);
     const interfaceKeys = Object.keys(interfaces);
 
     if (interfaceKeys.indexOf(BLUEZ_DEVICE_ID) > -1) {
       if (interfaces[BLUEZ_DEVICE_ID].UUIDs.value.indexOf(PLEJD_SERVICE) > -1) {
         logger.debug(`Found Plejd service on ${path}`);
-
+        this.objectManager.removeAllListeners('InterfacesAdded');
         await this._initDiscoveredPlejdDevice(path);
       } else {
         logger.error('Uh oh, no Plejd device!');
@@ -390,153 +454,7 @@ class PlejBLEHandler extends EventEmitter {
     }
   }
 
-  turnOn(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
-    logger.info(
-      `Plejd got turn on command for ${deviceName} (${deviceId}), brightness ${command.brightness}${
-        command.transition ? `, transition: ${command.transition}` : ''
-      }`,
-    );
-    this._transitionTo(deviceId, command.brightness, command.transition, deviceName);
-  }
-
-  turnOff(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
-    logger.info(
-      `Plejd got turn off command for ${deviceName} (${deviceId})${
-        command.transition ? `, transition: ${command.transition}` : ''
-      }`,
-    );
-    this._transitionTo(deviceId, 0, command.transition, deviceName);
-  }
-
-  _clearDeviceTransitionTimer(deviceId) {
-    if (this.bleDeviceTransitionTimers[deviceId]) {
-      clearInterval(this.bleDeviceTransitionTimers[deviceId]);
-    }
-  }
-
-  _transitionTo(deviceId, targetBrightness, transition, deviceName) {
-    const initialBrightness = this.plejdDevices[deviceId]
-      ? this.plejdDevices[deviceId].state && this.plejdDevices[deviceId].dim
-      : null;
-    this._clearDeviceTransitionTimer(deviceId);
-
-    const isDimmable = this.deviceRegistry.getDevice(deviceId).dimmable;
-
-    if (
-      transition > 1
-      && isDimmable
-      && (initialBrightness || initialBrightness === 0)
-      && (targetBrightness || targetBrightness === 0)
-      && targetBrightness !== initialBrightness
-    ) {
-      // Transition time set, known initial and target brightness
-      // Calculate transition interval time based on delta brightness and max steps per second
-      // During transition, measure actual transition interval time and adjust stepping continously
-      // If transition <= 1 second, Plejd will do a better job
-      // than we can in transitioning so transitioning will be skipped
-
-      const deltaBrightness = targetBrightness - initialBrightness;
-      const transitionSteps = Math.min(
-        Math.abs(deltaBrightness),
-        MAX_TRANSITION_STEPS_PER_SECOND * transition,
-      );
-      const transitionInterval = (transition * 1000) / transitionSteps;
-
-      logger.debug(
-        `transitioning from ${initialBrightness} to ${targetBrightness} ${
-          transition ? `in ${transition} seconds` : ''
-        }.`,
-      );
-      logger.verbose(
-        `delta brightness ${deltaBrightness}, steps ${transitionSteps}, interval ${transitionInterval} ms`,
-      );
-
-      const dtStart = new Date();
-
-      let nSteps = 0;
-
-      this.bleDeviceTransitionTimers[deviceId] = setInterval(() => {
-        const tElapsedMs = new Date().getTime() - dtStart.getTime();
-        let tElapsed = tElapsedMs / 1000;
-
-        if (tElapsed > transition || tElapsed < 0) {
-          tElapsed = transition;
-        }
-
-        let newBrightness = Math.round(
-          initialBrightness + (deltaBrightness * tElapsed) / transition,
-        );
-
-        if (tElapsed === transition) {
-          nSteps++;
-          this._clearDeviceTransitionTimer(deviceId);
-          newBrightness = targetBrightness;
-          logger.debug(
-            `Queueing finalize ${deviceName} (${deviceId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${
-              tElapsedMs / (nSteps || 1)
-            } ms.`,
-          );
-          this._setBrightness(deviceId, newBrightness, true, deviceName);
-        } else {
-          nSteps++;
-          logger.verbose(
-            `Queueing dim transition for ${deviceName} (${deviceId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`,
-          );
-          this._setBrightness(deviceId, newBrightness, false, deviceName);
-        }
-      }, transitionInterval);
-    } else {
-      if (transition && isDimmable) {
-        logger.debug(
-          `Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${targetBrightness}`,
-        );
-      }
-      this._setBrightness(deviceId, targetBrightness, true, deviceName);
-    }
-  }
-
-  _setBrightness(deviceId, brightness, shouldRetry, deviceName) {
-    let payload = null;
-    let log = '';
-
-    if (!brightness && brightness !== 0) {
-      logger.debug(
-        `Queueing turn on ${deviceName} (${deviceId}). No brightness specified, setting DIM to previous.`,
-      );
-      payload = Buffer.from(`${deviceId.toString(16).padStart(2, '0')}0110009701`, 'hex');
-      log = 'ON';
-    } else if (brightness <= 0) {
-      logger.debug(`Queueing turn off ${deviceId}`);
-      payload = Buffer.from(`${deviceId.toString(16).padStart(2, '0')}0110009700`, 'hex');
-      log = 'OFF';
-    } else {
-      if (brightness > 255) {
-        // eslint-disable-next-line no-param-reassign
-        brightness = 255;
-      }
-
-      logger.debug(`Queueing ${deviceId} set brightness to ${brightness}`);
-      // eslint-disable-next-line no-bitwise
-      const brightnessVal = (brightness << 8) | brightness;
-      payload = Buffer.from(
-        `${deviceId.toString(16).padStart(2, '0')}0110009801${brightnessVal
-          .toString(16)
-          .padStart(4, '0')}`,
-        'hex',
-      );
-      log = `DIM ${brightness}`;
-    }
-    this.writeQueue.unshift({
-      deviceId,
-      log,
-      shouldRetry,
-      payload,
-    });
-  }
-
-  async authenticate() {
+  async _authenticate() {
     logger.info('authenticate()');
 
     try {
@@ -554,21 +472,56 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async startReconnectPeriodicallyLoop() {
-    logger.verbose('startReconnectPeriodicallyLoop');
-    if (this.reconnectInProgress) {
+    logger.info('Starting reconnect loop...');
+    clearTimeout(this.emergencyReconnectTimeout);
+    this.emergencyReconnectTimeout = null;
+    await this._startReconnectPeriodicallyLoopInternal();
+  }
+
+  async _startReconnectPeriodicallyLoopInternal() {
+    logger.verbose('Starting internal reconnect loop...');
+
+    if (this.reconnectInProgress && !this.emergencyReconnectTimeout) {
       logger.debug('Reconnect already in progress. Skipping this call.');
       return;
     }
-    clearInterval(this.pingRef);
-    clearTimeout(this.writeQueueRef);
+    if (this.emergencyReconnectTimeout) {
+      logger.warn(
+        'Restarting reconnect loop due to emergency reconnect timer elapsed. This should very rarely happen!',
+      );
+    }
+
     this.reconnectInProgress = true;
 
     /* eslint-disable no-await-in-loop */
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        logger.verbose('Reconnect: Clean up, emit reconnect event, wait 5s and the re-init...');
+        this.cleanup();
+
+        this.consecutiveReconnectAttempts++;
+        if (this.consecutiveReconnectAttempts % 10 === 0) {
+          logger.warn(
+            `Tried reconnecting ${this.consecutiveReconnectAttempts} times. Try power cycling the BLE adapter every 10th time...`,
+          );
+          await this._powerCycleAdapter();
+        } else {
+          logger.verbose(
+            `Reconnect attempt ${this.consecutiveReconnectAttempts} in a row. Will power cycle every 10th time.`,
+          );
+        }
+
+        this.emit(PlejBLEHandler.EVENTS.reconnecting);
+
+        // Emergency 2 minute timer if reconnect silently fails somewhere
+        clearTimeout(this.emergencyReconnectTimeout);
+        this.emergencyReconnectTimeout = setTimeout(
+          () => this._startReconnectPeriodicallyLoopInternal(),
+          120 * 1000,
+        );
+
         await delay(5000);
-        this.emit('reconnecting');
         logger.info('Reconnecting BLE...');
         await this.init();
         break;
@@ -581,45 +534,46 @@ class PlejBLEHandler extends EventEmitter {
     this.reconnectInProgress = false;
   }
 
-  async write(data) {
-    if (!data || !this.plejdService || !this.characteristics.data) {
+  async _write(payload) {
+    if (!payload || !this.plejdService || !this.characteristics.data) {
       logger.debug('data, plejdService or characteristics not available. Cannot write()');
-      return false;
+      throw new Error('data, plejdService or characteristics not available. Cannot write()');
     }
 
     try {
-      logger.verbose(`Sending ${data.length} byte(s) of data to Plejd. ${data.toString('hex')}`);
-      const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
+      logger.verbose(
+        `Sending ${payload.length} byte(s) of data to Plejd. ${payload.toString('hex')}`,
+      );
+      const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, payload);
       await this.characteristics.data.WriteValue([...encryptedData], {});
-      await this.onWriteSuccess();
-      return true;
+      await this._onWriteSuccess();
     } catch (err) {
+      await this._onWriteFailed(err);
       if (err.message === 'In Progress') {
         logger.debug("Write failed due to 'In progress' ", err);
-      } else {
-        logger.debug('Write failed ', err);
+        throw new Error("Write failed due to 'In progress'");
       }
-      await this.onWriteFailed(err);
-      return false;
+      logger.debug('Write failed ', err);
+      throw new Error(`Write failed due to ${err.message}`);
     }
   }
 
-  startPing() {
+  _startPing() {
     logger.info('startPing()');
     clearInterval(this.pingRef);
 
     this.pingRef = setInterval(async () => {
       logger.silly('ping');
-      await this.ping();
+      await this._ping();
     }, 3000);
   }
 
   // eslint-disable-next-line class-methods-use-this
-  onWriteSuccess() {
+  _onWriteSuccess() {
     this.consecutiveWriteFails = 0;
   }
 
-  async onWriteFailed(error) {
+  async _onWriteFailed(error) {
     this.consecutiveWriteFails++;
     logger.debug(`onWriteFailed #${this.consecutiveWriteFails} in a row.`, error);
     logger.verbose(`Error message: ${error.message}`);
@@ -635,7 +589,6 @@ class PlejBLEHandler extends EventEmitter {
       logger.error("'Method \"WriteValue\" doesn't exist'. Plejd device is probably disconnected.");
       errorIndicatesDisconnected = true;
     }
-    logger.verbose(`Made it ${errorIndicatesDisconnected} || ${this.consecutiveWriteFails >= 5}`);
 
     if (errorIndicatesDisconnected || this.consecutiveWriteFails >= 5) {
       logger.warn(
@@ -645,7 +598,7 @@ class PlejBLEHandler extends EventEmitter {
     }
   }
 
-  async ping() {
+  async _ping() {
     logger.silly('ping()');
 
     const ping = crypto.randomBytes(1);
@@ -656,88 +609,45 @@ class PlejBLEHandler extends EventEmitter {
       pong = await this.characteristics.ping.ReadValue({});
     } catch (err) {
       logger.verbose(`Error pinging Plejd, calling onWriteFailed... ${err.message}`);
-      await this.onWriteFailed(err);
+      await this._onWriteFailed(err);
       return;
     }
 
     // eslint-disable-next-line no-bitwise
     if (((ping[0] + 1) & 0xff) !== pong[0]) {
       logger.verbose('Plejd ping failed, pong contains wrong data. Calling onWriteFailed...');
-      await this.onWriteFailed(new Error(`plejd ping failed ${ping[0]} - ${pong[0]}`));
+      await this._onWriteFailed(new Error(`plejd ping failed ${ping[0]} - ${pong[0]}`));
       return;
     }
 
     logger.silly(`pong: ${pong[0]}`);
-    await this.onWriteSuccess();
+    await this._onWriteSuccess();
   }
 
   async _requestCurrentPlejdTime() {
-    logger.info('Requesting current Plejd clock time...');
+    if (!this.connectedDevice) {
+      logger.warn('Cannot request current Plejd time, not connected.');
+      return;
+    }
+    logger.info('Requesting current Plejd time...');
 
-    // Eg: 0b0102001b: 0b: id, 0102: read, 001b: time
-    const payload = Buffer.from(
-      `${this.connectedDevice.id.toString(16).padStart(2, '0')}0102${BLE_CMD_TIME_UPDATE.toString(
-        16,
-      ).padStart(4, '0')}`,
-      'hex',
+    const payload = this._createHexPayload(
+      this.connectedDevice.id,
+      BLE_CMD_TIME_UPDATE,
+      '',
+      BLE_REQUEST_RESPONSE,
     );
-    this.writeQueue.unshift({
-      deviceId: this.connectedDevice.id,
-      log: 'RequestTime',
-      shouldRetry: true,
-      payload,
-    });
-    setTimeout(() => this._requestCurrentPlejdTime(), 1000 * 3600); // Once per hour
-  }
-
-  startWriteQueue() {
-    logger.info('startWriteQueue()');
-    clearTimeout(this.writeQueueRef);
-
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.config.writeQueueWaitTime);
-  }
-
-  async runWriteQueue() {
     try {
-      while (this.writeQueue.length > 0) {
-        const queueItem = this.writeQueue.pop();
-        const deviceName = this.deviceRegistry.getDeviceName(queueItem.deviceId);
-        logger.debug(
-          `Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log}. Total queue length: ${this.writeQueue.length}`,
-        );
-
-        if (this.writeQueue.some((item) => item.deviceId === queueItem.deviceId)) {
-          logger.verbose(
-            `Skipping ${deviceName} (${queueItem.deviceId}) `
-              + `${queueItem.log} due to more recent command in queue.`,
-          );
-          // Skip commands if new ones exist for the same deviceId
-          // still process all messages in order
-        } else {
-          // eslint-disable-next-line no-await-in-loop
-          const success = await this.write(queueItem.payload);
-          if (!success && queueItem.shouldRetry) {
-            queueItem.retryCount = (queueItem.retryCount || 0) + 1;
-            logger.debug(`Will retry command, count failed so far ${queueItem.retryCount}`);
-            if (queueItem.retryCount <= MAX_RETRY_COUNT) {
-              this.writeQueue.push(queueItem); // Add back to top of queue to be processed next;
-            } else {
-              logger.error(
-                `Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${deviceName} (${queueItem.deviceId}). Command ${queueItem.log} failed.`,
-              );
-              break;
-            }
-            if (queueItem.retryCount > 1) {
-              break; // First retry directly, consecutive after writeQueueWaitTime ms
-            }
-          }
-        }
-      }
-    } catch (e) {
-      logger.error('Error in writeQueue loop, values probably not written to Plejd', e);
+      this._write(payload);
+    } catch (error) {
+      logger.warn('Failed requesting time update from Plejd');
     }
 
-    this.writeQueueRef = setTimeout(() => this.runWriteQueue(), this.config.writeQueueWaitTime);
+    clearTimeout(this.requestCurrentPlejdTimeRef);
+    this.requestCurrentPlejdTimeRef = setTimeout(
+      () => this._requestCurrentPlejdTime(),
+      1000 * 3600,
+    ); // Once per hour
   }
 
   async _processPlejdService(path, characteristics) {
@@ -845,13 +755,13 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('Connected device is a Plejd device with the right characteristics.');
 
     this.connectedDevice = device.device;
-    await this.authenticate();
+    await this._authenticate();
 
     return this.connectedDevice;
   }
 
   // eslint-disable-next-line no-unused-vars
-  async onLastDataUpdated(iface, properties) {
+  async _onLastDataUpdated(iface, properties) {
     if (iface !== GATT_CHRC_ID) {
       return;
     }
@@ -866,8 +776,8 @@ class PlejBLEHandler extends EventEmitter {
       return;
     }
 
-    const data = value.value;
-    const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, data);
+    const encryptedData = value.value;
+    const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, encryptedData);
 
     if (decoded.length < 5) {
       if (Logger.shouldLog('debug')) {
@@ -901,29 +811,18 @@ class PlejBLEHandler extends EventEmitter {
       );
     }
 
+    let command;
+    let data = {};
     if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
       logger.debug(`${deviceName} (${deviceId}) got state+dim update. S: ${state}, D: ${dim}`);
 
-      this.emit('stateChanged', deviceId, {
-        state,
-        brightness: dim,
-      });
-
-      this.plejdDevices[deviceId] = {
-        state,
-        dim,
-      };
-      logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+      command = COMMANDS.DIM;
+      data = { state, dim };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
     } else if (cmd === BLE_CMD_STATE_CHANGE) {
       logger.debug(`${deviceName} (${deviceId}) got state update. S: ${state}`);
-      this.emit('stateChanged', deviceId, {
-        state,
-      });
-      this.plejdDevices[deviceId] = {
-        state,
-        dim: 0,
-      };
-      logger.silly(`All states: ${JSON.stringify(this.plejdDevices, null, 2)}`);
+      command = state ? COMMANDS.TURN_ON : COMMANDS.TURN_OFF;
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
       const sceneId = state;
       const sceneName = this.deviceRegistry.getSceneName(sceneId);
@@ -932,11 +831,13 @@ class PlejBLEHandler extends EventEmitter {
         `${sceneName} (${sceneId}) scene triggered (device id ${deviceId}). Name can be misleading if there is a device with the same numeric id.`,
       );
 
-      this.emit('sceneTriggered', deviceId, sceneId);
+      command = COMMANDS.TRIGGER_SCENE;
+      data = { sceneId };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
       const now = new Date();
       // Guess Plejd timezone based on HA time zone
-      const offsetSecondsGuess = now.getTimezoneOffset() * 60;
+      const offsetSecondsGuess = now.getTimezoneOffset() * 60 + 250; // Todo: 4 min off
 
       // Plejd reports local unix timestamp adjust to local time zone
       const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
@@ -955,20 +856,22 @@ class PlejBLEHandler extends EventEmitter {
             `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
           if (this.connectedDevice && deviceId === this.connectedDevice.id) {
+            // Requested time sync by us
             const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
             logger.info(`Setting time to ${now.toString()}`);
-            const payload = Buffer.alloc(10);
-            // E.g: 00 0110 001b 38df2360 00
-            // 00: set?, 0110: don't respond, 001b: time command, 38df236000: the time
-            payload.write('000110001b', 0, 'hex');
-            payload.writeInt32LE(Math.trunc(newLocalTimestamp), 5);
-            payload.write('00', 9, 'hex');
-            this.writeQueue.unshift({
-              deviceId: this.connectedDevice.id,
-              log: 'SetTime',
-              shouldRetry: true,
-              payload,
-            });
+            const payload = this._createPayload(
+              this.connectedDevice.id,
+              BLE_CMD_TIME_UPDATE,
+              10,
+              (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), 5),
+            );
+            try {
+              this.write(payload);
+            } catch (err) {
+              logger.error(
+                'Failed writing new time to Plejd. Will try again in one hour or at restart.',
+              );
+            }
           }
         } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
           logger.info('Got time response. Plejd clock time in sync with Home Assistant time');
@@ -981,6 +884,37 @@ class PlejBLEHandler extends EventEmitter {
         )}. Device ${deviceName} (${deviceId})`,
       );
     }
+  }
+
+  _createHexPayload(
+    deviceId,
+    command,
+    hexDataString,
+    requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
+  ) {
+    return this._createPayload(
+      deviceId,
+      command,
+      5 + Math.ceil(hexDataString.length / 2),
+      (payload) => payload.write(hexDataString, 5, 'hex'),
+      requestResponseCommand,
+    );
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  _createPayload(
+    deviceId,
+    command,
+    bufferLength,
+    payloadBufferAddDataFunc,
+    requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
+  ) {
+    const payload = Buffer.alloc(bufferLength);
+    payload.writeUInt8(deviceId);
+    payload.writeUInt16BE(requestResponseCommand, 1);
+    payload.writeUInt16BE(command, 3);
+    payloadBufferAddDataFunc(payload);
+    return payload;
   }
 
   // eslint-disable-next-line class-methods-use-this

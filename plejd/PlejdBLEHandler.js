@@ -199,7 +199,9 @@ class PlejBLEHandler extends EventEmitter {
       plejd.device = this.deviceRegistry.getDeviceBySerialNumber(fixedPlejdPath);
 
       if (plejd.device) {
-        logger.debug(`Discovered ${plejd.path} with rssi ${plejd.rssi}, name ${plejd.device.name}`);
+        logger.debug(
+          `Discovered ${plejd.path} with rssi ${plejd.rssi} dBm, name ${plejd.device.name}`,
+        );
         this.bleDevices.push(plejd);
       } else {
         logger.warn(`Device registry does not contain device with serial ${fixedPlejdPath}`);
@@ -359,9 +361,9 @@ class PlejBLEHandler extends EventEmitter {
   }
 
   async _powerOffAdapter() {
-    logger.verbose('Powering off BLE adapter and waiting 5 seconds');
+    logger.verbose('Powering off BLE adapter and waiting 30 seconds');
     await this.adapterProperties.Set(BLUEZ_ADAPTER_ID, 'Powered', new dbus.Variant('b', 0));
-    await delay(5000);
+    await delay(30000);
   }
 
   async _cleanExistingConnections(managedObjects) {
@@ -501,9 +503,15 @@ class PlejBLEHandler extends EventEmitter {
         this.cleanup();
 
         this.consecutiveReconnectAttempts++;
+
+        if (this.consecutiveReconnectAttempts % 100 === 0) {
+          logger.error('Failed reconnecting 100 times. Creating a new dbus instance...');
+          this.bus = dbus.systemBus();
+        }
+
         if (this.consecutiveReconnectAttempts % 10 === 0) {
           logger.warn(
-            `Tried reconnecting ${this.consecutiveReconnectAttempts} times. Try power cycling the BLE adapter every 10th time...`,
+            `Tried reconnecting ${this.consecutiveReconnectAttempts} times. Will power cycle the BLE adapter now...`,
           );
           await this._powerCycleAdapter();
         } else {

@@ -1,5 +1,19 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.7.0](https://github.com/icanos/hassio-plejd/tree/0.7.0) (2021-03-23)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.2...0.7.0)
+
+**Closed issues:**
+
+- \[plejd-ble\] Unable to connect. Software caused connection abort [\#173](https://github.com/icanos/hassio-plejd/issues/173)
+- All logs seam to be OK but it´s not working anyway [\#171](https://github.com/icanos/hassio-plejd/issues/171)
+- Include rooms as lights does not work in 0.6.1 [\#169](https://github.com/icanos/hassio-plejd/issues/169)
+
+**Merged pull requests:**
+
+- Feature/restructure ble [\#167](https://github.com/icanos/hassio-plejd/pull/167) ([SweVictor](https://github.com/SweVictor))
+
 ### [0.6.2](https://github.com/icanos/hassio-plejd/tree/0.6.2) (2021-02-27)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.1...0.6.2)

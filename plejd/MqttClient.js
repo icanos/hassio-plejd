@@ -70,6 +70,11 @@ const getSwitchPayload = (device) => ({
 class MqttClient extends EventEmitter {
   deviceRegistry;
 
+  static EVENTS = {
+    connected: 'connected',
+    stateChanged: 'stateChanged',
+  };
+
   constructor(deviceRegistry) {
     super();
 
@@ -94,10 +99,10 @@ class MqttClient extends EventEmitter {
 
       this.client.subscribe(startTopics, (err) => {
         if (err) {
-          logger.error('Unable to subscribe to status topics');
+          logger.error('Unable to subscribe to status topics', err);
         }
 
-        this.emit('connected');
+        this.emit(MqttClient.EVENTS.connected);
       });
 
       this.client.subscribe(getSubscribePath(), (err) => {
@@ -113,73 +118,80 @@ class MqttClient extends EventEmitter {
     });
 
     this.client.on('message', (topic, message) => {
-      if (startTopics.includes(topic)) {
-        logger.info('Home Assistant has started. lets do discovery.');
-        this.emit('connected');
-      } else {
-        const decodedTopic = decodeTopic(topic);
-        if (decodedTopic) {
-          let device = this.deviceRegistry.getDevice(decodedTopic.id);
-
-          const messageString = message.toString();
-          const isJsonMessage = messageString.startsWith('{');
-          const command = isJsonMessage ? JSON.parse(messageString) : messageString;
-
-          if (
-            !isJsonMessage
-            && messageString === 'ON'
-            && this.deviceRegistry.getScene(decodedTopic.id)
-          ) {
-            // Guess that id that got state command without dim value belongs to Scene, not Device
-            // This guess could very well be wrong depending on the installation...
-            logger.warn(
-              `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON.`
-                + 'OFF commands still sent to device.',
-            );
-            device = this.deviceRegistry.getScene(decodedTopic.id);
-          }
-
-          const deviceName = device ? device.name : '';
-
-          switch (decodedTopic.command) {
-            case 'set':
-              logger.verbose(
-                `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
-              );
-
-              if (device) {
-                this.emit('stateChanged', device, command);
-              } else {
-                logger.warn(
-                  `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
-                );
-              }
-              break;
-            case 'state':
-            case 'config':
-            case 'availability':
-              logger.verbose(
-                `Sent mqtt ${decodedTopic.command} command for ${
-                  decodedTopic.type
-                }, ${deviceName} (${decodedTopic.id}). ${
-                  decodedTopic.command === 'availability' ? messageString : ''
-                }`,
-              );
-              break;
-            default:
-              logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
-          }
+      try {
+        if (startTopics.includes(topic)) {
+          logger.info('Home Assistant has started. lets do discovery.');
+          this.emit(MqttClient.EVENTS.connected);
         } else {
-          logger.verbose(
-            `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
-          );
+          const decodedTopic = decodeTopic(topic);
+          if (decodedTopic) {
+            let device = this.deviceRegistry.getDevice(decodedTopic.id);
+
+            const messageString = message.toString();
+            const isJsonMessage = messageString.startsWith('{');
+            const command = isJsonMessage ? JSON.parse(messageString) : messageString;
+
+            if (
+              !isJsonMessage
+              && messageString === 'ON'
+              && this.deviceRegistry.getScene(decodedTopic.id)
+            ) {
+              // Guess that id that got state command without dim value belongs to Scene, not Device
+              // This guess could very well be wrong depending on the installation...
+              logger.warn(
+                `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON. `
+                  + 'OFF commands still sent to device.',
+              );
+              device = this.deviceRegistry.getScene(decodedTopic.id);
+            }
+            const deviceName = device ? device.name : '';
+
+            switch (decodedTopic.command) {
+              case 'set':
+                logger.verbose(
+                  `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
+                );
+
+                if (device) {
+                  this.emit(MqttClient.EVENTS.stateChanged, device, command);
+                } else {
+                  logger.warn(
+                    `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+                  );
+                }
+                break;
+              case 'state':
+              case 'config':
+              case 'availability':
+                logger.verbose(
+                  `Sent mqtt ${decodedTopic.command} command for ${
+                    decodedTopic.type
+                  }, ${deviceName} (${decodedTopic.id}). ${
+                    decodedTopic.command === 'availability' ? messageString : ''
+                  }`,
+                );
+                break;
+              default:
+                logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
+            }
+          } else {
+            logger.verbose(
+              `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
+            );
+          }
         }
+      } catch (err) {
+        logger.error(`Error processing mqtt message on topic ${topic}`, err);
       }
     });
   }
 
   reconnect() {
     this.client.reconnect();
+  }
+
+  cleanup() {
+    this.client.removeAllListeners();
   }
 
   disconnect(callback) {

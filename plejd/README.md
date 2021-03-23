@@ -147,6 +147,8 @@ If you're having issues to get the addon working, there are a few things you can
   - Start `bluetoothctl` interactive command
   - Write `list` and make sure it finds the Bluetooth device. If no device is found you need to fix this first!
   - Look in Plejd addon log and make sure there is no `unable to find a bluetooth adapter` line
+- Make sure signal strength is "good enough". The BLE adapter needs to be reasonably close to a Plejd device. Look at the RSSI reading in the debug logs. In some cases an RSSI of -80 dBm works well, in other cases a higher value such as -40 dBm is required to work.
+- You should get verbose/debug logs similar to: `Found Plejd service on ...` => `Discovered ... with RSSI ...` => `Inspecting ...` => `Connecting ...` => `Connected` => `Connected device is a Plejd device ...` => `BLE Connected to ...` => `Bluetooth connected. Plejd BLE up and running!`. After this sequence (which could fail multiple times before finally succeeding) you should get quite frequent `Raw event received ...` from the Plejd mesh. When updating state you should see in the logs `Sending 8 byte(s) of data to Plejd ...`.
 - Listen to `#` in the MQTT integration and watch Plejd mqtt messages come in
   - Initial device discovery messages originate from the Plejd API, so if you set up that correctly you should get new devices in HA
   - Plejd log will show something like `discovered light (DIM-01) named ....`

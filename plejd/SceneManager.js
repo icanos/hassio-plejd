@@ -1,16 +1,13 @@
-const EventEmitter = require('events');
 const Logger = require('./Logger');
 const Scene = require('./Scene');
 
 const logger = Logger.getLogger('scene-manager');
-class SceneManager extends EventEmitter {
+class SceneManager {
   deviceRegistry;
   plejdBle;
   scenes;
 
   constructor(deviceRegistry, plejdBle) {
-    super();
-
     this.deviceRegistry = deviceRegistry;
     this.plejdBle = plejdBle;
     this.scenes = {};

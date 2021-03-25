@@ -41,12 +41,17 @@ class DeviceRegistry {
     );
 
     if (added.roomId) {
-      const room = this.deviceIdsByRoom[added.roomId] || [];
-      if (!room.includes(added.roomId)) {
-        this.deviceIdsByRoom[added.roomId] = [...room, added.roomId];
+      if (!this.deviceIdsByRoom[added.roomId]) {
+        this.deviceIdsByRoom[added.roomId] = [];
+      }
+      const room = this.deviceIdsByRoom[added.roomId];
+      if (!room.includes(added.id)) {
+        this.deviceIdsByRoom[added.roomId] = [...room, added.id];
       }
       logger.verbose(
-        `Added to room #${added.roomId}: ${JSON.stringify(this.deviceIdsByRoom[added.roomId])}`,
+        `Added device to room ${added.roomId}: ${JSON.stringify(
+          this.deviceIdsByRoom[added.roomId],
+        )}`,
       );
     }
 

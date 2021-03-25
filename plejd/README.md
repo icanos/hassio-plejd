@@ -31,6 +31,7 @@ The add-on has been tested on the following platforms:
 - Mac OS Catalina 10.15.1 with Node v. 13.2.0
 - Raspberry Pi 4 with Hass.io
 - Raspberry Pi 4 with Hass.io/aarch64
+- Intel NUC7i5BNH with HassOS intel NUC image (built-in BT)
 
 #### Tested Plejd devices
 

@@ -1,5 +1,13 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.7.1](https://github.com/icanos/hassio-plejd/tree/0.7.1) (2021-03-25)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.7.0...0.7.1)
+
+**Closed issues:**
+
+- Can't connect to device: TypeError: Cannot read property 'dimmable' [\#175](https://github.com/icanos/hassio-plejd/issues/175)
+
 ## [0.7.0](https://github.com/icanos/hassio-plejd/tree/0.7.0) (2021-03-23)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.6.2...0.7.0)

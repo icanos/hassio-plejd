@@ -2,125 +2,94 @@ const Logger = require('./Logger');
 
 const logger = Logger.getLogger('device-registry');
 class DeviceRegistry {
-  apiSite;
+  /** @type {string} */
   cryptoKey = null;
 
-  deviceIdsByRoom = {};
-  deviceIdsBySerial = {};
+  outputDeviceIdByRoomId = {};
+  outputDeviceIdByBLEIndex = {};
 
   // Dictionaries of [id]: device per type
-  plejdDevices = {};
-  roomDevices = {};
+  /** @type {import('types/DeviceRegistry').OutputDevices} */
+  outputDevices = {};
+  /** @type {import('types/DeviceRegistry').OutputDevices} */
   sceneDevices = {};
 
-  get allDevices() {
-    return [
-      ...Object.values(this.plejdDevices),
-      ...Object.values(this.roomDevices),
-      ...Object.values(this.sceneDevices),
-    ];
+  // eslint-disable-next-line class-methods-use-this
+  getUniqueOutputId(deviceId, outputIndex) {
+    return `${deviceId}_${outputIndex}`;
   }
 
-  addPlejdDevice(device) {
-    const added = {
-      ...this.plejdDevices[device.id],
-      ...device,
+  /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
+  addOutputDevice(outputDevice) {
+    this.outputDevices = {
+      ...this.outputDevices,
+      [outputDevice.uniqueId]: outputDevice,
     };
-
-    this.plejdDevices = {
-      ...this.plejdDevices,
-      [added.id]: added,
-    };
-
-    this.deviceIdsBySerial[added.serialNumber] = added.id;
 
     logger.verbose(
-      `Added/updated device: ${JSON.stringify(added)}. ${
-        Object.keys(this.plejdDevices).length
-      } plejd devices in total.`,
+      `Added/updated output device: ${JSON.stringify(outputDevice)}. ${
+        Object.keys(this.outputDevices).length
+      } output devices in total.`,
     );
 
-    if (added.roomId) {
-      if (!this.deviceIdsByRoom[added.roomId]) {
-        this.deviceIdsByRoom[added.roomId] = [];
-      }
-      const room = this.deviceIdsByRoom[added.roomId];
-      if (!room.includes(added.id)) {
-        this.deviceIdsByRoom[added.roomId] = [...room, added.id];
-      }
+    this.outputDeviceIdByBLEIndex[outputDevice.bleDeviceIndex] = outputDevice.uniqueId;
+
+    if (!this.outputDeviceIdByRoomId[outputDevice.roomId]) {
+      this.outputDeviceIdByRoomId[outputDevice.roomId] = [];
+    }
+    if (
+      outputDevice.roomId !== outputDevice.uniqueId
+      && !this.outputDeviceIdByRoomId[outputDevice.roomId].includes(outputDevice.roomId)
+    ) {
+      this.outputDeviceIdByRoomId[outputDevice.roomId].push(outputDevice.roomId);
       logger.verbose(
-        `Added device to room ${added.roomId}: ${JSON.stringify(
-          this.deviceIdsByRoom[added.roomId],
+        `Added device to room ${outputDevice.roomId}: ${JSON.stringify(
+          this.outputDeviceIdByRoomId[outputDevice.roomId],
         )}`,
       );
     }
 
-    return added;
+    if (outputDevice.hiddenFromIntegrations || outputDevice.hiddenFromRoomList) {
+      logger.verbose(`Device is hidden and should possibly not be included. 
+          Hidden from room list: ${outputDevice.hiddenFromRoomList}
+          Hidden from integrations: ${outputDevice.hiddenFromIntegrations}`);
+    }
   }
 
-  addRoomDevice(device) {
-    const added = {
-      ...this.roomDevices[device.id],
-      ...device,
-    };
-    this.roomDevices = {
-      ...this.roomDevices,
-      [added.id]: added,
-    };
-
-    logger.verbose(
-      `Added/updated room device: ${JSON.stringify(added)}. ${
-        Object.keys(this.roomDevices).length
-      } room devices total.`,
-    );
-    return added;
-  }
-
+  /** @param scene {import('types/DeviceRegistry').OutputDevice} */
   addScene(scene) {
-    const added = {
-      ...this.sceneDevices[scene.id],
-      ...scene,
-    };
     this.sceneDevices = {
       ...this.sceneDevices,
-      [added.id]: added,
+      [scene.uniqueId]: scene,
     };
     logger.verbose(
-      `Added/updated scene: ${JSON.stringify(added)}. ${
+      `Added/updated scene: ${JSON.stringify(scene)}. ${
         Object.keys(this.sceneDevices).length
       } scenes in total.`,
     );
-    return added;
   }
 
   clearPlejdDevices() {
-    this.plejdDevices = {};
-    this.deviceIdsByRoom = {};
+    this.outputDevices = {};
+    this.outputDeviceIdByRoomId = {};
     this.deviceIdsBySerial = {};
-  }
-
-  clearRoomDevices() {
-    this.roomDevices = {};
   }
 
   clearSceneDevices() {
     this.sceneDevices = {};
   }
 
-  getDevice(deviceId) {
-    return this.plejdDevices[deviceId] || this.roomDevices[deviceId];
+  getOutputDevice(uniqueOutputId) {
+    return this.outputDevices[uniqueOutputId];
   }
 
-  getDeviceIdsByRoom(roomId) {
-    return this.deviceIdsByRoom[roomId];
+  /** @returns {string[]} */
+  getOutputDeviceIdsByRoomId(roomId) {
+    return this.outputDeviceIdByRoomId[roomId];
   }
 
-  getDeviceBySerialNumber(serialNumber) {
-    return this.getDevice(this.deviceIdsBySerial[serialNumber]);
-  }
-
-  getDeviceName(deviceId) {
-    return (this.plejdDevices[deviceId] || {}).name;
+  getOutputDeviceName(uniqueOutputId) {
+    return (this.outputDevices[uniqueOutputId] || {}).name;
   }
 
   getScene(sceneId) {
@@ -131,25 +100,20 @@ class DeviceRegistry {
     return (this.sceneDevices[sceneId] || {}).name;
   }
 
-  getState(deviceId) {
-    const device = this.getDevice(deviceId) || {};
-    if (device.dimmable) {
-      return {
-        state: device.state,
-        dim: device.dim,
-      };
+  /**
+   * @param {string} uniqueOutputId
+   * @param {boolean} state
+   * @param {number?} [dim]
+   */
+  setOutputState(uniqueOutputId, state, dim) {
+    const device = this.getOutputDevice(uniqueOutputId);
+    if (!device) {
+      logger.warn(
+        `Trying to set state for ${uniqueOutputId} which is not in the list of known outputs.`,
+      );
+      return;
     }
-    return {
-      state: device.state,
-    };
-  }
 
-  setApiSite(siteDetails) {
-    this.apiSite = siteDetails;
-  }
-
-  setState(deviceId, state, dim) {
-    const device = this.getDevice(deviceId) || this.addPlejdDevice({ id: deviceId });
     device.state = state;
     if (dim && device.dimmable) {
       device.dim = dim;

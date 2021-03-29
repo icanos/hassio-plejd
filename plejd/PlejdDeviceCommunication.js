@@ -1,4 +1,4 @@
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 const Configuration = require('./Configuration');
 const constants = require('./constants');
 const Logger = require('./Logger');
@@ -15,6 +15,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   bleDeviceTransitionTimers = {};
   plejdBleHandler;
   config;
+  /** @type {import('./DeviceRegistry')} */
   deviceRegistry;
   writeQueue = [];
   writeQueueRef = null;
@@ -71,7 +72,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   turnOn(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
+    const deviceName = this.deviceRegistry.getOutputDeviceName(deviceId);
     logger.info(
       `Plejd got turn on command for ${deviceName} (${deviceId}), brightness ${command.brightness}${
         command.transition ? `, transition: ${command.transition}` : ''
@@ -81,7 +82,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   turnOff(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
+    const deviceName = this.deviceRegistry.getOutputDeviceName(deviceId);
     logger.info(
       `Plejd got turn off command for ${deviceName} (${deviceId})${
         command.transition ? `, transition: ${command.transition}` : ''
@@ -93,18 +94,18 @@ class PlejdDeviceCommunication extends EventEmitter {
   _bleCommandReceived(deviceId, command, data) {
     try {
       if (command === COMMANDS.DIM) {
-        this.deviceRegistry.setState(deviceId, data.state, data.dim);
+        this.deviceRegistry.setOutputState(deviceId, data.state, data.dim);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
-          state: data.state,
+          state: !!data.state,
           brightness: data.dim,
         });
       } else if (command === COMMANDS.TURN_ON) {
-        this.deviceRegistry.setState(deviceId, 1);
+        this.deviceRegistry.setOutputState(deviceId, true);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
           state: 1,
         });
       } else if (command === COMMANDS.TURN_OFF) {
-        this.deviceRegistry.setState(deviceId, 0);
+        this.deviceRegistry.setOutputState(deviceId, false);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
           state: 0,
         });
@@ -125,11 +126,11 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   _transitionTo(deviceId, targetBrightness, transition, deviceName) {
-    const device = this.deviceRegistry.getDevice(deviceId);
+    const device = this.deviceRegistry.getOutputDevice(deviceId);
     const initialBrightness = device ? device.state && device.dim : null;
     this._clearDeviceTransitionTimer(deviceId);
 
-    const isDimmable = this.deviceRegistry.getDevice(deviceId).dimmable;
+    const isDimmable = this.deviceRegistry.getOutputDevice(deviceId).dimmable;
 
     if (
       transition > 1
@@ -249,7 +250,7 @@ class PlejdDeviceCommunication extends EventEmitter {
           return;
         }
         const queueItem = this.writeQueue.pop();
-        const deviceName = this.deviceRegistry.getDeviceName(queueItem.deviceId);
+        const deviceName = this.deviceRegistry.getOutputDeviceName(queueItem.deviceId);
         logger.debug(
           `Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${
             queueItem.command

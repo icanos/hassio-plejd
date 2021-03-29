@@ -1,7 +1,7 @@
 const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 
 const Configuration = require('./Configuration');
 const constants = require('./constants');
@@ -874,7 +874,7 @@ class PlejBLEHandler extends EventEmitter {
               (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), 5),
             );
             try {
-              this.write(payload);
+              this._write(payload);
             } catch (err) {
               logger.error(
                 'Failed writing new time to Plejd. Will try again in one hour or at restart.',

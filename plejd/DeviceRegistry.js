@@ -5,18 +5,25 @@ class DeviceRegistry {
   /** @type {string} */
   cryptoKey = null;
 
-  outputDeviceIdByRoomId = {};
-  outputDeviceIdByBLEIndex = {};
+  /** @private @type {Object.<string, import('types/ApiSite').Device>} */
+  devices = {};
+  /** @private */
+  outputDeviceUniqueIdsByRoomId = {};
+  /** @private */
+  outputUniqueIdByBleOutputAddress = {};
+
+  /** @private @type {import('./types/ApiSite').ApiSite} */
+  apiSite;
 
   // Dictionaries of [id]: device per type
-  /** @type {import('types/DeviceRegistry').OutputDevices} */
+  /** @private @type {import('types/DeviceRegistry').OutputDevices} */
   outputDevices = {};
-  /** @type {import('types/DeviceRegistry').OutputDevices} */
+  /** @private @type {import('types/DeviceRegistry').OutputDevices} */
   sceneDevices = {};
 
-  // eslint-disable-next-line class-methods-use-this
-  getUniqueOutputId(deviceId, outputIndex) {
-    return `${deviceId}_${outputIndex}`;
+  /** @param device {import('./types/ApiSite').Device} */
+  addPhysicalDevice(device) {
+    this.devices[device.deviceId] = device;
   }
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
@@ -32,19 +39,19 @@ class DeviceRegistry {
       } output devices in total.`,
     );
 
-    this.outputDeviceIdByBLEIndex[outputDevice.bleDeviceIndex] = outputDevice.uniqueId;
+    this.outputUniqueIdByBleOutputAddress[outputDevice.bleOutputAddress] = outputDevice.uniqueId;
 
-    if (!this.outputDeviceIdByRoomId[outputDevice.roomId]) {
-      this.outputDeviceIdByRoomId[outputDevice.roomId] = [];
+    if (!this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId]) {
+      this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId] = [];
     }
     if (
-      outputDevice.roomId !== outputDevice.uniqueId
-      && !this.outputDeviceIdByRoomId[outputDevice.roomId].includes(outputDevice.roomId)
+      outputDevice.roomId !== outputDevice.uniqueId &&
+      !this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId].includes(outputDevice.uniqueId)
     ) {
-      this.outputDeviceIdByRoomId[outputDevice.roomId].push(outputDevice.roomId);
+      this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId].push(outputDevice.uniqueId);
       logger.verbose(
         `Added device to room ${outputDevice.roomId}: ${JSON.stringify(
-          this.outputDeviceIdByRoomId[outputDevice.roomId],
+          this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId],
         )}`,
       );
     }
@@ -70,26 +77,62 @@ class DeviceRegistry {
   }
 
   clearPlejdDevices() {
+    this.devices = {};
     this.outputDevices = {};
-    this.outputDeviceIdByRoomId = {};
-    this.deviceIdsBySerial = {};
+    this.outputDeviceUniqueIdsByRoomId = {};
+    this.outputUniqueIdByBleOutputAddress = {};
   }
 
   clearSceneDevices() {
     this.sceneDevices = {};
   }
 
+  /**
+   * @returns {import('./types/DeviceRegistry').OutputDevice[]}
+   */
+  getAllOutputDevices() {
+    return Object.values(this.outputDevices);
+  }
+
+  /**
+   * @returns {import('./types/DeviceRegistry').OutputDevice[]}
+   */
+  getAllSceneDevices() {
+    return Object.values(this.sceneDevices);
+  }
+
+  /** @returns {import('./types/ApiSite').ApiSite} */
+  getApiSite() {
+    return this.apiSite;
+  }
+
+  /**
+   * @param {string} uniqueOutputId
+   */
   getOutputDevice(uniqueOutputId) {
     return this.outputDevices[uniqueOutputId];
   }
 
+  /** @returns {import('./types/DeviceRegistry').OutputDevice} */
+  getOutputDeviceByBleOutputAddress(bleOutputAddress) {
+    return this.outputDevices[this.outputUniqueIdByBleOutputAddress[bleOutputAddress]];
+  }
+
   /** @returns {string[]} */
   getOutputDeviceIdsByRoomId(roomId) {
-    return this.outputDeviceIdByRoomId[roomId];
+    return this.outputDeviceUniqueIdsByRoomId[roomId];
   }
 
   getOutputDeviceName(uniqueOutputId) {
     return (this.outputDevices[uniqueOutputId] || {}).name;
+  }
+
+  /**
+   * @param {string } deviceId The physical device serial number
+   * @return {import('./types/ApiSite').Device}
+   */
+  getPhysicalDevice(deviceId) {
+    return this.devices[deviceId];
   }
 
   getScene(sceneId) {
@@ -98,6 +141,17 @@ class DeviceRegistry {
 
   getSceneName(sceneId) {
     return (this.sceneDevices[sceneId] || {}).name;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getUniqueOutputId(deviceId, outputIndex) {
+    return `${deviceId}_${outputIndex}`;
+  }
+
+  /** @param apiSite {import('./types/ApiSite').ApiSite} */
+  setApiSite(apiSite) {
+    this.apiSite = apiSite;
+    this.cryptoKey = apiSite.plejdMesh.cryptoKey;
   }
 
   /**

@@ -3,7 +3,7 @@
 export type OutputDevices = { [deviceIdAndOutput: string]: OutputDevice };
 
 export interface OutputDevice {
-  bleDeviceIndex: number;
+  bleOutputAddress: number;
   deviceId: string;
   dim?: number;
   dimmable: boolean;
@@ -13,7 +13,7 @@ export interface OutputDevice {
   name: string;
   output: number;
   roomId: string;
-  state: number | undefined;
+  state: boolean | undefined;
   type: string;
   typeName: string;
   version: string;

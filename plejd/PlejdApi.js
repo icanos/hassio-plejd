@@ -76,8 +76,8 @@ class PlejdApi {
         }
       }
     }
-    this.deviceRegistry.cryptoKey = this.siteDetails.plejdMesh.cryptoKey;
 
+    this.deviceRegistry.setApiSite(this.siteDetails);
     this.getDevices();
   }
 
@@ -300,20 +300,22 @@ class PlejdApi {
    * * `devices` - physical Plejd devices, duplicated for devices with multiple outputs
    *   devices: [{deviceId, title, objectId, ...}, {...}]
    * * `deviceAddress` - BLE address of each physical device
-   *   deviceAddress: {[deviceId]: bleDeviceId}
+   *   deviceAddress: {[deviceId]: bleDeviceAddress}
    * * `outputSettings` - lots of info about load settings, also links devices to output index
    *   outputSettings: [{deviceId, output, deviceParseId, ...}]  //deviceParseId === objectId above
    * * `outputAddress`: BLE address of [0] main output and [n] other output (loads)
-   *   outputAddress: {[deviceId]: {[output]: bleDeviceId}}
+   *   outputAddress: {[deviceId]: {[output]: bleDeviceAddress}}
    * * `inputSettings` - detailed settings for inputs (buttons, RTR-01, ...), scenes triggered, ...
    *   inputSettings: [{deviceId, input, ...}]  //deviceParseId === objectId above
    * * `inputAddress` - Links inputs to what BLE device they control, or 255 for unassigned/scene
-   *   inputAddress: {[deviceId]: {[input]: bleDeviceId}}
+   *   inputAddress: {[deviceId]: {[input]: bleDeviceAddress}}
    */
   _getPlejdDevices() {
     this.deviceRegistry.clearPlejdDevices();
 
     this.siteDetails.devices.forEach((device) => {
+      this.deviceRegistry.addPhysicalDevice(device);
+
       const outputSettings = this.siteDetails.outputSettings.find(
         (x) => x.deviceParseId === device.objectId,
       );
@@ -328,7 +330,7 @@ class PlejdApi {
           outputSettings.output,
         );
 
-        const bleDeviceIndex = this.siteDetails.outputAddress[device.deviceId][
+        const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][
           outputSettings.output
         ];
 
@@ -343,7 +345,7 @@ class PlejdApi {
 
         /** @type {import('types/DeviceRegistry').OutputDevice} */
         const outputDevice = {
-          bleDeviceIndex,
+          bleOutputAddress,
           deviceId: device.deviceId,
           dimmable,
           hiddenFromRoomList: device.hiddenFromRoomList,
@@ -409,7 +411,7 @@ class PlejdApi {
 
         /** @type {import('types/DeviceRegistry').OutputDevice} */
         const newDevice = {
-          bleDeviceIndex: roomAddress,
+          bleOutputAddress: roomAddress,
           deviceId: null,
           dimmable,
           hiddenFromRoomList: false,
@@ -431,6 +433,7 @@ class PlejdApi {
   }
 
   _getSceneDevices() {
+    this.deviceRegistry.clearSceneDevices();
     // add scenes as switches
     const scenes = this.siteDetails.scenes.filter((x) => x.hiddenFromSceneList === false);
 
@@ -438,7 +441,7 @@ class PlejdApi {
       const sceneNum = this.siteDetails.sceneIndex[scene.sceneId];
       /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
-        bleDeviceIndex: sceneNum,
+        bleOutputAddress: sceneNum,
         deviceId: undefined,
         dimmable: false,
         hiddenFromSceneList: scene.hiddenFromSceneList,

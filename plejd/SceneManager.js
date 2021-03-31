@@ -3,25 +3,28 @@ const Scene = require('./Scene');
 
 const logger = Logger.getLogger('scene-manager');
 class SceneManager {
+  /** @private @type {import('./DeviceRegistry')} */
   deviceRegistry;
-  plejdBle;
+  /** @private @type {import('./PlejdDeviceCommunication')} */
+  plejdDeviceCommunication;
+  /** @private @type {Object.<number,Scene>} */
   scenes;
 
-  constructor(deviceRegistry, plejdBle) {
+  constructor(deviceRegistry, plejdDeviceCommunication) {
     this.deviceRegistry = deviceRegistry;
-    this.plejdBle = plejdBle;
+    this.plejdDeviceCommunication = plejdDeviceCommunication;
     this.scenes = {};
   }
 
   init() {
-    const scenes = this.deviceRegistry.apiSite.scenes.filter(
-      (x) => x.hiddenFromSceneList === false,
-    );
+    const scenes = this.deviceRegistry
+      .getApiSite()
+      .scenes.filter((x) => x.hiddenFromSceneList === false);
 
     this.scenes = {};
     scenes.forEach((scene) => {
-      const idx = this.deviceRegistry.apiSite.sceneIndex[scene.sceneId];
-      this.scenes[idx] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
+      const idx = this.deviceRegistry.getApiSite().sceneIndex[scene.sceneId];
+      this.scenes[idx] = new Scene(this.deviceRegistry, idx, scene);
     });
   }
 
@@ -34,14 +37,15 @@ class SceneManager {
     }
 
     scene.steps.forEach((step) => {
-      const device = this.deviceRegistry.getDeviceBySerialNumber(step.deviceId);
+      const uniqueId = this.deviceRegistry.getUniqueOutputId(step.deviceId, step.output);
+      const device = this.deviceRegistry.getOutputDevice(uniqueId);
       if (device) {
         if (device.dimmable && step.state) {
-          this.plejdBle.turnOn(device.id, { brightness: step.brightness });
+          this.plejdDeviceCommunication.turnOn(uniqueId, { brightness: step.brightness });
         } else if (!device.dimmable && step.state) {
-          this.plejdBle.turnOn(device.id, {});
+          this.plejdDeviceCommunication.turnOn(uniqueId, {});
         } else if (!step.state) {
-          this.plejdBle.turnOff(device.id, {});
+          this.plejdDeviceCommunication.turnOff(uniqueId, {});
         }
       }
     });

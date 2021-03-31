@@ -45,8 +45,8 @@ class DeviceRegistry {
       this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId] = [];
     }
     if (
-      outputDevice.roomId !== outputDevice.uniqueId &&
-      !this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId].includes(outputDevice.uniqueId)
+      outputDevice.roomId !== outputDevice.uniqueId
+      && !this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId].includes(outputDevice.uniqueId)
     ) {
       this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId].push(outputDevice.uniqueId);
       logger.verbose(

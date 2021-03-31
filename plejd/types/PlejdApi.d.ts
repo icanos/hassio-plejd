@@ -1,6 +1,6 @@
 /* eslint-disable no-use-before-define */
 
-import { ApiSite } from './ApiSite';
+import { ApiSite } from './ApiSite.d.ts';
 
 export type PlejdApi = {
   config: any;

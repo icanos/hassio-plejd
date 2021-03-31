@@ -13,10 +13,8 @@ const logger = Logger.getLogger('plejd-mqtt');
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
 
-const getMqttUniqueId = (/** @type {string} */ uniqueId) => `${nodeId}.${uniqueId}`;
-
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${plug.type}/${nodeId}/${getMqttUniqueId(plug.uniqueId)}`;
+const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${plug.type}/${nodeId}/${plug.uniqueId}`;
 
 const getTopicName = (
   /** @type {{ uniqueId: string; type: string; }} */ plug,
@@ -48,7 +46,7 @@ const getLightDiscoveryPayload = (
 ) => ({
   schema: 'json',
   name: device.name,
-  unique_id: getMqttUniqueId(device.uniqueId),
+  unique_id: device.uniqueId,
   '~': getBaseTopic(device),
   state_topic: `~/${TOPICS.STATE}`,
   command_topic: `~/${TOPICS.COMMAND}`,

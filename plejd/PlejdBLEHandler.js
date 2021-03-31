@@ -154,21 +154,26 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('BLE init done, waiting for devices.');
   }
 
-  async sendCommand(command, uniqueOutputId, data) {
+  /**
+   * @param {string} command
+   * @param {number} bleOutputAddress
+   * @param {number} data
+   */
+  async sendCommand(command, bleOutputAddress, data) {
     let payload;
     let brightnessVal;
     switch (command) {
       case COMMANDS.TURN_ON:
-        payload = this._createHexPayload(uniqueOutputId, BLE_CMD_STATE_CHANGE, '01');
+        payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '01');
         break;
       case COMMANDS.TURN_OFF:
-        payload = this._createHexPayload(uniqueOutputId, BLE_CMD_STATE_CHANGE, '00');
+        payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '00');
         break;
       case COMMANDS.DIM:
         // eslint-disable-next-line no-bitwise
         brightnessVal = (data << 8) | data;
         payload = this._createHexPayload(
-          uniqueOutputId,
+          bleOutputAddress,
           BLE_CMD_DIM2_CHANGE,
           `01${brightnessVal.toString(16).padStart(4, '0')}`,
         );
@@ -820,7 +825,9 @@ class PlejBLEHandler extends EventEmitter {
       // decoded.toString() could potentially be expensive
       logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
       logger.verbose(
-        `Decoded: Device ${outputUniqueId}, cmd ${cmd.toString(16)}, state ${state}, dim ${dim}`,
+        `Decoded: Device ${outputUniqueId} (BLE address ${bleOutputAddress}), cmd ${cmd.toString(
+          16,
+        )}, state ${state}, dim ${dim}`,
       );
     }
 

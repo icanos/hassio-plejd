@@ -255,9 +255,10 @@ class PlejdDeviceCommunication extends EventEmitter {
           return;
         }
         const queueItem = this.writeQueue.pop();
-        const deviceName = this.deviceRegistry.getOutputDeviceName(queueItem.uniqueOutputId);
+        const device = this.deviceRegistry.getOutputDevice(queueItem.uniqueOutputId);
+
         logger.debug(
-          `Write queue: Processing ${deviceName} (${queueItem.uniqueOutputId}). Command ${
+          `Write queue: Processing ${device.name} (${queueItem.uniqueOutputId}). Command ${
             queueItem.command
           }${queueItem.data ? ` ${queueItem.data}` : ''}. Total queue length: ${
             this.writeQueue.length
@@ -266,7 +267,7 @@ class PlejdDeviceCommunication extends EventEmitter {
 
         if (this.writeQueue.some((item) => item.uniqueOutputId === queueItem.uniqueOutputId)) {
           logger.verbose(
-            `Skipping ${deviceName} (${queueItem.uniqueOutputId}) `
+            `Skipping ${device.name} (${queueItem.uniqueOutputId}) `
               + `${queueItem.command} due to more recent command in queue.`,
           );
           // Skip commands if new ones exist for the same uniqueOutputId
@@ -276,7 +277,7 @@ class PlejdDeviceCommunication extends EventEmitter {
           try {
             await this.plejdBleHandler.sendCommand(
               queueItem.command,
-              queueItem.uniqueOutputId,
+              device.bleOutputAddress,
               queueItem.data,
             );
           } catch (err) {
@@ -287,7 +288,7 @@ class PlejdDeviceCommunication extends EventEmitter {
                 this.writeQueue.push(queueItem); // Add back to top of queue to be processed next;
               } else {
                 logger.error(
-                  `Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${deviceName} (${queueItem.uniqueOutputId}). Command ${queueItem.command} failed.`,
+                  `Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${device.name} (${queueItem.uniqueOutputId}). Command ${queueItem.command} failed.`,
                 );
                 break;
               }

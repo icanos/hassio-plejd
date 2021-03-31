@@ -320,6 +320,16 @@ class PlejdApi {
         (x) => x.deviceParseId === device.objectId,
       );
 
+      if (!outputSettings) {
+        logger.verbose(
+          `No outputSettings found for ${device.title} (${device.deviceId}), assuming output 0`,
+        );
+      }
+
+      const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][
+        outputSettings ? outputSettings.output : 0
+      ];
+
       if (device.traits === TRAITS.NO_LOAD) {
         logger.warn(
           `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
@@ -329,10 +339,6 @@ class PlejdApi {
           device.deviceId,
           outputSettings.output,
         );
-
-        const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][
-          outputSettings.output
-        ];
 
         const plejdDevice = this.siteDetails.plejdDevices.find(
           (x) => x.deviceId === device.deviceId,
@@ -361,13 +367,6 @@ class PlejdApi {
         };
 
         this.deviceRegistry.addOutputDevice(outputDevice);
-      } else {
-        logger.warn(
-          `No outputSettings found for ${device.title} (${device.deviceId}), device will not be included`,
-        );
-        logger.verbose(
-          'Fallback cound potentially be implemented by assuming default deviceSettings[deviceId]',
-        );
       }
 
       // What should we do with inputs?!

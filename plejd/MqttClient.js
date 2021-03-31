@@ -13,12 +13,22 @@ const logger = Logger.getLogger('plejd-mqtt');
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
 
+const getMqttUniqueId = (/** @type {string} */ uniqueId) => `${nodeId}.${uniqueId}`;
+
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-const getPath = ({ id, type }) => `${discoveryPrefix}/${type}/${nodeId}/${id}`;
-const getConfigPath = (plug) => `${getPath(plug)}/config`;
-const getStateTopic = (plug) => `${getPath(plug)}/state`;
-const getAvailabilityTopic = (plug) => `${getPath(plug)}/availability`;
-const getCommandTopic = (plug) => `${getPath(plug)}/set`;
+const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${plug.type}/${nodeId}/${getMqttUniqueId(plug.uniqueId)}`;
+
+const getTopicName = (
+  /** @type {{ uniqueId: string; type: string; }} */ plug,
+  /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
+) => `${getBaseTopic(plug)}/${topicType}`;
+
+const TOPICS = {
+  CONFIG: 'config',
+  STATE: 'state',
+  AVAILABILITY: 'availability',
+  COMMAND: 'set',
+};
 const getSceneEventTopic = () => 'plejd/event/scene';
 
 const decodeTopicRegexp = new RegExp(
@@ -33,17 +43,22 @@ const decodeTopic = (topic) => {
   return matches.groups;
 };
 
-const getDiscoveryPayload = (device) => ({
+const getLightDiscoveryPayload = (
+  /** @type {import('./types/DeviceRegistry').OutputDevice} */ device,
+) => ({
   schema: 'json',
   name: device.name,
-  unique_id: `light.plejd.${device.name.toLowerCase().replace(/ /g, '')}`,
-  state_topic: getStateTopic(device),
-  command_topic: getCommandTopic(device),
-  availability_topic: getAvailabilityTopic(device),
+  unique_id: getMqttUniqueId(device.uniqueId),
+  '~': getBaseTopic(device),
+  state_topic: `~/${TOPICS.STATE}`,
+  command_topic: `~/${TOPICS.COMMAND}`,
+  availability_topic: `~/${TOPICS.AVAILABILITY}`,
   optimistic: false,
-  brightness: `${device.dimmable}`,
+  qos: 1,
+  retain: true,
+  brightness: device.dimmable,
   device: {
-    identifiers: `${device.serialNumber}_${device.id}`,
+    identifiers: `${device.deviceId}`,
     manufacturer: 'Plejd',
     model: device.typeName,
     name: device.name,
@@ -51,23 +66,32 @@ const getDiscoveryPayload = (device) => ({
   },
 });
 
-const getSwitchPayload = (device) => ({
-  name: device.name,
-  state_topic: getStateTopic(device),
-  command_topic: getCommandTopic(device),
+const getScenehDiscoveryPayload = (
+  /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
+) => ({
+  name: sceneDevice.name,
+  '~': getBaseTopic(sceneDevice),
+  state_topic: `~/${TOPICS.STATE}`,
+  command_topic: `~/${TOPICS.COMMAND}`,
   optimistic: false,
+  qos: 1,
+  retain: true,
   device: {
-    identifiers: `${device.serialNumber}_${device.id}`,
+    identifiers: `${sceneDevice.uniqueId}`,
     manufacturer: 'Plejd',
-    model: device.typeName,
-    name: device.name,
-    sw_version: device.version,
+    model: sceneDevice.typeName,
+    name: sceneDevice.name,
+    sw_version: sceneDevice.version,
   },
 });
 
 // #endregion
 
+const getMqttStateString = (/** @type {boolean} */ state) => (state ? 'ON' : 'OFF');
+const AVAILABLILITY = { ONLINE: 'online', OFFLINE: 'offline' };
+
 class MqttClient extends EventEmitter {
+  /** @type {import('DeviceRegistry')} */
   deviceRegistry;
 
   static EVENTS = {
@@ -125,7 +149,7 @@ class MqttClient extends EventEmitter {
         } else {
           const decodedTopic = decodeTopic(topic);
           if (decodedTopic) {
-            let device = this.deviceRegistry.getDevice(decodedTopic.id);
+            let device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
 
             const messageString = message.toString();
             const isJsonMessage = messageString.startsWith('{');
@@ -144,6 +168,7 @@ class MqttClient extends EventEmitter {
               );
               device = this.deviceRegistry.getScene(decodedTopic.id);
             }
+
             const deviceName = device ? device.name : '';
 
             switch (decodedTopic.command) {
@@ -195,35 +220,55 @@ class MqttClient extends EventEmitter {
   }
 
   disconnect(callback) {
-    this.deviceRegistry.allDevices.forEach((device) => {
-      this.client.publish(getAvailabilityTopic(device), 'offline');
+    this.deviceRegistry.getAllOutputDevices().forEach((outputDevice) => {
+      this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.OFFLINE);
     });
     this.client.end(callback);
   }
 
   sendDiscoveryToHomeAssistant() {
-    logger.debug(`Sending discovery of ${this.deviceRegistry.allDevices.length} device(s).`);
+    const allOutputDevices = this.deviceRegistry.getAllOutputDevices();
+    logger.info(`Sending discovery for ${allOutputDevices.length} Plejd output devices`);
+    allOutputDevices.forEach((outputDevice) => {
+      logger.debug(`Sending discovery for ${outputDevice.name}`);
 
-    this.deviceRegistry.allDevices.forEach((device) => {
-      logger.debug(`Sending discovery for ${device.name}`);
-
-      const payload = device.type === 'switch' ? getSwitchPayload(device) : getDiscoveryPayload(device);
+      const configPayload = getLightDiscoveryPayload(outputDevice);
       logger.info(
-        `Discovered ${device.type} (${device.typeName}) named ${device.name} with PID ${device.id}.`,
+        `Discovered ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
       );
 
-      this.client.publish(getConfigPath(device), JSON.stringify(payload));
+      this.client.publish(getTopicName(outputDevice, 'config'), JSON.stringify(configPayload));
       setTimeout(() => {
-        this.client.publish(getAvailabilityTopic(device), 'online');
+        this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.ONLINE);
+      }, 2000);
+    });
+
+    const allSceneDevices = this.deviceRegistry.getAllSceneDevices();
+    logger.info(`Sending discovery for ${allSceneDevices.length} Plejd scene devices`);
+    allSceneDevices.forEach((sceneDevice) => {
+      logger.debug(`Sending discovery for ${sceneDevice.name}`);
+
+      const configPayload = getScenehDiscoveryPayload(sceneDevice);
+      logger.info(
+        `Discovered ${sceneDevice.typeName} (${sceneDevice.type}) named ${sceneDevice.name} (${sceneDevice.bleOutputAddress} : ${sceneDevice.uniqueId}).`,
+      );
+
+      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(configPayload));
+      setTimeout(() => {
+        this.client.publish(getTopicName(sceneDevice, 'availability'), AVAILABLILITY.ONLINE);
       }, 2000);
     });
   }
 
-  updateState(deviceId, data) {
-    const device = this.deviceRegistry.getDevice(deviceId);
+  /**
+   * @param {string} uniqueOutputId
+   * @param {{ state: boolean; brightness?: number; }} data
+   */
+  updateOutputState(uniqueOutputId, data) {
+    const device = this.deviceRegistry.getOutputDevice(uniqueOutputId);
 
     if (!device) {
-      logger.warn(`Unknown device id ${deviceId} - not handled by us.`);
+      logger.warn(`Unknown output id ${uniqueOutputId} - not handled by us.`);
       return;
     }
 
@@ -235,26 +280,29 @@ class MqttClient extends EventEmitter {
     let payload = null;
 
     if (device.type === 'switch') {
-      payload = data.state === 1 ? 'ON' : 'OFF';
+      payload = getMqttStateString(data.state);
     } else {
       if (device.dimmable) {
         payload = {
-          state: data.state === 1 ? 'ON' : 'OFF',
+          state: getMqttStateString(data.state),
           brightness: data.brightness,
         };
       } else {
         payload = {
-          state: data.state === 1 ? 'ON' : 'OFF',
+          state: getMqttStateString(data.state),
         };
       }
 
       payload = JSON.stringify(payload);
     }
 
-    this.client.publish(getStateTopic(device), payload);
-    this.client.publish(getAvailabilityTopic(device), 'online');
+    this.client.publish(getTopicName(device, 'state'), payload);
+    this.client.publish(getTopicName(device, 'availability'), AVAILABLILITY.ONLINE);
   }
 
+  /**
+   * @param {string} sceneId
+   */
   sceneTriggered(sceneId) {
     logger.verbose(`Scene triggered: ${sceneId}`);
     this.client.publish(getSceneEventTopic(), JSON.stringify({ scene: sceneId }));

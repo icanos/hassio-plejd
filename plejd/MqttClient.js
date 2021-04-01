@@ -69,7 +69,6 @@ const getScenehDiscoveryPayload = (
 ) => ({
   name: sceneDevice.name,
   '~': getBaseTopic(sceneDevice),
-  state_topic: `~/${TOPICS.STATE}`,
   command_topic: `~/${TOPICS.COMMAND}`,
   optimistic: false,
   qos: 1,

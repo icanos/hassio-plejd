@@ -7,7 +7,7 @@ class SceneManager {
   deviceRegistry;
   /** @private @type {import('./PlejdDeviceCommunication')} */
   plejdDeviceCommunication;
-  /** @private @type {Object.<number,Scene>} */
+  /** @private @type {Object.<string,Scene>} */
   scenes;
 
   constructor(deviceRegistry, plejdDeviceCommunication) {
@@ -23,15 +23,18 @@ class SceneManager {
 
     this.scenes = {};
     scenes.forEach((scene) => {
-      const idx = this.deviceRegistry.getApiSite().sceneIndex[scene.sceneId];
-      this.scenes[idx] = new Scene(this.deviceRegistry, idx, scene);
+      const sceneBleAddress = this.deviceRegistry.getApiSite().sceneIndex[scene.sceneId];
+      this.scenes[scene.sceneId] = new Scene(this.deviceRegistry, sceneBleAddress, scene);
     });
   }
 
-  executeScene(sceneId) {
-    const scene = this.scenes[sceneId];
+  /**
+   * @param {string} sceneUniqueId
+   */
+  executeScene(sceneUniqueId) {
+    const scene = this.scenes[sceneUniqueId];
     if (!scene) {
-      logger.info(`Scene with id ${sceneId} not found`);
+      logger.info(`Scene with id ${sceneUniqueId} not found`);
       logger.verbose(`Scenes: ${JSON.stringify(this.scenes, null, 2)}`);
       return;
     }

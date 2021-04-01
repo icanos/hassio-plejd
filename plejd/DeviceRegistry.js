@@ -7,10 +7,12 @@ class DeviceRegistry {
 
   /** @private @type {Object.<string, import('types/ApiSite').Device>} */
   devices = {};
-  /** @private */
+  /** @private @type {Object.<string, string[]>} */
   outputDeviceUniqueIdsByRoomId = {};
-  /** @private */
+  /** @private @type {Object.<number, string>} */
   outputUniqueIdByBleOutputAddress = {};
+  /** @private @type {Object.<number, string>} */
+  sceneUniqueIdByBleOutputAddress = {};
 
   /** @private @type {import('./types/ApiSite').ApiSite} */
   apiSite;
@@ -28,6 +30,13 @@ class DeviceRegistry {
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
   addOutputDevice(outputDevice) {
+    if (outputDevice.hiddenFromIntegrations || outputDevice.hiddenFromRoomList) {
+      logger.verbose(`Device ${outputDevice.name} is hidden and will not be included. 
+          Hidden from room list: ${outputDevice.hiddenFromRoomList}
+          Hidden from integrations: ${outputDevice.hiddenFromIntegrations}`);
+      return;
+    }
+
     this.outputDevices = {
       ...this.outputDevices,
       [outputDevice.uniqueId]: outputDevice,
@@ -55,12 +64,6 @@ class DeviceRegistry {
         )}`,
       );
     }
-
-    if (outputDevice.hiddenFromIntegrations || outputDevice.hiddenFromRoomList) {
-      logger.verbose(`Device is hidden and should possibly not be included. 
-          Hidden from room list: ${outputDevice.hiddenFromRoomList}
-          Hidden from integrations: ${outputDevice.hiddenFromIntegrations}`);
-    }
   }
 
   /** @param scene {import('types/DeviceRegistry').OutputDevice} */
@@ -85,6 +88,7 @@ class DeviceRegistry {
 
   clearSceneDevices() {
     this.sceneDevices = {};
+    this.sceneUniqueIdByBleOutputAddress = {};
   }
 
   /**
@@ -135,12 +139,29 @@ class DeviceRegistry {
     return this.devices[deviceId];
   }
 
-  getScene(sceneId) {
-    return this.sceneDevices[sceneId];
+  /**
+   * @param {string} sceneUniqueId
+   */
+  getScene(sceneUniqueId) {
+    return this.sceneDevices[sceneUniqueId];
   }
 
-  getSceneName(sceneId) {
-    return (this.sceneDevices[sceneId] || {}).name;
+  /**
+   * @param {number} sceneBleAddress
+   */
+  getSceneByBleAddress(sceneBleAddress) {
+    const sceneUniqueId = this.sceneUniqueIdByBleOutputAddress[sceneBleAddress];
+    if (!sceneUniqueId) {
+      return null;
+    }
+    return this.sceneDevices[sceneUniqueId];
+  }
+
+  /**
+   * @param {string} sceneUniqueId
+   */
+  getSceneName(sceneUniqueId) {
+    return (this.sceneDevices[sceneUniqueId] || {}).name;
   }
 
   // eslint-disable-next-line class-methods-use-this

@@ -846,13 +846,18 @@ class PlejBLEHandler extends EventEmitter {
       command = state ? COMMANDS.TURN_ON : COMMANDS.TURN_OFF;
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
-      const sceneId = state;
-      const sceneName = this.deviceRegistry.getSceneName(sceneId);
+      const sceneBleAddress = state;
+      const scene = this.deviceRegistry.getSceneByBleAddress(sceneBleAddress);
 
-      logger.debug(`${sceneName} (${sceneId}) scene triggered (device id ${outputUniqueId}).`);
+      if (!scene) {
+        logger.warn(`Scene with BLE address ${sceneBleAddress} could not be found, can't process message`);
+        return;
+      }
+
+      logger.debug(`${scene.name} (${sceneBleAddress}) scene triggered (device id ${outputUniqueId}).`);
 
       command = COMMANDS.TRIGGER_SCENE;
-      data = { sceneId };
+      data = { sceneId: scene.uniqueId };
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
       const now = new Date();

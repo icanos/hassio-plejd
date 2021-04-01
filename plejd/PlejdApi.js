@@ -325,19 +325,17 @@ class PlejdApi {
           `No outputSettings found for ${device.title} (${device.deviceId}), assuming output 0`,
         );
       }
-
-      const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][
-        outputSettings ? outputSettings.output : 0
-      ];
+      const deviceOutput = outputSettings ? outputSettings.output : 0;
+      const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][deviceOutput];
 
       if (device.traits === TRAITS.NO_LOAD) {
         logger.warn(
           `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
         );
-      } else if (outputSettings) {
+      } else {
         const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(
           device.deviceId,
-          outputSettings.output,
+          deviceOutput,
         );
 
         const plejdDevice = this.siteDetails.plejdDevices.find(
@@ -357,7 +355,7 @@ class PlejdApi {
           hiddenFromRoomList: device.hiddenFromRoomList,
           hiddenFromIntegrations: device.hiddenFromIntegrations,
           name: device.title,
-          output: outputSettings.output,
+          output: deviceOutput,
           roomId: device.roomId,
           state: undefined,
           type,
@@ -448,7 +446,7 @@ class PlejdApi {
         output: undefined,
         roomId: undefined,
         state: false,
-        type: 'switch',
+        type: 'scene',
         typeName: 'Scene',
         version: undefined,
         uniqueId: scene.sceneId,

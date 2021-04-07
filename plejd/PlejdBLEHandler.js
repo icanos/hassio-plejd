@@ -850,11 +850,15 @@ class PlejBLEHandler extends EventEmitter {
       const scene = this.deviceRegistry.getSceneByBleAddress(sceneBleAddress);
 
       if (!scene) {
-        logger.warn(`Scene with BLE address ${sceneBleAddress} could not be found, can't process message`);
+        logger.warn(
+          `Scene with BLE address ${sceneBleAddress} could not be found, can't process message`,
+        );
         return;
       }
 
-      logger.debug(`${scene.name} (${sceneBleAddress}) scene triggered (device id ${outputUniqueId}).`);
+      logger.debug(
+        `${scene.name} (${sceneBleAddress}) scene triggered (device id ${outputUniqueId}).`,
+      );
 
       command = COMMANDS.TRIGGER_SCENE;
       data = { sceneId: scene.uniqueId };

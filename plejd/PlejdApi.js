@@ -333,10 +333,7 @@ class PlejdApi {
           `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
         );
       } else {
-        const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(
-          device.deviceId,
-          deviceOutput,
-        );
+        const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(device.deviceId, deviceOutput);
 
         const plejdDevice = this.siteDetails.plejdDevices.find(
           (x) => x.deviceId === device.deviceId,

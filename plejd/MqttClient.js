@@ -13,13 +13,25 @@ const logger = Logger.getLogger('plejd-mqtt');
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
 
+const MQTT_TYPES = {
+  LIGHT: 'light',
+  SCENE: 'switch', // A bit problematic. Will assume scene if length === guid
+  SWITCH: 'switch',
+};
+
+const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'scene' ? MQTT_TYPES.SCENE : plug.type);
+
+const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${getMqttType(plug)}/${nodeId}/${plug.uniqueId}`;
+const getSceneEventTopic = () => 'plejd/event/scene';
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${plug.type}/${nodeId}/${plug.uniqueId}`;
 
 const getTopicName = (
   /** @type {{ uniqueId: string; type: string; }} */ plug,
   /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
 ) => `${getBaseTopic(plug)}/${topicType}`;
+
+// Very loosely check if string is a GUID/UUID
+const isGuid = (s) => /^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(s);
 
 const TOPICS = {
   CONFIG: 'config',
@@ -27,7 +39,6 @@ const TOPICS = {
   AVAILABILITY: 'availability',
   COMMAND: 'set',
 };
-const getSceneEventTopic = () => 'plejd/event/scene';
 
 const decodeTopicRegexp = new RegExp(
   /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/,
@@ -69,10 +80,12 @@ const getScenehDiscoveryPayload = (
 ) => ({
   name: sceneDevice.name,
   '~': getBaseTopic(sceneDevice),
+  state_topic: `~/${TOPICS.STATE}`,
   command_topic: `~/${TOPICS.COMMAND}`,
+  availability_topic: `~/${TOPICS.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
-  retain: true,
+  retain: false,
   device: {
     identifiers: `${sceneDevice.uniqueId}`,
     manufacturer: 'Plejd',
@@ -96,6 +109,9 @@ class MqttClient extends EventEmitter {
     stateChanged: 'stateChanged',
   };
 
+  /**
+   * @param {import("DeviceRegistry")} deviceRegistry
+   */
   constructor(deviceRegistry) {
     super();
 
@@ -107,8 +123,10 @@ class MqttClient extends EventEmitter {
     logger.info('Initializing MQTT connection for Plejd addon');
 
     this.client = mqtt.connect(this.config.mqttBroker, {
-      username: this.config.mqttUsername,
+      clientId: `hassio-plejd_${Math.random().toString(16).substr(2, 8)}`,
       password: this.config.mqttPassword,
+      queueQoSZero: true,
+      username: this.config.mqttUsername,
     });
 
     this.client.on('error', (err) => {
@@ -144,27 +162,24 @@ class MqttClient extends EventEmitter {
           logger.info('Home Assistant has started. lets do discovery.');
           this.emit(MqttClient.EVENTS.connected);
         } else {
+          logger.verbose(`Mqtt command ${topic}`);
           const decodedTopic = decodeTopic(topic);
           if (decodedTopic) {
-            let device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
+            /** @type {import('types/DeviceRegistry').OutputDevice} */
+            let device;
+
+            if (decodedTopic.type === 'switch' && isGuid(decodedTopic.id)) {
+              // UUID device id => It's a scene
+              logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
+              device = this.deviceRegistry.getScene(decodedTopic.id);
+            } else {
+              logger.verbose(`Getting device ${decodedTopic.id} from registry`);
+              device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
+            }
 
             const messageString = message.toString();
             const isJsonMessage = messageString.startsWith('{');
             const command = isJsonMessage ? JSON.parse(messageString) : messageString;
-
-            if (
-              !isJsonMessage
-              && messageString === 'ON'
-              && this.deviceRegistry.getScene(decodedTopic.id)
-            ) {
-              // Guess that id that got state command without dim value belongs to Scene, not Device
-              // This guess could very well be wrong depending on the installation...
-              logger.warn(
-                `Device id ${decodedTopic.id} belongs to both scene and device, guessing Scene is what should be set to ON. `
-                  + 'OFF commands still sent to device.',
-              );
-              device = this.deviceRegistry.getScene(decodedTopic.id);
-            }
 
             const deviceName = device ? device.name : '';
 
@@ -218,7 +233,10 @@ class MqttClient extends EventEmitter {
 
   disconnect(callback) {
     this.deviceRegistry.getAllOutputDevices().forEach((outputDevice) => {
-      this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.OFFLINE);
+      this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.OFFLINE, {
+        retain: true,
+        qos: 1,
+      });
     });
     this.client.end(callback);
   }
@@ -234,9 +252,15 @@ class MqttClient extends EventEmitter {
         `Discovered ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
       );
 
-      this.client.publish(getTopicName(outputDevice, 'config'), JSON.stringify(configPayload));
+      this.client.publish(getTopicName(outputDevice, 'config'), JSON.stringify(configPayload), {
+        retain: true,
+        qos: 1,
+      });
       setTimeout(() => {
-        this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.ONLINE);
+        this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.ONLINE, {
+          retain: true,
+          qos: 1,
+        });
       }, 2000);
     });
 
@@ -250,9 +274,15 @@ class MqttClient extends EventEmitter {
         `Discovered ${sceneDevice.typeName} (${sceneDevice.type}) named ${sceneDevice.name} (${sceneDevice.bleOutputAddress} : ${sceneDevice.uniqueId}).`,
       );
 
-      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(configPayload));
+      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(configPayload), {
+        retain: true,
+        qos: 1,
+      });
       setTimeout(() => {
-        this.client.publish(getTopicName(sceneDevice, 'availability'), AVAILABLILITY.ONLINE);
+        this.client.publish(getTopicName(sceneDevice, 'availability'), AVAILABLILITY.ONLINE, {
+          retain: true,
+          qos: 1,
+        });
       }, 2000);
     });
   }
@@ -293,8 +323,11 @@ class MqttClient extends EventEmitter {
       payload = JSON.stringify(payload);
     }
 
-    this.client.publish(getTopicName(device, 'state'), payload);
-    this.client.publish(getTopicName(device, 'availability'), AVAILABLILITY.ONLINE);
+    this.client.publish(getTopicName(device, 'state'), payload, { retain: true, qos: 1 });
+    this.client.publish(getTopicName(device, 'availability'), AVAILABLILITY.ONLINE, {
+      retain: true,
+      qos: 1,
+    });
   }
 
   /**
@@ -302,7 +335,7 @@ class MqttClient extends EventEmitter {
    */
   sceneTriggered(sceneId) {
     logger.verbose(`Scene triggered: ${sceneId}`);
-    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene: sceneId }));
+    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene: sceneId }), { qos: 1 });
   }
 }
 

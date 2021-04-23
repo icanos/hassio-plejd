@@ -125,6 +125,7 @@ class MqttClient extends EventEmitter {
     this.client = mqtt.connect(this.config.mqttBroker, {
       clientId: `hassio-plejd_${Math.random().toString(16).substr(2, 8)}`,
       password: this.config.mqttPassword,
+      protocolVersion: 4, // v5 not supported by HassIO Mosquitto
       queueQoSZero: true,
       username: this.config.mqttUsername,
     });
@@ -136,13 +137,22 @@ class MqttClient extends EventEmitter {
     this.client.on('connect', () => {
       logger.info('Connected to MQTT.');
 
-      this.client.subscribe(startTopics, (err) => {
-        if (err) {
-          logger.error('Unable to subscribe to status topics', err);
-        }
+      this.client.subscribe(
+        startTopics,
+        // Add below when mqtt v5 is supported in Mosquitto 1.6 or 2.0 and forward
+        // {
+        //   qos: 1,
+        //   nl: true,  // don't echo back messages sent
+        //   rap: true, // retain as published - don't force retain = 0
+        // },
+        (err) => {
+          if (err) {
+            logger.error('Unable to subscribe to status topics', err);
+          }
 
-        this.emit(MqttClient.EVENTS.connected);
-      });
+          this.emit(MqttClient.EVENTS.connected);
+        },
+      );
 
       this.client.subscribe(getSubscribePath(), (err) => {
         if (err) {
@@ -162,7 +172,7 @@ class MqttClient extends EventEmitter {
           logger.info('Home Assistant has started. lets do discovery.');
           this.emit(MqttClient.EVENTS.connected);
         } else {
-          logger.verbose(`Mqtt command ${topic}`);
+          logger.verbose(`Received mqtt message on ${topic}`);
           const decodedTopic = decodeTopic(topic);
           if (decodedTopic) {
             /** @type {import('types/DeviceRegistry').OutputDevice} */

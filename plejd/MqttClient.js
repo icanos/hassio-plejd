@@ -15,7 +15,7 @@ const nodeId = 'plejd';
 
 const MQTT_TYPES = {
   LIGHT: 'light',
-  SCENE: 'switch', // A bit problematic. Will assume scene if length === guid
+  SCENE: 'scene', // A bit problematic. Will assume scene if length === guid
   SWITCH: 'switch',
 };
 
@@ -79,20 +79,13 @@ const getScenehDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
 ) => ({
   name: sceneDevice.name,
+  unique_id: sceneDevice.uniqueId,
   '~': getBaseTopic(sceneDevice),
-  state_topic: `~/${TOPICS.STATE}`,
   command_topic: `~/${TOPICS.COMMAND}`,
   availability_topic: `~/${TOPICS.AVAILABILITY}`,
-  optimistic: false,
+  payload_on: 'ON',
   qos: 1,
   retain: false,
-  device: {
-    identifiers: `${sceneDevice.uniqueId}`,
-    manufacturer: 'Plejd',
-    model: sceneDevice.typeName,
-    name: sceneDevice.name,
-    sw_version: sceneDevice.version,
-  },
 });
 
 // #endregion
@@ -178,7 +171,7 @@ class MqttClient extends EventEmitter {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             let device;
 
-            if (decodedTopic.type === 'switch' && isGuid(decodedTopic.id)) {
+            if (decodedTopic.type === MQTT_TYPES.SCENE && isGuid(decodedTopic.id)) {
               // UUID device id => It's a scene
               logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
               device = this.deviceRegistry.getScene(decodedTopic.id);

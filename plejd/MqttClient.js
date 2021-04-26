@@ -19,26 +19,27 @@ const MQTT_TYPES = {
   SWITCH: 'switch',
 };
 
-const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'scene' ? MQTT_TYPES.SCENE : plug.type);
-
-const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${getMqttType(plug)}/${nodeId}/${plug.uniqueId}`;
-const getSceneEventTopic = () => 'plejd/event/scene';
-const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-
-const getTopicName = (
-  /** @type {{ uniqueId: string; type: string; }} */ plug,
-  /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
-) => `${getBaseTopic(plug)}/${topicType}`;
-
-// Very loosely check if string is a GUID/UUID
-const isGuid = (s) => /^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(s);
-
 const TOPICS = {
   CONFIG: 'config',
   STATE: 'state',
   AVAILABILITY: 'availability',
   COMMAND: 'set',
 };
+
+const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'scene' ? MQTT_TYPES.SCENE : plug.type);
+
+const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${getMqttType(plug)}/${nodeId}/${plug.uniqueId}`;
+
+const getTopicName = (
+  /** @type {{ uniqueId: string; type: string; }} */ plug,
+  /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
+) => `${getBaseTopic(plug)}/${topicType}`;
+
+const getSceneEventTopic = (sceneId) => `${getTopicName({ uniqueId: `${sceneId}_trigger`, type: 'device_automation' }, 'state')}`;
+const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
+
+// Very loosely check if string is a GUID/UUID
+const isGuid = (s) => /^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(s);
 
 const decodeTopicRegexp = new RegExp(
   /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/,
@@ -75,7 +76,7 @@ const getLightDiscoveryPayload = (
   },
 });
 
-const getScenehDiscoveryPayload = (
+const getSceneDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
 ) => ({
   name: sceneDevice.name,
@@ -86,6 +87,26 @@ const getScenehDiscoveryPayload = (
   payload_on: 'ON',
   qos: 1,
   retain: false,
+});
+
+const getSceneDeviceTriggerhDiscoveryPayload = (
+  /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
+) => ({
+  automation_type: 'trigger',
+  '~': getBaseTopic({
+    uniqueId: sceneDevice.uniqueId,
+    type: 'device_automation',
+  }),
+  qos: 1,
+  topic: `~/${TOPICS.STATE}`,
+  type: 'scene',
+  subtype: 'trigger',
+  device: {
+    identifiers: `${sceneDevice.uniqueId}`,
+    manufacturer: 'Plejd',
+    model: sceneDevice.typeName,
+    name: sceneDevice.name,
+  },
 });
 
 // #endregion
@@ -272,15 +293,34 @@ class MqttClient extends EventEmitter {
     allSceneDevices.forEach((sceneDevice) => {
       logger.debug(`Sending discovery for ${sceneDevice.name}`);
 
-      const configPayload = getScenehDiscoveryPayload(sceneDevice);
+      const sceneConfigPayload = getSceneDiscoveryPayload(sceneDevice);
       logger.info(
         `Discovered ${sceneDevice.typeName} (${sceneDevice.type}) named ${sceneDevice.name} (${sceneDevice.bleOutputAddress} : ${sceneDevice.uniqueId}).`,
       );
 
-      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(configPayload), {
+      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(sceneConfigPayload), {
         retain: true,
         qos: 1,
       });
+
+      const sceneTriggerConfigPayload = getSceneDeviceTriggerhDiscoveryPayload(sceneDevice);
+
+      this.client.publish(
+        getTopicName(
+          {
+            ...sceneDevice,
+            uniqueId: `${sceneDevice.uniqueId}_trigger`,
+            type: 'device_automation',
+          },
+          'config',
+        ),
+        JSON.stringify(sceneTriggerConfigPayload),
+        {
+          retain: true,
+          qos: 1,
+        },
+      );
+
       setTimeout(() => {
         this.client.publish(getTopicName(sceneDevice, 'availability'), AVAILABLILITY.ONLINE, {
           retain: true,
@@ -338,7 +378,7 @@ class MqttClient extends EventEmitter {
    */
   sceneTriggered(sceneId) {
     logger.verbose(`Scene triggered: ${sceneId}`);
-    this.client.publish(getSceneEventTopic(), JSON.stringify({ scene: sceneId }), { qos: 1 });
+    this.client.publish(getSceneEventTopic(sceneId), '', { qos: 1 });
   }
 }
 

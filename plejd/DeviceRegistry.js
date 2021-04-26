@@ -72,6 +72,8 @@ class DeviceRegistry {
       ...this.sceneDevices,
       [scene.uniqueId]: scene,
     };
+    this.sceneUniqueIdByBleOutputAddress[scene.bleOutputAddress] = scene.uniqueId;
+
     logger.verbose(
       `Added/updated scene: ${JSON.stringify(scene)}. ${
         Object.keys(this.sceneDevices).length

@@ -26,7 +26,7 @@ const TOPICS = {
   COMMAND: 'set',
 };
 
-const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'scene' ? MQTT_TYPES.SCENE : plug.type);
+const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'switch' ? MQTT_TYPES.LIGHT : plug.type);
 
 const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${getMqttType(plug)}/${nodeId}/${plug.uniqueId}`;
 

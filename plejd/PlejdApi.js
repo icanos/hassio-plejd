@@ -326,42 +326,49 @@ class PlejdApi {
         );
       }
       const deviceOutput = outputSettings ? outputSettings.output : 0;
-      const bleOutputAddress = this.siteDetails.outputAddress[device.deviceId][deviceOutput];
+      const outputAddress = this.siteDetails.outputAddress[device.deviceId];
 
-      if (device.traits === TRAITS.NO_LOAD) {
-        logger.warn(
-          `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
-        );
-      } else {
-        const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(device.deviceId, deviceOutput);
+      if (outputAddress) {
+        const bleOutputAddress = outputAddress[deviceOutput];
 
-        const plejdDevice = this.siteDetails.plejdDevices.find(
-          (x) => x.deviceId === device.deviceId,
-        );
+        if (device.traits === TRAITS.NO_LOAD) {
+          logger.warn(
+            `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
+          );
+        } else {
+          const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(
+            device.deviceId,
+            deviceOutput,
+          );
 
-        const dimmable = device.traits === TRAITS.DIMMABLE;
-        // dimmable = settings.dimCurve !== 'NonDimmable';
+          const plejdDevice = this.siteDetails.plejdDevices.find(
+            (x) => x.deviceId === device.deviceId,
+          );
 
-        const { name: typeName, type } = this._getDeviceType(plejdDevice);
+          const dimmable = device.traits === TRAITS.DIMMABLE;
+          // dimmable = settings.dimCurve !== 'NonDimmable';
 
-        /** @type {import('types/DeviceRegistry').OutputDevice} */
-        const outputDevice = {
-          bleOutputAddress,
-          deviceId: device.deviceId,
-          dimmable,
-          hiddenFromRoomList: device.hiddenFromRoomList,
-          hiddenFromIntegrations: device.hiddenFromIntegrations,
-          name: device.title,
-          output: deviceOutput,
-          roomId: device.roomId,
-          state: undefined,
-          type,
-          typeName,
-          version: plejdDevice.firmware.version,
-          uniqueId: uniqueOutputId,
-        };
+          const { name: typeName, type } = this._getDeviceType(plejdDevice);
 
-        this.deviceRegistry.addOutputDevice(outputDevice);
+          /** @type {import('types/DeviceRegistry').OutputDevice} */
+          const outputDevice = {
+            bleOutputAddress,
+            deviceId: device.deviceId,
+            dimmable,
+            hiddenFromRoomList: device.hiddenFromRoomList,
+            hiddenFromIntegrations: device.hiddenFromIntegrations,
+            name: device.title,
+            output: deviceOutput,
+            roomId: device.roomId,
+            state: undefined,
+            type,
+            typeName,
+            version: plejdDevice.firmware.version,
+            uniqueId: uniqueOutputId,
+          };
+
+          this.deviceRegistry.addOutputDevice(outputDevice);
+        }
       }
 
       // What should we do with inputs?!

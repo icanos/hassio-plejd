@@ -19,3 +19,17 @@ export interface OutputDevice {
   version: string;
   uniqueId: string;
 }
+
+export type InputDevices = { [deviceIdAndOutput: string]: InputDevice };
+
+export interface InputDevice {
+  bleOutputAddress: number;
+  deviceId: string;
+  name: string;
+  input: number;
+  roomId: string;
+  type: string;
+  typeName: string;
+  version: string;
+  uniqueId: string;
+}

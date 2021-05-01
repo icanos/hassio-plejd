@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+// @ts-ignore
 const mqtt = require('mqtt');
 
 const Configuration = require('./Configuration');
@@ -35,6 +36,7 @@ const getTopicName = (
   /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
 ) => `${getBaseTopic(plug)}/${topicType}`;
 
+const getButtonEventTopic = (deviceId) => `${getTopicName({ uniqueId: `${deviceId}`, type: 'device_automation' }, 'state')}`;
 const getSceneEventTopic = (sceneId) => `${getTopicName({ uniqueId: `${sceneId}_trigger`, type: 'device_automation' }, 'state')}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 
@@ -88,6 +90,28 @@ const getSceneDiscoveryPayload = (
   qos: 1,
   retain: false,
 });
+
+const getInputDeviceTriggerDiscoveryPayload = (
+  /** @type {import('./types/DeviceRegistry').InputDevice} */ inputDevice,
+) => ({
+  automation_type: 'trigger',
+  payload: `${inputDevice.input}`,
+  '~': getBaseTopic({
+    uniqueId: inputDevice.deviceId,
+    type: 'device_automation',
+  }),
+  qos: 1,
+  topic: `~/${TOPICS.STATE}`,
+  type: 'button_short_press',
+  subtype: `button_${inputDevice.input+1}`,
+  device: {
+    identifiers: `${inputDevice.deviceId}`,
+    manufacturer: 'Plejd',
+    model: inputDevice.typeName,
+    name: inputDevice.name,
+  },
+});
+
 
 const getSceneDeviceTriggerhDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
@@ -288,6 +312,23 @@ class MqttClient extends EventEmitter {
       }, 2000);
     });
 
+    const allInputDevices = this.deviceRegistry.getAllInputDevices();
+    logger.info(`Sending discovery for ${allInputDevices.length} Plejd input devices`);
+    allInputDevices.forEach((inputDevice) => {
+      logger.debug(`Sending discovery for ${inputDevice.name}`);
+      const inputInputPayload = getInputDeviceTriggerDiscoveryPayload(inputDevice);
+      logger.info(
+        `Discovered ${inputDevice.typeName} (${inputDevice.type}) named ${inputDevice.name} (${inputDevice.bleOutputAddress} : ${inputDevice.uniqueId}).`,
+      );
+      logger.verbose(`Publishing  ${getTopicName(inputDevice, 'config')} with payload ${JSON.stringify(inputInputPayload)}`);
+
+      this.client.publish(getTopicName(inputDevice, 'config'), JSON.stringify(inputInputPayload), {
+        retain: true,
+        qos: 1,
+      });
+
+    })
+
     const allSceneDevices = this.deviceRegistry.getAllSceneDevices();
     logger.info(`Sending discovery for ${allSceneDevices.length} Plejd scene devices`);
     allSceneDevices.forEach((sceneDevice) => {
@@ -373,6 +414,10 @@ class MqttClient extends EventEmitter {
     });
   }
 
+   buttonPressed(data) {
+    logger.verbose(`Button ${data.deviceInput} pressed for deviceId ${data.deviceId}`);
+    this.client.publish(getButtonEventTopic(data.deviceId), `${data.deviceInput}`, { qos: 1 });
+  }
   /**
    * @param {string} sceneId
    */

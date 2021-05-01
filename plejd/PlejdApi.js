@@ -1,3 +1,4 @@
+// @ts-ignore
 const axios = require('axios').default;
 const fs = require('fs');
 
@@ -261,7 +262,7 @@ class PlejdApi {
       case 5:
         return { name: 'LED-10', type: 'light', dimmable: true };
       case 6:
-        return { name: 'WPH-01', type: 'switch', dimmable: false };
+        return { name: 'WPH-01', type: 'device_automation', dimmable: false };
       case 7:
         return { name: 'REL-01', type: 'switch', dimmable: false };
       case 8:
@@ -369,30 +370,46 @@ class PlejdApi {
 
           this.deviceRegistry.addOutputDevice(outputDevice);
         }
-      }
+      } else {
+        // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
+        // Filter inputSettings for available buttons
+        const inputSettings = this.siteDetails.inputSettings.filter(
+          (x) => x.deviceId === device.deviceId && (x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown'));
 
-      // What should we do with inputs?!
-      // if (outputDevice.typeName === 'WPH-01') {
-      //   // WPH-01 is special, it has two buttons which needs to be
-      //   // registered separately.
-      //   const inputs = this.siteDetails.inputAddress[deviceId];
-      //   const first = inputs[0];
-      //   const second = inputs[1];
+          // For each found button, register the device as an inputDevice
+          inputSettings.forEach((input) => {
 
-      //   this.deviceRegistry.addPlejdDevice({
-      //     ...outputDevice,
-      //     id: first,
-      //     name: `${device.title} left`,
-      //   });
+            const bleInputAddress = this.siteDetails.deviceAddress[input.deviceId];
+            logger.verbose(
+              `Found input device (${input.deviceId}), with input ${input.input} having BLE address (${bleInputAddress})`,  
+            );
 
-      //   this.deviceRegistry.addPlejdDevice({
-      //     ...outputDevice,
-      //     id: second,
-      //     name: `${device.title} right`,
-      //   });
-      // } else {
-      //   this.deviceRegistry.addPlejdDevice(outputDevice);
-      // }
+            const plejdDevice = this.siteDetails.plejdDevices.find(
+              (x) => x.deviceId === device.deviceId,
+            );
+
+            const uniqueInputId = this.deviceRegistry.getUniqueInputId(
+              device.deviceId,
+              input.input,
+            );
+  
+            const { name: typeName, type } = this._getDeviceType(plejdDevice);
+  
+            /** @type {import('types/DeviceRegistry').InputDevice} */
+            const inputDevice = {
+              bleOutputAddress: bleInputAddress,
+              deviceId: device.deviceId,
+              name: device.title,
+              input: input.input,
+              roomId: device.roomId,
+              type,
+              typeName,
+              version: plejdDevice.firmware.version,
+              uniqueId: uniqueInputId,
+            };
+            this.deviceRegistry.addInputDevice(inputDevice);
+          });
+        };
     });
   }
 

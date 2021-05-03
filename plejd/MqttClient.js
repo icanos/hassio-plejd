@@ -8,38 +8,36 @@ const startTopics = ['hass/status', 'homeassistant/status'];
 
 const logger = Logger.getLogger('plejd-mqtt');
 
-// #region discovery
-
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
 
+/** @type {import('./types/Mqtt').MQTT_TYPES} */
 const MQTT_TYPES = {
   LIGHT: 'light',
-  SCENE: 'scene', // A bit problematic. Will assume scene if length === guid
+  SCENE: 'scene',
   SWITCH: 'switch',
+  DEVICE_AUTOMATION: 'device_automation',
 };
 
-const TOPICS = {
+/** @type {import('./types/Mqtt').TOPIC_TYPES} */
+const TOPIC_TYPES = {
   CONFIG: 'config',
   STATE: 'state',
   AVAILABILITY: 'availability',
   COMMAND: 'set',
 };
 
-const getMqttType = (/** @type {{ uniqueId: string; type: string; }} */ plug) => (plug.type === 'switch' ? MQTT_TYPES.LIGHT : plug.type);
-
-const getBaseTopic = (/** @type {{ uniqueId: string; type: string; }} */ plug) => `${discoveryPrefix}/${getMqttType(plug)}/${nodeId}/${plug.uniqueId}`;
+const getBaseTopic = (/** @type { string } */ uniqueId, /** @type { string } */ mqttDeviceType) => `${discoveryPrefix}/${mqttDeviceType}/${nodeId}/${uniqueId}`;
 
 const getTopicName = (
-  /** @type {{ uniqueId: string; type: string; }} */ plug,
-  /** @type {'config' | 'state' | 'availability' | 'set'} */ topicType,
-) => `${getBaseTopic(plug)}/${topicType}`;
+  /** @type { string } */ uniqueId,
+  /** @type { import('./types/Mqtt').MqttType } */ mqttDeviceType,
+  /** @type { import('./types/Mqtt').TopicType } */ topicType,
+) => `${getBaseTopic(uniqueId, mqttDeviceType)}/${topicType}`;
 
-const getSceneEventTopic = (sceneId) => `${getTopicName({ uniqueId: `${sceneId}_trigger`, type: 'device_automation' }, 'state')}`;
+const getTriggerUniqueId = (/** @type { string } */ uniqueId) => `${uniqueId}_trigger`;
+const getSceneEventTopic = (/** @type {string} */ sceneId) => `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
-
-// Very loosely check if string is a GUID/UUID
-const isGuid = (s) => /^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(s);
 
 const decodeTopicRegexp = new RegExp(
   /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/,
@@ -53,20 +51,18 @@ const decodeTopic = (topic) => {
   return matches.groups;
 };
 
-const getLightDiscoveryPayload = (
+const getOutputDeviceDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ device,
 ) => ({
-  schema: 'json',
   name: device.name,
   unique_id: device.uniqueId,
-  '~': getBaseTopic(device),
-  state_topic: `~/${TOPICS.STATE}`,
-  command_topic: `~/${TOPICS.COMMAND}`,
-  availability_topic: `~/${TOPICS.AVAILABILITY}`,
+  '~': getBaseTopic(device.uniqueId, device.type),
+  state_topic: `~/${TOPIC_TYPES.STATE}`,
+  command_topic: `~/${TOPIC_TYPES.COMMAND}`,
+  availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
   retain: true,
-  brightness: device.dimmable,
   device: {
     identifiers: `${device.deviceId}`,
     manufacturer: 'Plejd',
@@ -74,6 +70,7 @@ const getLightDiscoveryPayload = (
     name: device.name,
     sw_version: device.version,
   },
+  ...(device.type === MQTT_TYPES.LIGHT ? { brightness: device.dimmable, schema: 'json' } : {}),
 });
 
 const getSceneDiscoveryPayload = (
@@ -81,9 +78,9 @@ const getSceneDiscoveryPayload = (
 ) => ({
   name: sceneDevice.name,
   unique_id: sceneDevice.uniqueId,
-  '~': getBaseTopic(sceneDevice),
-  command_topic: `~/${TOPICS.COMMAND}`,
-  availability_topic: `~/${TOPICS.AVAILABILITY}`,
+  '~': getBaseTopic(sceneDevice.uniqueId, MQTT_TYPES.SCENE),
+  command_topic: `~/${TOPIC_TYPES.COMMAND}`,
+  availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   payload_on: 'ON',
   qos: 1,
   retain: false,
@@ -93,12 +90,9 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
 ) => ({
   automation_type: 'trigger',
-  '~': getBaseTopic({
-    uniqueId: sceneDevice.uniqueId,
-    type: 'device_automation',
-  }),
+  '~': getBaseTopic(sceneDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
-  topic: `~/${TOPICS.STATE}`,
+  topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'scene',
   subtype: 'trigger',
   device: {
@@ -108,8 +102,6 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
     name: sceneDevice.name,
   },
 });
-
-// #endregion
 
 const getMqttStateString = (/** @type {boolean} */ state) => (state ? 'ON' : 'OFF');
 const AVAILABLILITY = { ONLINE: 'online', OFFLINE: 'offline' };
@@ -192,8 +184,7 @@ class MqttClient extends EventEmitter {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             let device;
 
-            if (decodedTopic.type === MQTT_TYPES.SCENE && isGuid(decodedTopic.id)) {
-              // UUID device id => It's a scene
+            if (decodedTopic.type === MQTT_TYPES.SCENE) {
               logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
               device = this.deviceRegistry.getScene(decodedTopic.id);
             } else {
@@ -256,11 +247,29 @@ class MqttClient extends EventEmitter {
   }
 
   disconnect(callback) {
+    logger.info('Mqtt disconnect requested. Setting all devices as unavailable in HA...');
     this.deviceRegistry.getAllOutputDevices().forEach((outputDevice) => {
-      this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.OFFLINE, {
-        retain: true,
-        qos: 1,
-      });
+      const mqttType = outputDevice.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
+      this.client.publish(
+        getTopicName(outputDevice.uniqueId, mqttType, 'availability'),
+        AVAILABLILITY.OFFLINE,
+        {
+          retain: true,
+          qos: 1,
+        },
+      );
+    });
+
+    const allSceneDevices = this.deviceRegistry.getAllSceneDevices();
+    allSceneDevices.forEach((sceneDevice) => {
+      this.client.publish(
+        getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
+        AVAILABLILITY.OFFLINE,
+        {
+          retain: true,
+          qos: 1,
+        },
+      );
     });
     this.client.end(callback);
   }
@@ -271,20 +280,29 @@ class MqttClient extends EventEmitter {
     allOutputDevices.forEach((outputDevice) => {
       logger.debug(`Sending discovery for ${outputDevice.name}`);
 
-      const configPayload = getLightDiscoveryPayload(outputDevice);
+      const configPayload = getOutputDeviceDiscoveryPayload(outputDevice);
       logger.info(
         `Discovered ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
       );
 
-      this.client.publish(getTopicName(outputDevice, 'config'), JSON.stringify(configPayload), {
-        retain: true,
-        qos: 1,
-      });
-      setTimeout(() => {
-        this.client.publish(getTopicName(outputDevice, 'availability'), AVAILABLILITY.ONLINE, {
+      const mqttType = outputDevice.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
+      this.client.publish(
+        getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.CONFIG),
+        JSON.stringify(configPayload),
+        {
           retain: true,
           qos: 1,
-        });
+        },
+      );
+      setTimeout(() => {
+        this.client.publish(
+          getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
+          AVAILABLILITY.ONLINE,
+          {
+            retain: true,
+            qos: 1,
+          },
+        );
       }, 2000);
     });
 
@@ -298,21 +316,22 @@ class MqttClient extends EventEmitter {
         `Discovered ${sceneDevice.typeName} (${sceneDevice.type}) named ${sceneDevice.name} (${sceneDevice.bleOutputAddress} : ${sceneDevice.uniqueId}).`,
       );
 
-      this.client.publish(getTopicName(sceneDevice, 'config'), JSON.stringify(sceneConfigPayload), {
-        retain: true,
-        qos: 1,
-      });
+      this.client.publish(
+        getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.CONFIG),
+        JSON.stringify(sceneConfigPayload),
+        {
+          retain: true,
+          qos: 1,
+        },
+      );
 
       const sceneTriggerConfigPayload = getSceneDeviceTriggerhDiscoveryPayload(sceneDevice);
 
       this.client.publish(
         getTopicName(
-          {
-            ...sceneDevice,
-            uniqueId: `${sceneDevice.uniqueId}_trigger`,
-            type: 'device_automation',
-          },
-          'config',
+          getTriggerUniqueId(sceneDevice.uniqueId),
+          MQTT_TYPES.DEVICE_AUTOMATION,
+          TOPIC_TYPES.CONFIG,
         ),
         JSON.stringify(sceneTriggerConfigPayload),
         {
@@ -322,10 +341,14 @@ class MqttClient extends EventEmitter {
       );
 
       setTimeout(() => {
-        this.client.publish(getTopicName(sceneDevice, 'availability'), AVAILABLILITY.ONLINE, {
-          retain: true,
-          qos: 1,
-        });
+        this.client.publish(
+          getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
+          AVAILABLILITY.ONLINE,
+          {
+            retain: true,
+            qos: 1,
+          },
+        );
       }, 2000);
     });
   }
@@ -366,11 +389,16 @@ class MqttClient extends EventEmitter {
       payload = JSON.stringify(payload);
     }
 
-    this.client.publish(getTopicName(device, 'state'), payload, { retain: true, qos: 1 });
-    this.client.publish(getTopicName(device, 'availability'), AVAILABLILITY.ONLINE, {
+    const mqttType = device.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
+    this.client.publish(getTopicName(device.uniqueId, mqttType, TOPIC_TYPES.STATE), payload, {
       retain: true,
       qos: 1,
     });
+    // this.client.publish(
+    //   getTopicName(device.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
+    //   AVAILABLILITY.ONLINE,
+    //   { retain: true, qos: 1 },
+    // );
   }
 
   /**

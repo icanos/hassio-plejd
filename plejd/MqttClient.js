@@ -96,7 +96,7 @@ const getInputDeviceTriggerDiscoveryPayload = (
   qos: 1,
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'button_short_press',
-  subtype: `button_${inputDevice.input+1}`,
+  subtype: `button_${inputDevice.input + 1}`,
   device: {
     identifiers: `${inputDevice.deviceId}`,
     manufacturer: 'Plejd',
@@ -104,7 +104,6 @@ const getInputDeviceTriggerDiscoveryPayload = (
     name: inputDevice.name,
   },
 });
-
 
 const getSceneDeviceTriggerhDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
@@ -334,14 +333,23 @@ class MqttClient extends EventEmitter {
       logger.info(
         `Discovered ${inputDevice.typeName} (${inputDevice.type}) named ${inputDevice.name} (${inputDevice.bleInputAddress} : ${inputDevice.uniqueId}).`,
       );
-      logger.verbose(`Publishing  ${getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG)} with payload ${JSON.stringify(inputInputPayload)}`);
+      logger.verbose(
+        `Publishing  ${getTopicName(
+          inputDevice.uniqueId,
+          MQTT_TYPES.DEVICE_AUTOMATION,
+          TOPIC_TYPES.CONFIG,
+        )} with payload ${JSON.stringify(inputInputPayload)}`,
+      );
 
-      this.client.publish(getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG), JSON.stringify(inputInputPayload), {
-        retain: true,
-        qos: 1,
-      });
-
-    })
+      this.client.publish(
+        getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG),
+        JSON.stringify(inputInputPayload),
+        {
+          retain: true,
+          qos: 1,
+        },
+      );
+    });
 
     const allSceneDevices = this.deviceRegistry.getAllSceneDevices();
     logger.info(`Sending discovery for ${allSceneDevices.length} Plejd scene devices`);
@@ -438,10 +446,11 @@ class MqttClient extends EventEmitter {
     // );
   }
 
-   buttonPressed(data) {
+  buttonPressed(data) {
     logger.verbose(`Button ${data.deviceInput} pressed for deviceId ${data.deviceId}`);
     this.client.publish(getButtonEventTopic(data.deviceId), `${data.deviceInput}`, { qos: 1 });
   }
+
   /**
    * @param {string} sceneId
    */

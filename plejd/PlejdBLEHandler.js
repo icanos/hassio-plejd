@@ -911,7 +911,10 @@ class PlejBLEHandler extends EventEmitter {
       const inputBleAddress = state;
       const inputButton = decoded.length > 7 ? decoded.readUInt8(6) : 0;
 
-      const sourceDevice = this.deviceRegistry.getInputDeviceByBleInputAddress(inputBleAddress, inputButton);
+      const sourceDevice = this.deviceRegistry.getInputDeviceByBleInputAddress(
+        inputBleAddress,
+        inputButton,
+      );
       if (!sourceDevice) {
         logger.warn(
           `Scene with BLE address ${inputBleAddress} could not be found, can't process message`,
@@ -919,10 +922,10 @@ class PlejBLEHandler extends EventEmitter {
         return;
       }
       logger.verbose(
-        `WPH-10 button ${inputButton} at BLE address ${inputBleAddress} was pressed. Unique Id is ${sourceDevice.uniqueId}`
+        `WPH-10 button ${inputButton} at BLE address ${inputBleAddress} was pressed. Unique Id is ${sourceDevice.uniqueId}`,
       );
       command = COMMANDS.BUTTON_CLICK;
-      data = { deviceId: sourceDevice.deviceId, deviceInput: sourceDevice.input};
+      data = { deviceId: sourceDevice.deviceId, deviceInput: sourceDevice.input };
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else {
       logger.verbose(

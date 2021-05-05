@@ -379,42 +379,42 @@ class PlejdApi {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
         // Filter inputSettings for available buttons
         const inputSettings = this.siteDetails.inputSettings.filter(
-          (x) => x.deviceId === device.deviceId && ((x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown') || (x.buttonType == 'RotateMesh')));
+          (x) => x.deviceId === device.deviceId
+            && (x.buttonType === 'DirectionUp'
+              || x.buttonType === 'DirectionDown'
+              || x.buttonType === 'RotateMesh'),
+        );
 
-          // For each found button, register the device as an inputDevice
-          inputSettings.forEach((input) => {
+        // For each found button, register the device as an inputDevice
+        inputSettings.forEach((input) => {
+          const bleInputAddress = this.siteDetails.deviceAddress[input.deviceId];
+          logger.verbose(
+            `Found input device (${input.deviceId}), with input ${input.input} having BLE address (${bleInputAddress})`,
+          );
 
-            const bleInputAddress = this.siteDetails.deviceAddress[input.deviceId];
-            logger.verbose(
-              `Found input device (${input.deviceId}), with input ${input.input} having BLE address (${bleInputAddress})`,  
-            );
+          const plejdDevice = this.siteDetails.plejdDevices.find(
+            (x) => x.deviceId === device.deviceId,
+          );
 
-            const plejdDevice = this.siteDetails.plejdDevices.find(
-              (x) => x.deviceId === device.deviceId,
-            );
+          const uniqueInputId = this.deviceRegistry.getUniqueInputId(device.deviceId, input.input);
 
-            const uniqueInputId = this.deviceRegistry.getUniqueInputId(
-              device.deviceId,
-              input.input,
-            );
-  
-            const { name: typeName, type } = this._getDeviceType(plejdDevice);
-  
-            /** @type {import('types/DeviceRegistry').InputDevice} */
-            const inputDevice = {
-              bleInputAddress: bleInputAddress,
-              deviceId: device.deviceId,
-              name: device.title,
-              input: input.input,
-              roomId: device.roomId,
-              type,
-              typeName,
-              version: plejdDevice.firmware.version,
-              uniqueId: uniqueInputId,
-            };
-            this.deviceRegistry.addInputDevice(inputDevice);
-          });
-        };
+          const { name: typeName, type } = this._getDeviceType(plejdDevice);
+
+          /** @type {import('types/DeviceRegistry').InputDevice} */
+          const inputDevice = {
+            bleInputAddress,
+            deviceId: device.deviceId,
+            name: device.title,
+            input: input.input,
+            roomId: device.roomId,
+            type,
+            typeName,
+            version: plejdDevice.firmware.version,
+            uniqueId: uniqueInputId,
+          };
+          this.deviceRegistry.addInputDevice(inputDevice);
+        });
+      }
     });
   }
 

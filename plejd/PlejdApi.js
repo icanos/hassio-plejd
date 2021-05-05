@@ -349,7 +349,13 @@ class PlejdApi {
           const dimmable = device.traits === TRAITS.DIMMABLE;
           // dimmable = settings.dimCurve !== 'NonDimmable';
 
-          const { name: typeName, type } = this._getDeviceType(plejdDevice);
+          const { name: typeName, type: deviceType } = this._getDeviceType(plejdDevice);
+          let loadType = deviceType;
+          if (device.outputType === 'RELAY') {
+            loadType = 'switch';
+          } else if (device.outputType === 'LIGHT') {
+            loadType = 'light';
+          }
 
           /** @type {import('types/DeviceRegistry').OutputDevice} */
           const outputDevice = {
@@ -362,7 +368,7 @@ class PlejdApi {
             output: deviceOutput,
             roomId: device.roomId,
             state: undefined,
-            type,
+            type: loadType,
             typeName,
             version: plejdDevice.firmware.version,
             uniqueId: uniqueOutputId,

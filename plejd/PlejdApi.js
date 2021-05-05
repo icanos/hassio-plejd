@@ -10,15 +10,33 @@ const API_LOGIN_URL = 'login';
 const API_SITE_LIST_URL = 'functions/getSiteList';
 const API_SITE_DETAILS_URL = 'functions/getSiteById';
 
+const TRAITS = {
+  NO_LOAD: 0,
+  NON_DIMMABLE: 9,
+  DIMMABLE: 11,
+};
+
 const logger = Logger.getLogger('plejd-api');
 
 class PlejdApi {
+  /** @private @type {import('types/Configuration').Options} */
   config;
+
+  /** @private @type {import('DeviceRegistry')} */
   deviceRegistry;
+
+  /** @private @type {string} */
   sessionToken;
+
+  /** @private @type {string} */
   siteId;
+
+  /** @private @type {import('types/ApiSite').ApiSite} */
   siteDetails;
 
+  /**
+   * @param {import("./DeviceRegistry")} deviceRegistry
+   */
   constructor(deviceRegistry) {
     this.config = Configuration.getOptions();
     this.deviceRegistry = deviceRegistry;
@@ -58,19 +76,19 @@ class PlejdApi {
         }
       }
     }
-    this.deviceRegistry.setApiSite(this.siteDetails);
-    this.deviceRegistry.cryptoKey = this.siteDetails.plejdMesh.cryptoKey;
 
+    this.deviceRegistry.setApiSite(this.siteDetails);
     this.getDevices();
   }
 
+  /** @returns {Promise<import('types/ApiSite').CachedSite>} */
   // eslint-disable-next-line class-methods-use-this
   async getCachedCopy() {
     logger.info('Getting cached api response from disk');
 
     try {
       const rawData = await fs.promises.readFile('/data/cachedApiResponse.json');
-      const cachedCopy = JSON.parse(rawData);
+      const cachedCopy = JSON.parse(rawData.toString());
 
       return cachedCopy;
     } catch (err) {
@@ -82,12 +100,14 @@ class PlejdApi {
   async saveCachedCopy() {
     logger.info('Saving cached copy');
     try {
-      const rawData = JSON.stringify({
+      /** @type {import('types/ApiSite').CachedSite} */
+      const cachedSite = {
         siteId: this.siteId,
         siteDetails: this.siteDetails,
         sessionToken: this.sessionToken,
         dtCache: new Date().toISOString(),
-      });
+      };
+      const rawData = JSON.stringify(cachedSite);
       await fs.promises.writeFile('/data/cachedApiResponse.json', rawData);
     } catch (err) {
       logger.error('Failed to save cache of api response', err);
@@ -194,6 +214,14 @@ class PlejdApi {
   getDevices() {
     logger.info('Getting devices from site details response...');
 
+    if (this.siteDetails.gateways && this.siteDetails.gateways.length) {
+      this.siteDetails.gateways.forEach((gwy) => {
+        logger.info(`Plejd gateway '${gwy.title}' found on site`);
+      });
+    } else {
+      logger.info('No Plejd gateway found on site');
+    }
+
     this._getPlejdDevices();
     this._getRoomDevices();
     this._getSceneDevices();
@@ -216,8 +244,11 @@ class PlejdApi {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  _getDeviceType(hardwareId) {
-    switch (parseInt(hardwareId, 10)) {
+  _getDeviceType(plejdDevice) {
+    // Type name is also sometimes available in device.hardware.name
+    // (maybe only when GWY-01 is present?)
+
+    switch (parseInt(plejdDevice.hardwareId, 10)) {
       case 1:
       case 11:
         return { name: 'DIM-01', type: 'light', dimmable: true };
@@ -259,69 +290,115 @@ class PlejdApi {
       case 20:
         return { name: 'SPR-01', type: 'switch', dimmable: false };
       default:
-        throw new Error(`Unknown device type with id ${hardwareId}`);
+        throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
     }
   }
 
+  /**
+   * Plejd API properties parsed
+   *
+   * * `devices` - physical Plejd devices, duplicated for devices with multiple outputs
+   *   devices: [{deviceId, title, objectId, ...}, {...}]
+   * * `deviceAddress` - BLE address of each physical device
+   *   deviceAddress: {[deviceId]: bleDeviceAddress}
+   * * `outputSettings` - lots of info about load settings, also links devices to output index
+   *   outputSettings: [{deviceId, output, deviceParseId, ...}]  //deviceParseId === objectId above
+   * * `outputAddress`: BLE address of [0] main output and [n] other output (loads)
+   *   outputAddress: {[deviceId]: {[output]: bleDeviceAddress}}
+   * * `inputSettings` - detailed settings for inputs (buttons, RTR-01, ...), scenes triggered, ...
+   *   inputSettings: [{deviceId, input, ...}]  //deviceParseId === objectId above
+   * * `inputAddress` - Links inputs to what BLE device they control, or 255 for unassigned/scene
+   *   inputAddress: {[deviceId]: {[input]: bleDeviceAddress}}
+   */
   _getPlejdDevices() {
     this.deviceRegistry.clearPlejdDevices();
 
     this.siteDetails.devices.forEach((device) => {
-      const { deviceId } = device;
+      this.deviceRegistry.addPhysicalDevice(device);
 
-      const settings = this.siteDetails.outputSettings.find(
+      const outputSettings = this.siteDetails.outputSettings.find(
         (x) => x.deviceParseId === device.objectId,
       );
 
-      let deviceNum = this.siteDetails.deviceAddress[deviceId];
+      if (!outputSettings) {
+        logger.verbose(
+          `No outputSettings found for ${device.title} (${device.deviceId}), assuming output 0`,
+        );
+      }
+      const deviceOutput = outputSettings ? outputSettings.output : 0;
+      const outputAddress = this.siteDetails.outputAddress[device.deviceId];
 
-      if (settings) {
-        const outputs = this.siteDetails.outputAddress[deviceId];
-        deviceNum = outputs[settings.output];
+      if (outputAddress) {
+        const bleOutputAddress = outputAddress[deviceOutput];
+
+        if (device.traits === TRAITS.NO_LOAD) {
+          logger.warn(
+            `Device ${device.title} (${device.deviceId}) has no load configured and will be excluded`,
+          );
+        } else {
+          const uniqueOutputId = this.deviceRegistry.getUniqueOutputId(
+            device.deviceId,
+            deviceOutput,
+          );
+
+          const plejdDevice = this.siteDetails.plejdDevices.find(
+            (x) => x.deviceId === device.deviceId,
+          );
+
+          const dimmable = device.traits === TRAITS.DIMMABLE;
+          // dimmable = settings.dimCurve !== 'NonDimmable';
+
+          const { name: typeName, type: deviceType } = this._getDeviceType(plejdDevice);
+          let loadType = deviceType;
+          if (device.outputType === 'RELAY') {
+            loadType = 'switch';
+          } else if (device.outputType === 'LIGHT') {
+            loadType = 'light';
+          }
+
+          /** @type {import('types/DeviceRegistry').OutputDevice} */
+          const outputDevice = {
+            bleOutputAddress,
+            deviceId: device.deviceId,
+            dimmable,
+            hiddenFromRoomList: device.hiddenFromRoomList,
+            hiddenFromIntegrations: device.hiddenFromIntegrations,
+            name: device.title,
+            output: deviceOutput,
+            roomId: device.roomId,
+            state: undefined,
+            type: loadType,
+            typeName,
+            version: plejdDevice.firmware.version,
+            uniqueId: uniqueOutputId,
+          };
+
+          this.deviceRegistry.addOutputDevice(outputDevice);
+        }
       }
 
-      // check if device is dimmable
-      const plejdDevice = this.siteDetails.plejdDevices.find((x) => x.deviceId === deviceId);
-      const deviceType = this._getDeviceType(plejdDevice.hardwareId);
-      const { name, type } = deviceType;
-      let { dimmable } = deviceType;
+      // What should we do with inputs?!
+      // if (outputDevice.typeName === 'WPH-01') {
+      //   // WPH-01 is special, it has two buttons which needs to be
+      //   // registered separately.
+      //   const inputs = this.siteDetails.inputAddress[deviceId];
+      //   const first = inputs[0];
+      //   const second = inputs[1];
 
-      if (settings) {
-        dimmable = settings.dimCurve !== 'NonDimmable';
-      }
+      //   this.deviceRegistry.addPlejdDevice({
+      //     ...outputDevice,
+      //     id: first,
+      //     name: `${device.title} left`,
+      //   });
 
-      const newDevice = {
-        id: deviceNum,
-        name: device.title,
-        type,
-        typeName: name,
-        dimmable,
-        roomId: device.roomId,
-        version: plejdDevice.firmware.version,
-        serialNumber: plejdDevice.deviceId,
-      };
-
-      if (newDevice.typeName === 'WPH-01') {
-        // WPH-01 is special, it has two buttons which needs to be
-        // registered separately.
-        const inputs = this.siteDetails.inputAddress[deviceId];
-        const first = inputs[0];
-        const second = inputs[1];
-
-        this.deviceRegistry.addPlejdDevice({
-          ...newDevice,
-          id: first,
-          name: `${device.title} left`,
-        });
-
-        this.deviceRegistry.addPlejdDevice({
-          ...newDevice,
-          id: second,
-          name: `${device.title} right`,
-        });
-      } else {
-        this.deviceRegistry.addPlejdDevice(newDevice);
-      }
+      //   this.deviceRegistry.addPlejdDevice({
+      //     ...outputDevice,
+      //     id: second,
+      //     name: `${device.title} right`,
+      //   });
+      // } else {
+      //   this.deviceRegistry.addPlejdDevice(outputDevice);
+      // }
     });
   }
 
@@ -332,39 +409,57 @@ class PlejdApi {
         const { roomId } = room;
         const roomAddress = this.siteDetails.roomAddress[roomId];
 
-        const deviceIdsByRoom = this.deviceRegistry.getDeviceIdsByRoom(roomId);
+        const deviceIdsByRoom = this.deviceRegistry.getOutputDeviceIdsByRoomId(roomId);
 
         const dimmable = deviceIdsByRoom
-          && deviceIdsByRoom.some((deviceId) => this.deviceRegistry.getDevice(deviceId).dimmable);
+          && deviceIdsByRoom.some(
+            (deviceId) => this.deviceRegistry.getOutputDevice(deviceId).dimmable,
+          );
 
+        /** @type {import('types/DeviceRegistry').OutputDevice} */
         const newDevice = {
-          id: roomAddress,
+          bleOutputAddress: roomAddress,
+          deviceId: null,
+          dimmable,
+          hiddenFromRoomList: false,
+          hiddenFromIntegrations: false,
           name: room.title,
+          output: undefined,
+          roomId,
+          state: undefined,
           type: 'light',
           typeName: 'Room',
-          dimmable,
+          uniqueId: roomId,
+          version: undefined,
         };
 
-        this.deviceRegistry.addRoomDevice(newDevice);
+        this.deviceRegistry.addOutputDevice(newDevice);
       });
       logger.debug('includeRoomsAsLights done.');
     }
   }
 
   _getSceneDevices() {
+    this.deviceRegistry.clearSceneDevices();
     // add scenes as switches
     const scenes = this.siteDetails.scenes.filter((x) => x.hiddenFromSceneList === false);
 
     scenes.forEach((scene) => {
       const sceneNum = this.siteDetails.sceneIndex[scene.sceneId];
+      /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
-        id: sceneNum,
-        name: scene.title,
-        type: 'switch',
-        typeName: 'Scene',
+        bleOutputAddress: sceneNum,
+        deviceId: undefined,
         dimmable: false,
-        version: '1.0',
-        serialNumber: scene.objectId,
+        hiddenFromSceneList: scene.hiddenFromSceneList,
+        name: scene.title,
+        output: undefined,
+        roomId: undefined,
+        state: false,
+        type: 'scene',
+        typeName: 'Scene',
+        version: undefined,
+        uniqueId: scene.sceneId,
       };
 
       this.deviceRegistry.addScene(newScene);

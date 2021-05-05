@@ -3,17 +3,17 @@
     "@abandonware/bluetooth-hci-socket": "~0.5.3-7",
     "axios": "~0.21.1",
     "buffer-xor": "~2.0.2",
-    "dbus-next": "~0.9.1",
+    "dbus-next": "~0.9.2",
     "fs": "0.0.1-security",
     "jspack": "~0.0.4",
-    "mqtt": "~3.0.0",
+    "mqtt": "~4.2.6",
     "winston": "~3.3.3"
   },
   "devDependencies": {
     "babel-eslint": "~10.1.0",
-    "eslint": "~7.18.0",
+    "eslint": "~7.23.0",
     "eslint-config-airbnb": "~18.2.1",
-    "eslint-config-prettier": "~7.2.0",
+    "eslint-config-prettier": "~8.1.0",
     "eslint-plugin-import": "~2.22.1",
     "eslint-plugin-prettier": "~3.3.1",
     "prettier": "~2.2.1"

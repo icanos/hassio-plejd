@@ -1,18 +1,20 @@
 const SceneStep = require('./SceneStep');
 
 class Scene {
-  constructor(idx, scene, steps) {
+  /**
+   * @param {import('./DeviceRegistry')} deviceRegistry
+   * @param {number} idx
+   * @param {import("./types/ApiSite").Scene} scene
+   */
+  constructor(deviceRegistry, idx, scene) {
     this.id = idx;
     this.title = scene.title;
     this.sceneId = scene.sceneId;
 
-    const sceneSteps = steps.filter((x) => x.sceneId === scene.sceneId);
-    this.steps = [];
-
-    // eslint-disable-next-line no-restricted-syntax
-    for (const step of sceneSteps) {
-      this.steps.push(new SceneStep(step));
-    }
+    this.steps = deviceRegistry
+      .getApiSite()
+      .sceneSteps.filter((step) => step.sceneId === scene.sceneId)
+      .map((step) => new SceneStep(step));
   }
 }
 

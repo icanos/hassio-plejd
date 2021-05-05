@@ -1,5 +1,20 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## 0.8.0-dev
+
+**BREAKING - READ BELOW FIRST**
+
+Release 0.8 will break ALL EXISTING DEVICES. Unique mqtt id:s will change, meaning HA will create new devices. Scenes will be added as scenes not as switches.
+
+Recommendations to minimize impact
+
+- Optionally install MQTT explorer to bulk-delete discovered devices. If so - start MQTT explorer, connect, restart Plejd addon and then delete from MQTT explorer
+- Shut down Plejd addon, disable autostart
+- Reboot HA
+- Go to Configuration => Integration => MQTT. Go to entities and after that devices and remove all Plejd devices (should be listed as unavailable)
+- Upgrade addon to latest version and start
+- All devices should now be back. With luck they will have the same HA id:s as before so most things should work. Room assignments, icons, etc will be gone though.
+
 ## [0.7.1](https://github.com/icanos/hassio-plejd/tree/0.7.1) (2021-03-25)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.7.0...0.7.1)

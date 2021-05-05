@@ -1,7 +1,7 @@
 const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 
 const Configuration = require('./Configuration');
 const constants = require('./constants');
@@ -49,6 +49,8 @@ class PlejBLEHandler extends EventEmitter {
   connectedDevice = null;
   consecutiveWriteFails;
   consecutiveReconnectAttempts = 0;
+  /** @type {import('./DeviceRegistry')} */
+  deviceRegistry;
   discoveryTimeout = null;
   plejdService = null;
   pingRef = null;
@@ -152,21 +154,26 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('BLE init done, waiting for devices.');
   }
 
-  async sendCommand(command, deviceId, data) {
+  /**
+   * @param {string} command
+   * @param {number} bleOutputAddress
+   * @param {number} data
+   */
+  async sendCommand(command, bleOutputAddress, data) {
     let payload;
     let brightnessVal;
     switch (command) {
       case COMMANDS.TURN_ON:
-        payload = this._createHexPayload(deviceId, BLE_CMD_STATE_CHANGE, '01');
+        payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '01');
         break;
       case COMMANDS.TURN_OFF:
-        payload = this._createHexPayload(deviceId, BLE_CMD_STATE_CHANGE, '00');
+        payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '00');
         break;
       case COMMANDS.DIM:
         // eslint-disable-next-line no-bitwise
         brightnessVal = (data << 8) | data;
         payload = this._createHexPayload(
-          deviceId,
+          bleOutputAddress,
           BLE_CMD_DIM2_CHANGE,
           `01${brightnessVal.toString(16).padStart(4, '0')}`,
         );
@@ -194,9 +201,9 @@ class PlejBLEHandler extends EventEmitter {
       plejd.instance = device;
 
       const segments = plejd.path.split('/');
-      let fixedPlejdPath = segments[segments.length - 1].replace('dev_', '');
-      fixedPlejdPath = fixedPlejdPath.replace(/_/g, '');
-      plejd.device = this.deviceRegistry.getDeviceBySerialNumber(fixedPlejdPath);
+      let plejdSerialNumber = segments[segments.length - 1].replace('dev_', '');
+      plejdSerialNumber = plejdSerialNumber.replace(/_/g, '');
+      plejd.device = this.deviceRegistry.getPhysicalDevice(plejdSerialNumber);
 
       if (plejd.device) {
         logger.debug(
@@ -204,7 +211,7 @@ class PlejBLEHandler extends EventEmitter {
         );
         this.bleDevices.push(plejd);
       } else {
-        logger.warn(`Device registry does not contain device with serial ${fixedPlejdPath}`);
+        logger.warn(`Device registry does not contain device with serial ${plejdSerialNumber}`);
       }
     } catch (err) {
       logger.error(`Failed inspecting ${path}. `, err);
@@ -796,7 +803,7 @@ class PlejBLEHandler extends EventEmitter {
       return;
     }
 
-    const deviceId = decoded.readUInt8(0);
+    const bleOutputAddress = decoded.readUInt8(0);
     // Bytes 2-3 is Command/Request
     const cmd = decoded.readUInt16BE(3);
 
@@ -810,38 +817,52 @@ class PlejBLEHandler extends EventEmitter {
       logger.silly(`Dim: ${dim.toString(16)}, full precision: ${dimFull.toString(16)}`);
     }
 
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
+    const device = this.deviceRegistry.getOutputDeviceByBleOutputAddress(bleOutputAddress);
+    const deviceName = device ? device.name : 'Unknown';
+    const outputUniqueId = device ? device.uniqueId : null;
+
     if (Logger.shouldLog('verbose')) {
       // decoded.toString() could potentially be expensive
       logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
       logger.verbose(
-        `Decoded: Device ${deviceId}, cmd ${cmd.toString(16)}, state ${state}, dim ${dim}`,
+        `Decoded: Device ${outputUniqueId} (BLE address ${bleOutputAddress}), cmd ${cmd.toString(
+          16,
+        )}, state ${state}, dim ${dim}`,
       );
     }
 
     let command;
     let data = {};
     if (cmd === BLE_CMD_DIM_CHANGE || cmd === BLE_CMD_DIM2_CHANGE) {
-      logger.debug(`${deviceName} (${deviceId}) got state+dim update. S: ${state}, D: ${dim}`);
+      logger.debug(
+        `${deviceName} (${outputUniqueId}) got state+dim update. S: ${state}, D: ${dim}`,
+      );
 
       command = COMMANDS.DIM;
       data = { state, dim };
-      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_STATE_CHANGE) {
-      logger.debug(`${deviceName} (${deviceId}) got state update. S: ${state}`);
+      logger.debug(`${deviceName} (${outputUniqueId}) got state update. S: ${state}`);
       command = state ? COMMANDS.TURN_ON : COMMANDS.TURN_OFF;
-      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_SCENE_TRIG) {
-      const sceneId = state;
-      const sceneName = this.deviceRegistry.getSceneName(sceneId);
+      const sceneBleAddress = state;
+      const scene = this.deviceRegistry.getSceneByBleAddress(sceneBleAddress);
+
+      if (!scene) {
+        logger.warn(
+          `Scene with BLE address ${sceneBleAddress} could not be found, can't process message`,
+        );
+        return;
+      }
 
       logger.debug(
-        `${sceneName} (${sceneId}) scene triggered (device id ${deviceId}). Name can be misleading if there is a device with the same numeric id.`,
+        `${scene.name} (${sceneBleAddress}) scene triggered (device id ${outputUniqueId}).`,
       );
 
       command = COMMANDS.TRIGGER_SCENE;
-      data = { sceneId };
-      this.emit(PlejBLEHandler.EVENTS.commandReceived, deviceId, command, data);
+      data = { sceneId: scene.uniqueId };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
       const now = new Date();
       // Guess Plejd timezone based on HA time zone
@@ -851,7 +872,7 @@ class PlejBLEHandler extends EventEmitter {
       const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
       const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
       if (
-        deviceId !== BLE_BROADCAST_DEVICE_ID
+        bleOutputAddress !== BLE_BROADCAST_DEVICE_ID
         || Logger.shouldLog('verbose')
         || Math.abs(diffSeconds) > 60
       ) {
@@ -863,7 +884,7 @@ class PlejBLEHandler extends EventEmitter {
           logger.warn(
             `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
-          if (this.connectedDevice && deviceId === this.connectedDevice.id) {
+          if (this.connectedDevice && bleOutputAddress === this.connectedDevice.id) {
             // Requested time sync by us
             const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
             logger.info(`Setting time to ${now.toString()}`);
@@ -874,14 +895,14 @@ class PlejBLEHandler extends EventEmitter {
               (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), 5),
             );
             try {
-              this.write(payload);
+              this._write(payload);
             } catch (err) {
               logger.error(
                 'Failed writing new time to Plejd. Will try again in one hour or at restart.',
               );
             }
           }
-        } else if (deviceId !== BLE_BROADCAST_DEVICE_ID) {
+        } else if (bleOutputAddress !== BLE_BROADCAST_DEVICE_ID) {
           logger.info('Got time response. Plejd clock time in sync with Home Assistant time');
         }
       }
@@ -889,19 +910,19 @@ class PlejBLEHandler extends EventEmitter {
       logger.verbose(
         `Command ${cmd.toString(16)} unknown. ${decoded.toString(
           'hex',
-        )}. Device ${deviceName} (${deviceId})`,
+        )}. Device ${deviceName} (${bleOutputAddress}: ${outputUniqueId})`,
       );
     }
   }
 
   _createHexPayload(
-    deviceId,
+    bleOutputAddress,
     command,
     hexDataString,
     requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
   ) {
     return this._createPayload(
-      deviceId,
+      bleOutputAddress,
       command,
       5 + Math.ceil(hexDataString.length / 2),
       (payload) => payload.write(hexDataString, 5, 'hex'),
@@ -911,14 +932,14 @@ class PlejBLEHandler extends EventEmitter {
 
   // eslint-disable-next-line class-methods-use-this
   _createPayload(
-    deviceId,
+    bleOutputAddress,
     command,
     bufferLength,
     payloadBufferAddDataFunc,
     requestResponseCommand = BLE_REQUEST_NO_RESPONSE,
   ) {
     const payload = Buffer.alloc(bufferLength);
-    payload.writeUInt8(deviceId);
+    payload.writeUInt8(bleOutputAddress);
     payload.writeUInt16BE(requestResponseCommand, 1);
     payload.writeUInt16BE(command, 3);
     payloadBufferAddDataFunc(payload);
@@ -945,12 +966,12 @@ class PlejBLEHandler extends EventEmitter {
 
     let ct = cipher.update(buf).toString('hex');
     ct += cipher.final().toString('hex');
-    ct = Buffer.from(ct, 'hex');
+    const ctBuf = Buffer.from(ct, 'hex');
 
     let output = '';
     for (let i = 0, { length } = data; i < length; i++) {
       // eslint-disable-next-line no-bitwise
-      output += String.fromCharCode(data[i] ^ ct[i % 16]);
+      output += String.fromCharCode(data[i] ^ ctBuf[i % 16]);
     }
 
     return Buffer.from(output, 'ascii');

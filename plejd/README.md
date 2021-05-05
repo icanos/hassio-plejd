@@ -189,6 +189,11 @@ The code in this project follows the [Airbnb JavaScript guide](https://github.co
 
 For a nice developer experience it is very convenient to have `eslint` and `prettier` installed in your favorite editor (such as VS Code) and use the "format on save" option (or invoke formatting by Alt+Shift+F in VS Code). Any code issues should appear in the problems window inside the editor, as well as when running the command above.
 
+For partial type hinting you can run
+
+- `npm install --global typings`
+- `typings install`
+
 When contributing, please do so by forking the repo and then using pull requests towards the dev branch.
 
 ### Logs

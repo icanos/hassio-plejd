@@ -1,9 +1,12 @@
 const fs = require('fs');
 
 class Configuration {
+  /** @type {import('types/Configuration').Options} */
   static _options = null;
+  /** @type {import('types/Configuration').AddonInfo} */
   static _addonInfo = null;
 
+  /** @returns Options */
   static getOptions() {
     if (!Configuration._options) {
       Configuration._hydrateCache();
@@ -11,6 +14,7 @@ class Configuration {
     return Configuration._options;
   }
 
+  /** @returns AddonInfo */
   static getAddonInfo() {
     if (!Configuration._addonInfo) {
       Configuration._hydrateCache();
@@ -20,10 +24,10 @@ class Configuration {
 
   static _hydrateCache() {
     const rawData = fs.readFileSync('/data/options.json');
-    const config = JSON.parse(rawData);
+    const config = JSON.parse(rawData.toString());
 
     const defaultRawData = fs.readFileSync('/plejd/config.json');
-    const defaultConfig = JSON.parse(defaultRawData);
+    const defaultConfig = JSON.parse(defaultRawData.toString());
 
     Configuration._options = { ...defaultConfig.options, ...config };
     Configuration._addonInfo = {

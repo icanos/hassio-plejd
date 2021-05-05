@@ -3,6 +3,7 @@ const COMMANDS = {
   TURN_OFF: 'Turn off',
   DIM: 'Dim',
   TRIGGER_SCENE: 'Trigger scene',
+  BUTTON_CLICK: 'Button click',
 };
 
 module.exports = { COMMANDS };

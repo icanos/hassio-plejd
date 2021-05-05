@@ -280,6 +280,8 @@ export interface InputSetting {
 
 export enum ButtonType {
   PushButton = 'PushButton',
+  DirectionUp = 'DirectionUp',
+  DirectionDown = 'DirectionDown',
   RotateMesh = 'RotateMesh',
   Scene = 'Scene',
 }

@@ -23,7 +23,7 @@ export interface OutputDevice {
 export type InputDevices = { [deviceIdAndOutput: string]: InputDevice };
 
 export interface InputDevice {
-  bleOutputAddress: number;
+  bleInputAddress: number;
   deviceId: string;
   name: string;
   input: number;

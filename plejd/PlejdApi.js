@@ -1,4 +1,3 @@
-// @ts-ignore
 const axios = require('axios').default;
 const fs = require('fs');
 
@@ -380,7 +379,7 @@ class PlejdApi {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
         // Filter inputSettings for available buttons
         const inputSettings = this.siteDetails.inputSettings.filter(
-          (x) => x.deviceId === device.deviceId && (x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown') || (x.buttonType == 'RotateMesh'));
+          (x) => x.deviceId === device.deviceId && ((x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown') || (x.buttonType == 'RotateMesh')));
 
           // For each found button, register the device as an inputDevice
           inputSettings.forEach((input) => {
@@ -403,7 +402,7 @@ class PlejdApi {
   
             /** @type {import('types/DeviceRegistry').InputDevice} */
             const inputDevice = {
-              bleOutputAddress: bleInputAddress,
+              bleInputAddress: bleInputAddress,
               deviceId: device.deviceId,
               name: device.title,
               input: input.input,

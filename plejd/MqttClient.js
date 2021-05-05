@@ -36,7 +36,7 @@ const getTopicName = (
   /** @type { import('./types/Mqtt').TopicType } */ topicType,
 ) => `${getBaseTopic(uniqueId, mqttDeviceType)}/${topicType}`;
 
-const getButtonEventTopic = (deviceId) => `${getTopicName({ uniqueId: `${deviceId}`, type: 'device_automation' }, 'state')}`;
+const getButtonEventTopic = (/** @type {string} */ deviceId) => `${getTopicName(getTriggerUniqueId(deviceId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getTriggerUniqueId = (/** @type { string } */ uniqueId) => `${uniqueId}_trigger`;
 const getSceneEventTopic = (/** @type {string} */ sceneId) => `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
@@ -93,12 +93,9 @@ const getInputDeviceTriggerDiscoveryPayload = (
 ) => ({
   automation_type: 'trigger',
   payload: `${inputDevice.input}`,
-  '~': getBaseTopic({
-    uniqueId: inputDevice.deviceId,
-    type: 'device_automation',
-  }),
+  '~': getBaseTopic(inputDevice.deviceId, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
-  topic: `~/${TOPICS.STATE}`,
+  topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'button_short_press',
   subtype: `button_${inputDevice.input+1}`,
   device: {
@@ -336,11 +333,11 @@ class MqttClient extends EventEmitter {
       logger.debug(`Sending discovery for ${inputDevice.name}`);
       const inputInputPayload = getInputDeviceTriggerDiscoveryPayload(inputDevice);
       logger.info(
-        `Discovered ${inputDevice.typeName} (${inputDevice.type}) named ${inputDevice.name} (${inputDevice.bleOutputAddress} : ${inputDevice.uniqueId}).`,
+        `Discovered ${inputDevice.typeName} (${inputDevice.type}) named ${inputDevice.name} (${inputDevice.bleInputAddress} : ${inputDevice.uniqueId}).`,
       );
-      logger.verbose(`Publishing  ${getTopicName(inputDevice, 'config')} with payload ${JSON.stringify(inputInputPayload)}`);
+      logger.verbose(`Publishing  ${getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG)} with payload ${JSON.stringify(inputInputPayload)}`);
 
-      this.client.publish(getTopicName(inputDevice, 'config'), JSON.stringify(inputInputPayload), {
+      this.client.publish(getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG), JSON.stringify(inputInputPayload), {
         retain: true,
         qos: 1,
       });

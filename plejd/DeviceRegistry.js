@@ -42,7 +42,7 @@ class DeviceRegistry {
         Object.keys(this.inputDevices).length
       } output devices in total.`,
     );
-    this.outputUniqueIdByBleOutputAddress[`${inputDevice.bleOutputAddress}_${inputDevice.input}`] = inputDevice.uniqueId;
+    this.outputUniqueIdByBleOutputAddress[`${inputDevice.bleInputAddress}_${inputDevice.input}`] = inputDevice.uniqueId;
   };
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
@@ -157,7 +157,7 @@ class DeviceRegistry {
   }
 
   /** @returns {import('./types/DeviceRegistry').InputDevice} */
-  getInputDeviceByBleOutputAddress(bleInputAddress, inputButton) {
+  getInputDeviceByBleInputAddress(bleInputAddress, inputButton) {
     return this.inputDevices[this.outputUniqueIdByBleOutputAddress[`${bleInputAddress}_${inputButton}`]];
   }
 

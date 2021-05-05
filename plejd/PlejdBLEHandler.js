@@ -1,4 +1,3 @@
-// @ts-ignore
 const dbus = require('dbus-next');
 const crypto = require('crypto');
 const xor = require('buffer-xor');
@@ -912,7 +911,7 @@ class PlejBLEHandler extends EventEmitter {
       const inputBleAddress = state;
       const inputButton = decoded.length > 7 ? decoded.readUInt8(6) : 0;
 
-      const sourceDevice = this.deviceRegistry.getInputDeviceByBleOutputAddress(inputBleAddress, inputButton);
+      const sourceDevice = this.deviceRegistry.getInputDeviceByBleInputAddress(inputBleAddress, inputButton);
       if (!sourceDevice) {
         logger.warn(
           `Scene with BLE address ${inputBleAddress} could not be found, can't process message`,

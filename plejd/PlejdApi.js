@@ -270,7 +270,7 @@ class PlejdApi {
         // Unknown
         return { name: '-unknown-', type: 'light', dimmable: false };
       case 10:
-        return { name: '-unknown-', type: 'light', dimmable: false };
+        return { name: 'WRT-01', type: 'device_automation', dimmable: false };
       case 12:
         // Unknown
         return { name: '-unknown-', type: 'light', dimmable: false };
@@ -380,7 +380,7 @@ class PlejdApi {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
         // Filter inputSettings for available buttons
         const inputSettings = this.siteDetails.inputSettings.filter(
-          (x) => x.deviceId === device.deviceId && (x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown'));
+          (x) => x.deviceId === device.deviceId && (x.buttonType == 'DirectionUp') || (x.buttonType == 'DirectionDown') || (x.buttonType == 'RotateMesh'));
 
           // For each found button, register the device as an inputDevice
           inputSettings.forEach((input) => {

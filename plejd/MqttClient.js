@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-// @ts-ignore
 const mqtt = require('mqtt');
 
 const Configuration = require('./Configuration');

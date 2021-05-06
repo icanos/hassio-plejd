@@ -41,7 +41,8 @@ The add-on has been tested on the following platforms:
 - CTR-01
 - REL-01
 - REL-02
-- WPH-01
+- WPH-01 (Note: Available as Device Trigger short_button_press, button_1 .. button_4)
+- WRT-01 (Note: Available as Device Trigger short_button_press, button_1. Rotation/dimming not offered by the device)
 
 ### Easy Installation
 

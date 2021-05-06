@@ -251,44 +251,124 @@ class PlejdApi {
     switch (parseInt(plejdDevice.hardwareId, 10)) {
       case 1:
       case 11:
-        return { name: 'DIM-01', type: 'light', dimmable: true };
+        return {
+          name: 'DIM-01',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 2:
-        return { name: 'DIM-02', type: 'light', dimmable: true };
+        return {
+          name: 'DIM-02',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 3:
-        return { name: 'CTR-01', type: 'light', dimmable: false };
+        return {
+          name: 'CTR-01',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 4:
-        return { name: 'GWY-01', type: 'sensor', dimmable: false };
+        return {
+          name: 'GWY-01',
+          type: 'sensor',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 5:
-        return { name: 'LED-10', type: 'light', dimmable: true };
+        return {
+          name: 'LED-10',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 6:
-        return { name: 'WPH-01', type: 'device_automation', dimmable: false };
+        return {
+          name: 'WPH-01',
+          type: 'device_automation',
+          dimmable: false,
+          broadcastClicks: true,
+        };
       case 7:
-        return { name: 'REL-01', type: 'switch', dimmable: false };
+        return {
+          name: 'REL-01',
+          type: 'switch',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 8:
       case 9:
         // Unknown
-        return { name: '-unknown-', type: 'light', dimmable: false };
+        return {
+          name: '-unknown-',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 10:
-        return { name: 'WRT-01', type: 'device_automation', dimmable: false };
+        return {
+          name: 'WRT-01',
+          type: 'device_automation',
+          dimmable: false,
+          broadcastClicks: true,
+        };
       case 12:
         // Unknown
-        return { name: '-unknown-', type: 'light', dimmable: false };
+        return {
+          name: '-unknown-',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 13:
-        return { name: 'Generic', type: 'light', dimmable: false };
+        return {
+          name: 'Generic',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 14:
       case 15:
       case 16:
         // Unknown
-        return { name: '-unknown-', type: 'light', dimmable: false };
+        return {
+          name: '-unknown-',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 17:
-        return { name: 'REL-01', type: 'switch', dimmable: false };
+        return {
+          name: 'REL-01',
+          type: 'switch',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 18:
-        return { name: 'REL-02', type: 'switch', dimmable: false };
+        return {
+          name: 'REL-02',
+          type: 'switch',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 19:
         // Unknown
-        return { name: '-unknown-', type: 'light', dimmable: false };
+        return {
+          name: '-unknown-',
+          type: 'light',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 20:
-        return { name: 'SPR-01', type: 'switch', dimmable: false };
+        return {
+          name: 'SPR-01',
+          type: 'switch',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       default:
         throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
     }
@@ -379,10 +459,7 @@ class PlejdApi {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
         // Filter inputSettings for available buttons
         const inputSettings = this.siteDetails.inputSettings.filter(
-          (x) => x.deviceId === device.deviceId
-            && (x.buttonType === 'DirectionUp'
-              || x.buttonType === 'DirectionDown'
-              || x.buttonType === 'RotateMesh'),
+          (x) => x.deviceId === device.deviceId,
         );
 
         // For each found button, register the device as an inputDevice
@@ -397,22 +474,22 @@ class PlejdApi {
           );
 
           const uniqueInputId = this.deviceRegistry.getUniqueInputId(device.deviceId, input.input);
-
-          const { name: typeName, type } = this._getDeviceType(plejdDevice);
-
-          /** @type {import('types/DeviceRegistry').InputDevice} */
-          const inputDevice = {
-            bleInputAddress,
-            deviceId: device.deviceId,
-            name: device.title,
-            input: input.input,
-            roomId: device.roomId,
-            type,
-            typeName,
-            version: plejdDevice.firmware.version,
-            uniqueId: uniqueInputId,
-          };
-          this.deviceRegistry.addInputDevice(inputDevice);
+          const { name: typeName, type, broadcastClicks } = this._getDeviceType(plejdDevice);
+          if (broadcastClicks) {
+            /** @type {import('types/DeviceRegistry').InputDevice} */
+            const inputDevice = {
+              bleInputAddress,
+              deviceId: device.deviceId,
+              name: device.title,
+              input: input.input,
+              roomId: device.roomId,
+              type,
+              typeName,
+              version: plejdDevice.firmware.version,
+              uniqueId: uniqueInputId,
+            };
+            this.deviceRegistry.addInputDevice(inputDevice);
+          }
         });
       }
     });

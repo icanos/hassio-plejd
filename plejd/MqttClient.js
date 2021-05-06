@@ -446,9 +446,13 @@ class MqttClient extends EventEmitter {
     // );
   }
 
-  buttonPressed(data) {
-    logger.verbose(`Button ${data.deviceInput} pressed for deviceId ${data.deviceId}`);
-    this.client.publish(getButtonEventTopic(data.deviceId), `${data.deviceInput}`, { qos: 1 });
+  /**
+   * @param {string} deviceId
+   * @param {string} deviceInput
+   */
+  buttonPressed(deviceId, deviceInput) {
+    logger.verbose(`Button ${deviceInput} pressed for deviceId ${deviceId}`);
+    this.client.publish(getButtonEventTopic(deviceId), `${deviceInput}`, { qos: 1 });
   }
 
   /**

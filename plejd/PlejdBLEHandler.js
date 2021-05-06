@@ -922,7 +922,7 @@ class PlejBLEHandler extends EventEmitter {
         return;
       }
       logger.verbose(
-        `WPH-10 button ${inputButton} at BLE address ${inputBleAddress} was pressed. Unique Id is ${sourceDevice.uniqueId}`,
+        `A button (eg. WPH-01, WRT-01) ${inputButton} at BLE address ${inputBleAddress} was pressed. Unique Id is ${sourceDevice.uniqueId}`,
       );
       command = COMMANDS.BUTTON_CLICK;
       data = { deviceId: sourceDevice.deviceId, deviceInput: sourceDevice.input };

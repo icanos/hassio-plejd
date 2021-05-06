@@ -42,7 +42,9 @@ class DeviceRegistry {
         Object.keys(this.inputDevices).length
       } output devices in total.`,
     );
-    this.outputUniqueIdByBleOutputAddress[`${inputDevice.bleInputAddress}_${inputDevice.input}`] = inputDevice.uniqueId;
+    this.outputUniqueIdByBleOutputAddress[
+      this.getUniqueBLEId(inputDevice.bleInputAddress, inputDevice.input)
+    ] = inputDevice.uniqueId;
   }
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
@@ -159,7 +161,7 @@ class DeviceRegistry {
   /** @returns {import('./types/DeviceRegistry').InputDevice} */
   getInputDeviceByBleInputAddress(bleInputAddress, inputButton) {
     return this.inputDevices[
-      this.outputUniqueIdByBleOutputAddress[`${bleInputAddress}_${inputButton}`]
+      this.outputUniqueIdByBleOutputAddress[this.getUniqueBLEId(bleInputAddress, inputButton)]
     ];
   }
 
@@ -216,7 +218,12 @@ class DeviceRegistry {
 
   // eslint-disable-next-line class-methods-use-this
   getUniqueInputId(deviceId, inputIndex) {
-    return `${deviceId}_${inputIndex}`;
+    return `${deviceId}_I_${inputIndex}`;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getUniqueBLEId(bleAdress, inputIndex) {
+    return `${bleAdress}_${inputIndex}`;
   }
 
   /** @param apiSite {import('./types/ApiSite').ApiSite} */

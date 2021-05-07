@@ -4,7 +4,7 @@
 
 **BREAKING - READ BELOW FIRST**
 
-Release 0.8 will break ALL EXISTING DEVICES. Unique mqtt id:s will change, meaning HA will create new devices. Scenes will be added as scenes not as switches.
+Release 0.8 will break ALL EXISTING DEVICES. Unique mqtt id:s will change, meaning HA will create new devices. Scenes will be added as scenes not as switches. Devices will be installed to Areas named by the rooms defined in the Plejd app (can be changed)
 
 Recommendations to minimize impact
 
@@ -13,7 +13,7 @@ Recommendations to minimize impact
 - Reboot HA
 - Go to Configuration => Integration => MQTT. Go to entities and after that devices and remove all Plejd devices (should be listed as unavailable)
 - Upgrade addon to latest version and start
-- All devices should now be back. With luck they will have the same HA id:s as before so most things should work. Room assignments, icons, etc will be gone though.
+- All devices should now be back. With luck they will have the same HA id:s as before so most things should work. Room assignments, icons, automations, scenes, etc will have to be gone though.
 
 ## [0.7.1](https://github.com/icanos/hassio-plejd/tree/0.7.1) (2021-03-25)
 

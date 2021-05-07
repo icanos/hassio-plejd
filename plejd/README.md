@@ -1,9 +1,32 @@
 # Hass.io Plejd add-on
 
 Hass.io add-on for Plejd home automation devices. Gives you the ability to control the Plejd home automation devices through Home Assistant.
-It uses MQTT to communicate with Home Assistant and supports auto discovery of the devices in range.
+It uses MQTT to communicate with Home Assistant and supports auto discovery of the devices in range. Changed made in the Plejd app are propagated to Home Assistant.
 
-It also supports notifications so that changed made in the Plejd app are propagated to Home Assistant.
+Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
+<table>
+<tr><th align=left>Device</th><th align=left>Plejd Configuration</th><th align=left>Home Assistant Role</th><th align=left>Comment</th></tr>
+<tr><td>CTR-01</td><td>Relay, Light</td><td>Light</td></tr>
+<tr><td>CTR-01</td><td>Relay, Other</td><td>Switch</td></tr>
+<tr><td>REL-01</td><td>Relay, Light</td><td>Light</td></tr>
+<tr><td>REL-01</td><td>Relay, Other</td><td>Switch</td></tr>
+<tr><td>REL-02</td><td>Relay, Light</td><td>Light</td></tr>
+<tr><td>REL-02</td><td>Relay, Other</td><td>Switch</td></tr>
+<tr><td>SPR-01</td><td>Relay, Light</td><td>Light</td><td>Not tested, not released by Plejd</td></tr>
+<tr><td>SPR-01</td><td>Relay, Other</td><td>Switch</td><td>Not tested, not released by Plejd</td></tr>
+<tr><td>DIM-01</td><td>-</td><td>Light</td></tr>
+<tr><td>DIM-02</td><td>-</td><td>Light</td></tr>
+<tr><td>LED-10</td><td>-</td><td>Light</td></tr>
+<tr><td>DAL-01</td><td>-</td><td>-</td><td>Not supported, not released by Plejd</td></tr>
+<tr><td>WPH-01</td><td>-</td><td>Device Automation</td><td>type:button_short_press, subtype:button_1, button_2,button_3,button_4</td></tr>
+<tr><td>WRT-01</td><td>-</td><td>Device Automation</td><td>type:button_short_press, subtype:button_1</td></tr>
+<tr><td>GWY-01</td><td>-</td><td>-</td></tr>
+<tr><td>RTR-01</td><td>-</td><td>-</td></tr>
+<tr><td>Scene</td><td>-</td><td>Scene</td></tr>
+<tr><td>Scene</td><td>-</td><td>Device Automation</td><td>type:scene, subtype:trigger</td></tr>
+<tr><td>Room</td><td>-</td><td>Area</td><td>Can be changed by Home Assistant</td></tr>
+<tr><td>Room</td><td>-</td><td>Light</td><td>If includeRoomsAsLights is set to true</td></tr>
+<table>
 
 Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 
@@ -41,8 +64,8 @@ The add-on has been tested on the following platforms:
 - CTR-01
 - REL-01
 - REL-02
-- WPH-01 (Note: Available as Device Trigger short_button_press, button_1 .. button_4)
-- WRT-01 (Note: Available as Device Trigger short_button_press, button_1. Rotation/dimming not offered by the device)
+- WPH-01
+- WRT-01
 
 ### Easy Installation
 
@@ -52,6 +75,7 @@ Browse to your Home Assistant installation in a web browser and click on `Hass.i
 - Click on `Add-on Store` in the top navigation bar of that page.
 - Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add new repository by URL` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
+- Configure hassio-plejd (see below)
 - Enjoy!
 
 ### Manual Installation
@@ -108,7 +132,16 @@ If you restore a backup from a 32bit system to a new 64bit system, use the Rebui
 
 ### Configuration
 
-You need to add the MQTT integration to Home Assistant either by going to Configuration -> Integrations and clicking the Add Integration button, or by adding the following to your `configuration.yaml` file:
+#### Simple MQTT Configurations
+When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.
+<table>
+<tr><td>mqttBroker</td><td>mqtt://localhost</td></tr>
+<tr><td>mqttUsername</td><td>homeassistant</td></tr>
+<tr><td>mqttPassword</td><td>Mosquitto password, fetched via Configuration->Integrations->Mosquitto broker->Configure->RE-CONFIGURE->Password</td></tr>
+</table>
+
+#### Advanced MQTT Configurations
+For more advanced instllations, you need to add the MQTT integration to Home Assistant either by going to Configuration -> Integrations and clicking the Add Integration button, or by adding the following to your `configuration.yaml` file:
 
 ```
 mqtt:
@@ -120,6 +153,8 @@ mqtt:
 ```
 
 The above is used to notify the add-on when Home Assistant has started successfully and let the add-on send the discovery response (containing information about all Plejd devices found).
+
+#### Configuration Parameters
 
 The plugin needs you to configure some settings before working. You find these on the Add-on page after you've installed it.
 

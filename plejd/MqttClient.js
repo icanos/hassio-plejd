@@ -69,6 +69,7 @@ const getOutputDeviceDiscoveryPayload = (
     manufacturer: 'Plejd',
     model: device.typeName,
     name: device.name,
+    ...(device.roomName !== undefined ? { suggested_area: device.roomName } : {}),
     sw_version: device.version,
   },
   ...(device.type === MQTT_TYPES.LIGHT ? { brightness: device.dimmable, schema: 'json' } : {}),

@@ -65,7 +65,7 @@ const getOutputDeviceDiscoveryPayload = (
   qos: 1,
   retain: true,
   device: {
-    identifiers: `${device.deviceId}`,
+    identifiers: `${device.uniqueId}`,
     manufacturer: 'Plejd',
     model: device.typeName,
     name: device.name,

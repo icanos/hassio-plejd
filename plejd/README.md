@@ -6,23 +6,23 @@ It uses MQTT to communicate with Home Assistant and supports auto discovery of t
 Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
 <table>
 <tr><th align=left>Device</th><th align=left>Plejd Configuration</th><th align=left>Home Assistant Role</th><th align=left>Comment</th></tr>
-<tr><td>CTR-01</td><td>Relay, Light</td><td>Light</td></tr>
-<tr><td>CTR-01</td><td>Relay, Other</td><td>Switch</td></tr>
-<tr><td>REL-01</td><td>Relay, Light</td><td>Light</td></tr>
-<tr><td>REL-01</td><td>Relay, Other</td><td>Switch</td></tr>
-<tr><td>REL-02</td><td>Relay, Light</td><td>Light</td></tr>
-<tr><td>REL-02</td><td>Relay, Other</td><td>Switch</td></tr>
+<tr><td>CTR-01</td><td>Relay, Light</td><td>Light</td><td></td></tr>
+<tr><td>CTR-01</td><td>Relay, Other</td><td>Switch</td><td></td></tr>
+<tr><td>REL-01</td><td>Relay, Light</td><td>Light</td><td></td></tr>
+<tr><td>REL-01</td><td>Relay, Other</td><td>Switch</td><td></td></tr>
+<tr><td>REL-02</td><td>Relay, Light</td><td>Light</td><td></td></tr>
+<tr><td>REL-02</td><td>Relay, Other</td><td>Switch</td><td></td></tr>
 <tr><td>SPR-01</td><td>Relay, Light</td><td>Light</td><td>Not tested, not released by Plejd</td></tr>
 <tr><td>SPR-01</td><td>Relay, Other</td><td>Switch</td><td>Not tested, not released by Plejd</td></tr>
-<tr><td>DIM-01</td><td>-</td><td>Light</td></tr>
-<tr><td>DIM-02</td><td>-</td><td>Light</td></tr>
-<tr><td>LED-10</td><td>-</td><td>Light</td></tr>
+<tr><td>DIM-01</td><td>-</td><td>Light</td><td></td></tr>
+<tr><td>DIM-02</td><td>-</td><td>Light</td><td></td></tr>
+<tr><td>LED-10</td><td>-</td><td>Light</td><td></td></tr>
 <tr><td>DAL-01</td><td>-</td><td>-</td><td>Not supported, not released by Plejd</td></tr>
 <tr><td>WPH-01</td><td>-</td><td>Device Automation</td><td>type:button_short_press, subtype:button_1, button_2,button_3,button_4</td></tr>
 <tr><td>WRT-01</td><td>-</td><td>Device Automation</td><td>type:button_short_press, subtype:button_1</td></tr>
-<tr><td>GWY-01</td><td>-</td><td>-</td></tr>
-<tr><td>RTR-01</td><td>-</td><td>-</td></tr>
-<tr><td>Scene</td><td>-</td><td>Scene</td></tr>
+<tr><td>GWY-01</td><td>-</td><td>-</td><td></td></tr>
+<tr><td>RTR-01</td><td>-</td><td>-</td><td></td></tr>
+<tr><td>Scene</td><td>-</td><td>Scene</td><td></td></tr>
 <tr><td>Scene</td><td>-</td><td>Device Automation</td><td>type:scene, subtype:trigger</td></tr>
 <tr><td>Room</td><td>-</td><td>Area</td><td>Can be changed by Home Assistant</td></tr>
 <tr><td>Room</td><td>-</td><td>Light</td><td>If includeRoomsAsLights is set to true</td></tr>

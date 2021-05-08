@@ -116,6 +116,8 @@ class PlejdDeviceCommunication extends EventEmitter {
         });
       } else if (command === COMMANDS.TRIGGER_SCENE) {
         this.emit(PlejdDeviceCommunication.EVENTS.sceneTriggered, data.sceneId);
+      } else if (command === COMMANDS.BUTTON_CLICK) {
+        this.emit(PlejdDeviceCommunication.EVENTS.buttonPressed, data.deviceId, data.deviceInput);
       } else {
         logger.warn(`Unknown ble command ${command}`);
       }

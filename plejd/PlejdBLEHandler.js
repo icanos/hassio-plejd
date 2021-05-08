@@ -23,6 +23,7 @@ const BLE_CMD_DIM2_CHANGE = 0x0098;
 const BLE_CMD_STATE_CHANGE = 0x0097;
 const BLE_CMD_SCENE_TRIG = 0x0021;
 const BLE_CMD_TIME_UPDATE = 0x001b;
+const BLE_CMD_REMOTE_CLICK = 0x0016;
 
 const BLE_BROADCAST_DEVICE_ID = 0x01;
 const BLE_REQUEST_NO_RESPONSE = 0x0110;
@@ -906,6 +907,26 @@ class PlejBLEHandler extends EventEmitter {
           logger.info('Got time response. Plejd clock time in sync with Home Assistant time');
         }
       }
+    } else if (cmd === BLE_CMD_REMOTE_CLICK) {
+      const inputBleAddress = state;
+      const inputButton = decoded.length > 7 ? decoded.readUInt8(6) : 0;
+
+      const sourceDevice = this.deviceRegistry.getInputDeviceByBleInputAddress(
+        inputBleAddress,
+        inputButton,
+      );
+      if (!sourceDevice) {
+        logger.warn(
+          `Scene with BLE address ${inputBleAddress} could not be found, can't process message`,
+        );
+        return;
+      }
+      logger.verbose(
+        `A button (eg. WPH-01, WRT-01) ${inputButton} at BLE address ${inputBleAddress} was pressed. Unique Id is ${sourceDevice.uniqueId}`,
+      );
+      command = COMMANDS.BUTTON_CLICK;
+      data = { deviceId: sourceDevice.deviceId, deviceInput: sourceDevice.input };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else {
       logger.verbose(
         `Command ${cmd.toString(16)} unknown. ${decoded.toString(

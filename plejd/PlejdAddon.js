@@ -126,6 +126,17 @@ class PlejdAddon extends EventEmitter {
       },
     );
 
+    this.plejdDeviceCommunication.on(
+      PlejdDeviceCommunication.EVENTS.buttonPressed,
+      (deviceId, deviceInput) => {
+        try {
+          this.mqttClient.buttonPressed(deviceId, deviceInput);
+        } catch (err) {
+          logger.error('Error in PlejdService.buttonPressed callback', err);
+        }
+      },
+    );
+
     this.plejdDeviceCommunication.on(PlejdDeviceCommunication.EVENTS.sceneTriggered, (sceneId) => {
       try {
         this.mqttClient.sceneTriggered(sceneId);

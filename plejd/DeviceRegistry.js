@@ -22,10 +22,29 @@ class DeviceRegistry {
   outputDevices = {};
   /** @private @type {import('types/DeviceRegistry').OutputDevices} */
   sceneDevices = {};
+  /** @private @type {import('types/DeviceRegistry').InputDevices} */
+  inputDevices = {};
 
   /** @param device {import('./types/ApiSite').Device} */
   addPhysicalDevice(device) {
     this.devices[device.deviceId] = device;
+  }
+
+  /** @param inputDevice {import('types/DeviceRegistry').InputDevice} */
+  addInputDevice(inputDevice) {
+    this.inputDevices = {
+      ...this.inputDevices,
+      [inputDevice.uniqueId]: inputDevice,
+    };
+
+    logger.verbose(
+      `Added/updated input device: ${JSON.stringify(inputDevice)}. ${
+        Object.keys(this.inputDevices).length
+      } output devices in total.`,
+    );
+    this.outputUniqueIdByBleOutputAddress[
+      this.getUniqueBLEId(inputDevice.bleInputAddress, inputDevice.input)
+    ] = inputDevice.uniqueId;
   }
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
@@ -84,6 +103,7 @@ class DeviceRegistry {
   clearPlejdDevices() {
     this.devices = {};
     this.outputDevices = {};
+    this.inputDevices = {};
     this.outputDeviceUniqueIdsByRoomId = {};
     this.outputUniqueIdByBleOutputAddress = {};
   }
@@ -98,6 +118,13 @@ class DeviceRegistry {
    */
   getAllOutputDevices() {
     return Object.values(this.outputDevices);
+  }
+
+  /**
+   * @returns {import('./types/DeviceRegistry').InputDevice[]}
+   */
+  getAllInputDevices() {
+    return Object.values(this.inputDevices);
   }
 
   /**
@@ -119,9 +146,23 @@ class DeviceRegistry {
     return this.outputDevices[uniqueOutputId];
   }
 
+  /**
+   * @param {string} uniqueInputId
+   */
+  getInputDevice(uniqueInputId) {
+    return this.inputDevices[uniqueInputId];
+  }
+
   /** @returns {import('./types/DeviceRegistry').OutputDevice} */
   getOutputDeviceByBleOutputAddress(bleOutputAddress) {
     return this.outputDevices[this.outputUniqueIdByBleOutputAddress[bleOutputAddress]];
+  }
+
+  /** @returns {import('./types/DeviceRegistry').InputDevice} */
+  getInputDeviceByBleInputAddress(bleInputAddress, inputButton) {
+    return this.inputDevices[
+      this.outputUniqueIdByBleOutputAddress[this.getUniqueBLEId(bleInputAddress, inputButton)]
+    ];
   }
 
   /** @returns {string[]} */
@@ -131,6 +172,10 @@ class DeviceRegistry {
 
   getOutputDeviceName(uniqueOutputId) {
     return (this.outputDevices[uniqueOutputId] || {}).name;
+  }
+
+  getInputDeviceName(uniqueInputId) {
+    return (this.inputDevices[uniqueInputId] || {}).name;
   }
 
   /**
@@ -169,6 +214,16 @@ class DeviceRegistry {
   // eslint-disable-next-line class-methods-use-this
   getUniqueOutputId(deviceId, outputIndex) {
     return `${deviceId}_${outputIndex}`;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getUniqueInputId(deviceId, inputIndex) {
+    return `${deviceId}_I_${inputIndex}`;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getUniqueBLEId(bleAdress, inputIndex) {
+    return `${bleAdress}_${inputIndex}`;
   }
 
   /** @param apiSite {import('./types/ApiSite').ApiSite} */

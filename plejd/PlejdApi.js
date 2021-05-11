@@ -437,6 +437,7 @@ class PlejdApi {
           }
 
           const room = this.siteDetails.rooms.find((x) => x.roomId === device.roomId);
+          const roomTitle = room ? room.title : undefined;
 
           /** @type {import('types/DeviceRegistry').OutputDevice} */
           const outputDevice = {
@@ -448,7 +449,7 @@ class PlejdApi {
             name: device.title,
             output: deviceOutput,
             roomId: device.roomId,
-            roomName: room.title,
+            roomName: roomTitle,
             state: undefined,
             type: loadType,
             typeName,

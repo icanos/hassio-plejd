@@ -12,8 +12,8 @@ export interface OutputDevice {
   hiddenFromSceneList?: boolean;
   name: string;
   output: number;
-  roomId: string;
-  roomName: string;
+  roomId: string | undefined;
+  roomName: string | undefined;
   state: boolean | undefined;
   type: string;
   typeName: string;

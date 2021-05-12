@@ -436,6 +436,9 @@ class PlejdApi {
             loadType = 'light';
           }
 
+          const room = this.siteDetails.rooms.find((x) => x.roomId === device.roomId);
+          const roomTitle = room ? room.title : undefined;
+
           /** @type {import('types/DeviceRegistry').OutputDevice} */
           const outputDevice = {
             bleOutputAddress,
@@ -446,6 +449,7 @@ class PlejdApi {
             name: device.title,
             output: deviceOutput,
             roomId: device.roomId,
+            roomName: roomTitle,
             state: undefined,
             type: loadType,
             typeName,
@@ -518,7 +522,8 @@ class PlejdApi {
           hiddenFromIntegrations: false,
           name: room.title,
           output: undefined,
-          roomId,
+          roomId: undefined,
+          roomName: undefined,
           state: undefined,
           type: 'light',
           typeName: 'Room',
@@ -548,6 +553,7 @@ class PlejdApi {
         name: scene.title,
         output: undefined,
         roomId: undefined,
+        roomName: undefined,
         state: false,
         type: 'scene',
         typeName: 'Scene',

@@ -522,7 +522,7 @@ class PlejdApi {
           hiddenFromIntegrations: false,
           name: room.title,
           output: undefined,
-          roomId,
+          roomId: undefined,
           roomName: undefined,
           state: undefined,
           type: 'light',

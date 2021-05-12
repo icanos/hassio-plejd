@@ -523,7 +523,7 @@ class PlejdApi {
           name: room.title,
           output: undefined,
           roomId,
-          roomName: room.title,
+          roomName: undefined,
           state: undefined,
           type: 'light',
           typeName: 'Room',

@@ -36,7 +36,7 @@ const getTopicName = (
 ) => `${getBaseTopic(uniqueId, mqttDeviceType)}/${topicType}`;
 
 const getButtonEventTopic = (/** @type {string} */ deviceId) => `${getTopicName(deviceId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
-const getTriggerUniqueId = (/** @type { string } */ uniqueId) => `${uniqueId}_trigger`;
+const getTriggerUniqueId = (/** @type { string } */ uniqueId) => `${uniqueId}_trig`;
 const getSceneEventTopic = (/** @type {string} */ sceneId) => `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 
@@ -110,13 +110,13 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ sceneDevice,
 ) => ({
   automation_type: 'trigger',
-  '~': getBaseTopic(sceneDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION),
+  '~': getBaseTopic(`${sceneDevice.uniqueId}_trig`, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'scene',
   subtype: 'trigger',
   device: {
-    identifiers: `${sceneDevice.uniqueId}`,
+    identifiers: `${sceneDevice.uniqueId}_trigger`,
     manufacturer: 'Plejd',
     model: sceneDevice.typeName,
     name: sceneDevice.name,

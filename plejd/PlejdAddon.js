@@ -76,6 +76,15 @@ class PlejdAddon extends EventEmitter {
             // we're triggering a scene, lets do that and jump out.
             // since scenes aren't "real" devices.
             this.sceneManager.executeScene(uniqueId);
+
+            // since the scene doesn't get any updates on whether it's executed or not,
+            // we fake this by directly send the sceneTriggered back to HA in order for
+            // it continue to acto on the scene (for non-plejd devices).
+            try {
+              this.mqttClient.sceneTriggered(uniqueId);
+            } catch (err) {
+              logger.error('Error in PlejdService.sceneTriggered callback', err);
+            }
             return;
           }
 

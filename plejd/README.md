@@ -69,13 +69,14 @@ The add-on has been tested on the following platforms:
 
 ### Easy Installation
 
-Browse to your Home Assistant installation in a web browser and click on `Hass.io` in the navigation bar to the left.
+Browse to your Home Assistant installation in a web browser and click on `Supervisor` in the navigation bar to the left.
 
-- Open the Home Assistant web console and click `Hass.io` in the menu on the left side.
+- Open the Home Assistant web console and click `Supervisor` in the menu on the left side.
 - Click on `Add-on Store` in the top navigation bar of that page.
-- Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add new repository by URL` field and hit `Add`.
+- Click on the three vertical dots to the far right and chose `Repositories`  
+- Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
-- Configure hassio-plejd (see below)
+- Configure hassio-plejd (see below).
 - Enjoy!
 
 ### Manual Installation
@@ -85,11 +86,14 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 - Open the `/addon` directory
 - Create a new folder named `hassio-plejd`
 - Copy all files from this repository into that newly created one.
-- Open the Home Assistant web console and click `Hass.io` in the menu on the left side.
+- Open the Home Assistant web console and click `Supervisor` in the menu on the left side.
 - Click on `Add-on Store` in the top navigation bar of that page.
 - Click on the refresh button in the upper right corner.
 - A new Local Add-on should appear named Plejd. Open that and install.
 - Enjoy!
+
+### Detailed Home Assistant instructions
+[The details](../Details.md)
 
 ### Install older versions or developemnt version
 
@@ -134,13 +138,14 @@ If you restore a backup from a 32bit system to a new 64bit system, use the Rebui
 
 #### Simple MQTT Configurations
 
-When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.
+When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.  
+Create a user in [Configuration -> Users](http://homeassistant.local:8123/config/users) named e.g. mqtt-api-user
 
 | Parameter    | Value                                                                                                            |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| mqttBroker   | mqtt://localhost                                                                                                 |
-| mqttUsername | homeassistant                                                                                                    |
-| mqttPassword | Mosquitto password, fetched via Configuration->Integrations->Mosquitto broker->Configure->RE-CONFIGURE->Password |
+| mqttBroker   | mqtt://                                                                                                 |
+| mqttUsername | Arbitrary Home Assistant User e.g. mqtt-api-user                                                                                                  |
+| mqttPassword | Users password |
 
 #### Advanced MQTT Configurations
 
@@ -166,7 +171,7 @@ The plugin needs you to configure some settings before working. You find these o
 | site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                               |
 | username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
 | password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
-| mqttBroker           | URL of the MQTT Broker, eg. mqtt://localhost                                                                                                                                             |
+| mqttBroker           | URL of the MQTT Broker, eg. mqtt://                                                                                                                                             |
 | mqttUsername         | Username of the MQTT broker                                                                                                                                                              |
 | mqttPassword         | Password of the MQTT broker                                                                                                                                                              |
 | includeRoomsAsLights | Adds all rooms as lights, making it possible to turn on/off lights by room instead. Setting this to false will ignore all rooms.                                                         |

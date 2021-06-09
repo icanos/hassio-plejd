@@ -18,7 +18,7 @@ Plejd output devices typically appears as either lights or switches in Home Assi
 | DIM-01 | -                   | Light               |                                                                       |
 | DIM-02 | -                   | Light               |                                                                       |
 | LED-10 | -                   | Light               |                                                                       |
-| DAL-01 | -                   | -                   | Not supported, not released by Plejd                                  |
+| DAL-01 | -                   | -                   | Not tested, not supported                                             |
 | WPH-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
 | WRT-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
 | GWY-01 | -                   | -                   |                                                                       |
@@ -93,7 +93,7 @@ Browse your Hass.io installation using a tool that allows you to manage files, f
 - Enjoy!
 
 ### Detailed Home Assistant instructions
-[The details](../Details.md)
+[The details](./Details.md)
 
 ### Install older versions or developemnt version
 

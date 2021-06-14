@@ -1,10 +1,12 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## 0.8.0-dev
+## [0.8.0-beta](https://github.com/icanos/hassio-plejd/tree/0.8.0-beta) (2021-06-14)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.7.1...0.8.0-beta)
 
 **BREAKING - READ BELOW FIRST**
 
-Release 0.8 will break ALL EXISTING DEVICES. Unique mqtt id:s will change, meaning HA will create new devices. Scenes will be added as scenes not as switches. Devices will be installed to Areas named by the rooms defined in the Plejd app (can be changed)
+Release 0.8 and later will break ALL EXISTING DEVICES from earlier versions. Unique mqtt id:s will change, meaning HA will create new devices. Scenes will be added as scenes not as switches. Devices will be installed to Areas named by the rooms defined in the Plejd app (can be changed)
 
 Recommendations to minimize impact
 
@@ -14,6 +16,30 @@ Recommendations to minimize impact
 - Go to Configuration => Integration => MQTT. Go to entities and after that devices and remove all Plejd devices (should be listed as unavailable)
 - Upgrade addon to latest version and start
 - All devices should now be back. With luck they will have the same HA id:s as before so most things should work. Room assignments, icons, automations, scenes, etc will have to be gone though.
+- If all else fails you can uninstall the Plejd addon and the Mqtt addon (which should remove all Mqtt devices after restart), re-install and get back the same device id:s as you had before.
+
+**Closed issues:**
+
+- Configuration instruction outdated [\#189](https://github.com/icanos/hassio-plejd/issues/189)
+- Cant turn on lights after update [\#183](https://github.com/icanos/hassio-plejd/issues/183)
+- Discovery finds lights but claims not to [\#182](https://github.com/icanos/hassio-plejd/issues/182)
+- MQTTS connection problems with mqtt@~3.0.0 [\#181](https://github.com/icanos/hassio-plejd/issues/181)
+- Adding repository to HACS [\#180](https://github.com/icanos/hassio-plejd/issues/180)
+- WPH-01 buttons to trigger generic automations in HA [\#172](https://github.com/icanos/hassio-plejd/issues/172)
+- Scene id and device id can overlap meaning mqtt commands overlap [\#161](https://github.com/icanos/hassio-plejd/issues/161)
+- Add to "Tested on" section [\#122](https://github.com/icanos/hassio-plejd/issues/122)
+- USB Bluetooth adapter  [\#101](https://github.com/icanos/hassio-plejd/issues/101)
+- Ignores devices if they have same name [\#91](https://github.com/icanos/hassio-plejd/issues/91)
+- Scene does not change state [\#85](https://github.com/icanos/hassio-plejd/issues/85)
+
+**Merged pull requests:**
+
+- Added more documentation to install steps [\#201](https://github.com/icanos/hassio-plejd/pull/201) ([polyzois](https://github.com/polyzois))
+- Fix for issue discussed in \#198.  [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
+- Suggested Area and fix for \#189 [\#192](https://github.com/icanos/hassio-plejd/pull/192) ([faanskit](https://github.com/faanskit))
+- Support for WPH-01 and WRT-01 added.  [\#188](https://github.com/icanos/hassio-plejd/pull/188) ([faanskit](https://github.com/faanskit))
+- Refactor unique id handling throughout the addon [\#179](https://github.com/icanos/hassio-plejd/pull/179) ([SweVictor](https://github.com/SweVictor))
+- Update README.md [\#178](https://github.com/icanos/hassio-plejd/pull/178) ([zissou1](https://github.com/zissou1))
 
 ## [0.7.1](https://github.com/icanos/hassio-plejd/tree/0.7.1) (2021-03-25)
 
@@ -22,6 +48,9 @@ Recommendations to minimize impact
 **Closed issues:**
 
 - Can't connect to device: TypeError: Cannot read property 'dimmable' [\#175](https://github.com/icanos/hassio-plejd/issues/175)
+
+**Merged pull requests:**
+- Release 0.7.1 [\#177](https://github.com/icanos/hassio-plejd/pull/177) ([SweVictor](https://github.com/SweVictor))
 
 ## [0.7.0](https://github.com/icanos/hassio-plejd/tree/0.7.0) (2021-03-23)
 

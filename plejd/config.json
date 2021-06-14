@@ -1,6 +1,6 @@
 {
   "name": "Plejd",
-  "version": "0.8.0-dev",
+  "version": "0.8.0-beta",
   "slug": "plejd",
   "description": "Adds support for the Swedish home automation devices from Plejd.",
   "url": "https://github.com/icanos/hassio-plejd/",

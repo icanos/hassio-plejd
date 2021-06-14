@@ -20,6 +20,7 @@ Recommendations to minimize impact
 
 **Closed issues:**
 
+- Repostitory structure for 0.7.1 is not compliant [\#202](https://github.com/icanos/hassio-plejd/issues/202)
 - Configuration instruction outdated [\#189](https://github.com/icanos/hassio-plejd/issues/189)
 - Cant turn on lights after update [\#183](https://github.com/icanos/hassio-plejd/issues/183)
 - Discovery finds lights but claims not to [\#182](https://github.com/icanos/hassio-plejd/issues/182)
@@ -34,6 +35,7 @@ Recommendations to minimize impact
 
 **Merged pull requests:**
 
+- Release 0.8.0-beta [\#204](https://github.com/icanos/hassio-plejd/pull/204) ([SweVictor](https://github.com/SweVictor))
 - Added more documentation to install steps [\#201](https://github.com/icanos/hassio-plejd/pull/201) ([polyzois](https://github.com/polyzois))
 - Fix for issue discussed in \#198.  [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
 - Suggested Area and fix for \#189 [\#192](https://github.com/icanos/hassio-plejd/pull/192) ([faanskit](https://github.com/faanskit))

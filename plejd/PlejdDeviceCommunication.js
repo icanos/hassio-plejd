@@ -1,4 +1,4 @@
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 const Configuration = require('./Configuration');
 const constants = require('./constants');
 const Logger = require('./Logger');
@@ -12,10 +12,13 @@ const MAX_RETRY_COUNT = 10; // Could be made a setting
 
 class PlejdDeviceCommunication extends EventEmitter {
   bleConnected;
-  bleDeviceTransitionTimers = {};
+  bleOutputTransitionTimers = {};
   plejdBleHandler;
   config;
+  /** @type {import('./DeviceRegistry')} */
   deviceRegistry;
+  // eslint-disable-next-line max-len
+  /** @type {{uniqueOutputId: string, command: string, data: any, shouldRetry: boolean, retryCount?: number}[]} */
   writeQueue = [];
   writeQueueRef = null;
 
@@ -34,7 +37,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   }
 
   cleanup() {
-    Object.values(this.bleDeviceTransitionTimers).forEach((t) => clearTimeout(t));
+    Object.values(this.bleOutputTransitionTimers).forEach((t) => clearTimeout(t));
     this.plejdBleHandler.cleanup();
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.commandReceived);
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.connected);
@@ -46,7 +49,10 @@ class PlejdDeviceCommunication extends EventEmitter {
       this.cleanup();
       this.bleConnected = false;
       // eslint-disable-next-line max-len
-      this.plejdBleHandler.on(PlejBLEHandler.EVENTS.commandReceived, (deviceId, command, data) => this._bleCommandReceived(deviceId, command, data));
+      this.plejdBleHandler.on(
+        PlejBLEHandler.EVENTS.commandReceived,
+        (uniqueOutputId, command, data) => this._bleCommandReceived(uniqueOutputId, command, data),
+      );
 
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.connected, () => {
         logger.info('Bluetooth connected. Plejd BLE up and running!');
@@ -70,46 +76,48 @@ class PlejdDeviceCommunication extends EventEmitter {
     }
   }
 
-  turnOn(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
+  turnOn(uniqueOutputId, command) {
+    const deviceName = this.deviceRegistry.getOutputDeviceName(uniqueOutputId);
     logger.info(
-      `Plejd got turn on command for ${deviceName} (${deviceId}), brightness ${command.brightness}${
+      `Plejd got turn on command for ${deviceName} (${uniqueOutputId}), brightness ${
+        command.brightness
+      }${command.transition ? `, transition: ${command.transition}` : ''}`,
+    );
+    this._transitionTo(uniqueOutputId, command.brightness, command.transition, deviceName);
+  }
+
+  turnOff(uniqueOutputId, command) {
+    const deviceName = this.deviceRegistry.getOutputDeviceName(uniqueOutputId);
+    logger.info(
+      `Plejd got turn off command for ${deviceName} (${uniqueOutputId})${
         command.transition ? `, transition: ${command.transition}` : ''
       }`,
     );
-    this._transitionTo(deviceId, command.brightness, command.transition, deviceName);
+    this._transitionTo(uniqueOutputId, 0, command.transition, deviceName);
   }
 
-  turnOff(deviceId, command) {
-    const deviceName = this.deviceRegistry.getDeviceName(deviceId);
-    logger.info(
-      `Plejd got turn off command for ${deviceName} (${deviceId})${
-        command.transition ? `, transition: ${command.transition}` : ''
-      }`,
-    );
-    this._transitionTo(deviceId, 0, command.transition, deviceName);
-  }
-
-  _bleCommandReceived(deviceId, command, data) {
+  _bleCommandReceived(uniqueOutputId, command, data) {
     try {
       if (command === COMMANDS.DIM) {
-        this.deviceRegistry.setState(deviceId, data.state, data.dim);
-        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
-          state: data.state,
+        this.deviceRegistry.setOutputState(uniqueOutputId, data.state, data.dim);
+        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
+          state: !!data.state,
           brightness: data.dim,
         });
       } else if (command === COMMANDS.TURN_ON) {
-        this.deviceRegistry.setState(deviceId, 1);
-        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
+        this.deviceRegistry.setOutputState(uniqueOutputId, true);
+        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
           state: 1,
         });
       } else if (command === COMMANDS.TURN_OFF) {
-        this.deviceRegistry.setState(deviceId, 0);
-        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, deviceId, {
+        this.deviceRegistry.setOutputState(uniqueOutputId, false);
+        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
           state: 0,
         });
       } else if (command === COMMANDS.TRIGGER_SCENE) {
         this.emit(PlejdDeviceCommunication.EVENTS.sceneTriggered, data.sceneId);
+      } else if (command === COMMANDS.BUTTON_CLICK) {
+        this.emit(PlejdDeviceCommunication.EVENTS.buttonPressed, data.deviceId, data.deviceInput);
       } else {
         logger.warn(`Unknown ble command ${command}`);
       }
@@ -118,18 +126,18 @@ class PlejdDeviceCommunication extends EventEmitter {
     }
   }
 
-  _clearDeviceTransitionTimer(deviceId) {
-    if (this.bleDeviceTransitionTimers[deviceId]) {
-      clearInterval(this.bleDeviceTransitionTimers[deviceId]);
+  _clearDeviceTransitionTimer(uniqueOutputId) {
+    if (this.bleOutputTransitionTimers[uniqueOutputId]) {
+      clearInterval(this.bleOutputTransitionTimers[uniqueOutputId]);
     }
   }
 
-  _transitionTo(deviceId, targetBrightness, transition, deviceName) {
-    const device = this.deviceRegistry.getDevice(deviceId);
+  _transitionTo(uniqueOutputId, targetBrightness, transition, deviceName) {
+    const device = this.deviceRegistry.getOutputDevice(uniqueOutputId);
     const initialBrightness = device ? device.state && device.dim : null;
-    this._clearDeviceTransitionTimer(deviceId);
+    this._clearDeviceTransitionTimer(uniqueOutputId);
 
-    const isDimmable = this.deviceRegistry.getDevice(deviceId).dimmable;
+    const isDimmable = this.deviceRegistry.getOutputDevice(uniqueOutputId).dimmable;
 
     if (
       transition > 1
@@ -164,7 +172,7 @@ class PlejdDeviceCommunication extends EventEmitter {
 
       let nSteps = 0;
 
-      this.bleDeviceTransitionTimers[deviceId] = setInterval(() => {
+      this.bleOutputTransitionTimers[uniqueOutputId] = setInterval(() => {
         const tElapsedMs = new Date().getTime() - dtStart.getTime();
         let tElapsed = tElapsedMs / 1000;
 
@@ -178,20 +186,20 @@ class PlejdDeviceCommunication extends EventEmitter {
 
         if (tElapsed === transition) {
           nSteps++;
-          this._clearDeviceTransitionTimer(deviceId);
+          this._clearDeviceTransitionTimer(uniqueOutputId);
           newBrightness = targetBrightness;
           logger.debug(
-            `Queueing finalize ${deviceName} (${deviceId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${
+            `Queueing finalize ${deviceName} (${uniqueOutputId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${
               tElapsedMs / (nSteps || 1)
             } ms.`,
           );
-          this._setBrightness(deviceId, newBrightness, true, deviceName);
+          this._setBrightness(uniqueOutputId, newBrightness, true, deviceName);
         } else {
           nSteps++;
           logger.verbose(
-            `Queueing dim transition for ${deviceName} (${deviceId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`,
+            `Queueing dim transition for ${deviceName} (${uniqueOutputId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`,
           );
-          this._setBrightness(deviceId, newBrightness, false, deviceName);
+          this._setBrightness(uniqueOutputId, newBrightness, false, deviceName);
         }
       }, transitionInterval);
     } else {
@@ -200,34 +208,34 @@ class PlejdDeviceCommunication extends EventEmitter {
           `Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${targetBrightness}`,
         );
       }
-      this._setBrightness(deviceId, targetBrightness, true, deviceName);
+      this._setBrightness(uniqueOutputId, targetBrightness, true, deviceName);
     }
   }
 
-  _setBrightness(deviceId, brightness, shouldRetry, deviceName) {
+  _setBrightness(unqiueOutputId, brightness, shouldRetry, deviceName) {
     if (!brightness && brightness !== 0) {
       logger.debug(
-        `Queueing turn on ${deviceName} (${deviceId}). No brightness specified, setting DIM to previous.`,
+        `Queueing turn on ${deviceName} (${unqiueOutputId}). No brightness specified, setting DIM to previous.`,
       );
-      this._appendCommandToWriteQueue(deviceId, COMMANDS.TURN_ON, null, shouldRetry);
+      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.TURN_ON, null, shouldRetry);
     } else if (brightness <= 0) {
-      logger.debug(`Queueing turn off ${deviceId}`);
-      this._appendCommandToWriteQueue(deviceId, COMMANDS.TURN_OFF, null, shouldRetry);
+      logger.debug(`Queueing turn off ${unqiueOutputId}`);
+      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.TURN_OFF, null, shouldRetry);
     } else {
       if (brightness > 255) {
         // eslint-disable-next-line no-param-reassign
         brightness = 255;
       }
 
-      logger.debug(`Queueing ${deviceId} set brightness to ${brightness}`);
+      logger.debug(`Queueing ${unqiueOutputId} set brightness to ${brightness}`);
       // eslint-disable-next-line no-bitwise
-      this._appendCommandToWriteQueue(deviceId, COMMANDS.DIM, brightness, shouldRetry);
+      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.DIM, brightness, shouldRetry);
     }
   }
 
-  _appendCommandToWriteQueue(deviceId, command, data, shouldRetry) {
+  _appendCommandToWriteQueue(uniqueOutputId, command, data, shouldRetry) {
     this.writeQueue.unshift({
-      deviceId,
+      uniqueOutputId,
       command,
       data,
       shouldRetry,
@@ -249,28 +257,29 @@ class PlejdDeviceCommunication extends EventEmitter {
           return;
         }
         const queueItem = this.writeQueue.pop();
-        const deviceName = this.deviceRegistry.getDeviceName(queueItem.deviceId);
+        const device = this.deviceRegistry.getOutputDevice(queueItem.uniqueOutputId);
+
         logger.debug(
-          `Write queue: Processing ${deviceName} (${queueItem.deviceId}). Command ${
+          `Write queue: Processing ${device.name} (${queueItem.uniqueOutputId}). Command ${
             queueItem.command
           }${queueItem.data ? ` ${queueItem.data}` : ''}. Total queue length: ${
             this.writeQueue.length
           }`,
         );
 
-        if (this.writeQueue.some((item) => item.deviceId === queueItem.deviceId)) {
+        if (this.writeQueue.some((item) => item.uniqueOutputId === queueItem.uniqueOutputId)) {
           logger.verbose(
-            `Skipping ${deviceName} (${queueItem.deviceId}) `
+            `Skipping ${device.name} (${queueItem.uniqueOutputId}) `
               + `${queueItem.command} due to more recent command in queue.`,
           );
-          // Skip commands if new ones exist for the same deviceId
+          // Skip commands if new ones exist for the same uniqueOutputId
           // still process all messages in order
         } else {
           /* eslint-disable no-await-in-loop */
           try {
             await this.plejdBleHandler.sendCommand(
               queueItem.command,
-              queueItem.deviceId,
+              device.bleOutputAddress,
               queueItem.data,
             );
           } catch (err) {
@@ -281,7 +290,7 @@ class PlejdDeviceCommunication extends EventEmitter {
                 this.writeQueue.push(queueItem); // Add back to top of queue to be processed next;
               } else {
                 logger.error(
-                  `Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${deviceName} (${queueItem.deviceId}). Command ${queueItem.command} failed.`,
+                  `Write queue: Exceeed max retry count (${MAX_RETRY_COUNT}) for ${device.name} (${queueItem.uniqueOutputId}). Command ${queueItem.command} failed.`,
                 );
                 break;
               }

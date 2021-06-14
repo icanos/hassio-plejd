@@ -3,45 +3,52 @@ const Scene = require('./Scene');
 
 const logger = Logger.getLogger('scene-manager');
 class SceneManager {
+  /** @private @type {import('./DeviceRegistry')} */
   deviceRegistry;
-  plejdBle;
+  /** @private @type {import('./PlejdDeviceCommunication')} */
+  plejdDeviceCommunication;
+  /** @private @type {Object.<string,Scene>} */
   scenes;
 
-  constructor(deviceRegistry, plejdBle) {
+  constructor(deviceRegistry, plejdDeviceCommunication) {
     this.deviceRegistry = deviceRegistry;
-    this.plejdBle = plejdBle;
+    this.plejdDeviceCommunication = plejdDeviceCommunication;
     this.scenes = {};
   }
 
   init() {
-    const scenes = this.deviceRegistry.apiSite.scenes.filter(
-      (x) => x.hiddenFromSceneList === false,
-    );
+    const scenes = this.deviceRegistry
+      .getApiSite()
+      .scenes.filter((x) => x.hiddenFromSceneList === false);
 
     this.scenes = {};
     scenes.forEach((scene) => {
-      const idx = this.deviceRegistry.apiSite.sceneIndex[scene.sceneId];
-      this.scenes[idx] = new Scene(idx, scene, this.deviceRegistry.apiSite.sceneSteps);
+      const sceneBleAddress = this.deviceRegistry.getApiSite().sceneIndex[scene.sceneId];
+      this.scenes[scene.sceneId] = new Scene(this.deviceRegistry, sceneBleAddress, scene);
     });
   }
 
-  executeScene(sceneId) {
-    const scene = this.scenes[sceneId];
+  /**
+   * @param {string} sceneUniqueId
+   */
+  executeScene(sceneUniqueId) {
+    const scene = this.scenes[sceneUniqueId];
     if (!scene) {
-      logger.info(`Scene with id ${sceneId} not found`);
+      logger.info(`Scene with id ${sceneUniqueId} not found`);
       logger.verbose(`Scenes: ${JSON.stringify(this.scenes, null, 2)}`);
       return;
     }
 
     scene.steps.forEach((step) => {
-      const device = this.deviceRegistry.getDeviceBySerialNumber(step.deviceId);
+      const uniqueId = this.deviceRegistry.getUniqueOutputId(step.deviceId, step.output);
+      const device = this.deviceRegistry.getOutputDevice(uniqueId);
       if (device) {
         if (device.dimmable && step.state) {
-          this.plejdBle.turnOn(device.id, { brightness: step.brightness });
+          this.plejdDeviceCommunication.turnOn(uniqueId, { brightness: step.brightness });
         } else if (!device.dimmable && step.state) {
-          this.plejdBle.turnOn(device.id, {});
+          this.plejdDeviceCommunication.turnOn(uniqueId, {});
         } else if (!step.state) {
-          this.plejdBle.turnOff(device.id, {});
+          this.plejdDeviceCommunication.turnOff(uniqueId, {});
         }
       }
     });

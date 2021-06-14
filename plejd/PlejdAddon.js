@@ -65,59 +65,83 @@ class PlejdAddon extends EventEmitter {
     });
 
     // subscribe to changes from HA
-    this.mqttClient.on(MqttClient.EVENTS.stateChanged, (device, command) => {
-      try {
-        const deviceId = device.id;
+    this.mqttClient.on(
+      MqttClient.EVENTS.stateChanged,
+      /** @param device {import('./types/DeviceRegistry').OutputDevice} */
+      (device, command) => {
+        try {
+          const { uniqueId } = device;
 
-        if (device.typeName === 'Scene') {
-          // we're triggering a scene, lets do that and jump out.
-          // since scenes aren't "real" devices.
-          this.sceneManager.executeScene(device.id);
-          return;
+          if (device.typeName === 'Scene') {
+            // we're triggering a scene, lets do that and jump out.
+            // since scenes aren't "real" devices.
+            this.sceneManager.executeScene(uniqueId);
+
+            // since the scene doesn't get any updates on whether it's executed or not,
+            // we fake this by directly send the sceneTriggered back to HA in order for
+            // it continue to acto on the scene (for non-plejd devices).
+            try {
+              this.mqttClient.sceneTriggered(uniqueId);
+            } catch (err) {
+              logger.error('Error in PlejdService.sceneTriggered callback', err);
+            }
+            return;
+          }
+
+          let state = false;
+          let commandObj = {};
+
+          if (typeof command === 'string') {
+            // switch command
+            state = command === 'ON';
+            commandObj = {
+              state,
+            };
+
+            // since the switch doesn't get any updates on whether it's on or not,
+            // we fake this by directly send the updateState back to HA in order for
+            // it to change state.
+            this.mqttClient.updateOutputState(uniqueId, {
+              state,
+            });
+          } else {
+            // eslint-disable-next-line prefer-destructuring
+            state = command.state === 'ON';
+            commandObj = command;
+          }
+
+          if (state) {
+            this.plejdDeviceCommunication.turnOn(uniqueId, commandObj);
+          } else {
+            this.plejdDeviceCommunication.turnOff(uniqueId, commandObj);
+          }
+        } catch (err) {
+          logger.error('Error in MqttClient.stateChanged callback', err);
         }
-
-        let state = 'OFF';
-        let commandObj = {};
-
-        if (typeof command === 'string') {
-          // switch command
-          state = command;
-          commandObj = {
-            state,
-          };
-
-          // since the switch doesn't get any updates on whether it's on or not,
-          // we fake this by directly send the updateState back to HA in order for
-          // it to change state.
-          this.mqttClient.updateState(deviceId, {
-            state: state === 'ON' ? 1 : 0,
-          });
-        } else {
-          // eslint-disable-next-line prefer-destructuring
-          state = command.state;
-          commandObj = command;
-        }
-
-        if (state === 'ON') {
-          this.plejdDeviceCommunication.turnOn(deviceId, commandObj);
-        } else {
-          this.plejdDeviceCommunication.turnOff(deviceId, commandObj);
-        }
-      } catch (err) {
-        logger.error('Error in MqttClient.stateChanged callback', err);
-      }
-    });
+      },
+    );
 
     this.mqttClient.init();
 
     // subscribe to changes from Plejd
     this.plejdDeviceCommunication.on(
       PlejdDeviceCommunication.EVENTS.stateChanged,
-      (deviceId, command) => {
+      (uniqueOutputId, command) => {
         try {
-          this.mqttClient.updateState(deviceId, command);
+          this.mqttClient.updateOutputState(uniqueOutputId, command);
         } catch (err) {
           logger.error('Error in PlejdService.stateChanged callback', err);
+        }
+      },
+    );
+
+    this.plejdDeviceCommunication.on(
+      PlejdDeviceCommunication.EVENTS.buttonPressed,
+      (deviceId, deviceInput) => {
+        try {
+          this.mqttClient.buttonPressed(deviceId, deviceInput);
+        } catch (err) {
+          logger.error('Error in PlejdService.buttonPressed callback', err);
         }
       },
     );

@@ -29,6 +29,7 @@ The add-on has been tested on the following platforms:
 - Odroid-n2+ / Home Assistant Blue / Home Assistant Operating System ("HassOS") / BT ASUS USB-BT400 - Chipset: Broadcom BCM20702A1-0b05-17cb
 - Raspberry Pi 4 with Home Assistant ("Hass.io") / Built-in BT
 - Raspberry Pi 4 with Home Assistant ("Hass.io"/aarch64) / Built-in BT
+- Raspberry Pi 3+ with Home Assistant ("Hass.io") / Built-in BT
 - Intel NUC7i5BNH with Home Assistant Operating System ("HassOS") intel NUC image / Built-in BT
 - Windows 10 Pro host / Oracle VirtualBox 6.1 / Home Assistant VBox image / Deltaco BT-118 with Cambridge Silicon Radio chipset / Windows + Zadig to change driver to WinUSB
 - Windows 10 host / Oracle Virtualbox 6.1 / Home Assistant VBox image / ASUS BT400

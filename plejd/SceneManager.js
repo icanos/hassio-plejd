@@ -17,9 +17,7 @@ class SceneManager {
   }
 
   init() {
-    const scenes = this.deviceRegistry
-      .getApiSite()
-      .scenes.filter((x) => x.hiddenFromSceneList === false);
+    const scenes = [...this.deviceRegistry.getApiSite().scenes];
 
     this.scenes = {};
     scenes.forEach((scene) => {

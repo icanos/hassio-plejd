@@ -444,8 +444,6 @@ class PlejdApi {
             bleOutputAddress,
             deviceId: device.deviceId,
             dimmable,
-            hiddenFromRoomList: device.hiddenFromRoomList,
-            hiddenFromIntegrations: device.hiddenFromIntegrations,
             name: device.title,
             output: deviceOutput,
             roomId: device.roomId,
@@ -518,8 +516,6 @@ class PlejdApi {
           bleOutputAddress: roomAddress,
           deviceId: null,
           dimmable,
-          hiddenFromRoomList: false,
-          hiddenFromIntegrations: false,
           name: room.title,
           output: undefined,
           roomId: undefined,
@@ -540,7 +536,7 @@ class PlejdApi {
   _getSceneDevices() {
     this.deviceRegistry.clearSceneDevices();
     // add scenes as switches
-    const scenes = this.siteDetails.scenes.filter((x) => x.hiddenFromSceneList === false);
+    const scenes = [...this.siteDetails.scenes];
 
     scenes.forEach((scene) => {
       const sceneNum = this.siteDetails.sceneIndex[scene.sceneId];
@@ -549,7 +545,6 @@ class PlejdApi {
         bleOutputAddress: sceneNum,
         deviceId: undefined,
         dimmable: false,
-        hiddenFromSceneList: scene.hiddenFromSceneList,
         name: scene.title,
         output: undefined,
         roomId: undefined,

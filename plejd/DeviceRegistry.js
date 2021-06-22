@@ -49,13 +49,6 @@ class DeviceRegistry {
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
   addOutputDevice(outputDevice) {
-    if (outputDevice.hiddenFromIntegrations || outputDevice.hiddenFromRoomList) {
-      logger.verbose(`Device ${outputDevice.name} is hidden and will not be included. 
-          Hidden from room list: ${outputDevice.hiddenFromRoomList}
-          Hidden from integrations: ${outputDevice.hiddenFromIntegrations}`);
-      return;
-    }
-
     this.outputDevices = {
       ...this.outputDevices,
       [outputDevice.uniqueId]: outputDevice,

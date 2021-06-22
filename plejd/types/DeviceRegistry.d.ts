@@ -7,9 +7,6 @@ export interface OutputDevice {
   deviceId: string;
   dim?: number;
   dimmable: boolean;
-  hiddenFromRoomList?: boolean;
-  hiddenFromIntegrations?: boolean;
-  hiddenFromSceneList?: boolean;
   name: string;
   output: number;
   roomId: string | undefined;

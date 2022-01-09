@@ -41,8 +41,9 @@ Supported Plejd devices are detailed in a specific "Plejd devices" section below
 
 Browse to your Home Assistant installation in a web browser and click on `Supervisor` in the navigation bar to the left.
 
-- Open the Home Assistant web console and click `Supervisor` in the menu on the left side.
-- Click on `Add-on Store` in the top navigation bar of that page.
+- Open the Home Assistant web console and click `Configuration` in the menu on the left side.
+- Click on `Add-ons, Backups & Supervisor`
+- Click on `Add-on Store` in the bottom left of that page.
 - Click on the three vertical dots to the far right and chose `Repositories`
 - Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.

@@ -25,6 +25,7 @@ RUN \
   python3 \
   bluez \
   eudev-dev \
+  zlib-dev \
   \
   && apk add --no-cache \
   git \

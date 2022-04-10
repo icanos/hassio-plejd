@@ -1,6 +1,22 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## [0.8.0-beta](https://github.com/icanos/hassio-plejd/tree/0.8.0-beta) (2021-06-14)
+## [0.9.0](https://github.com/icanos/hassio-plejd/tree/0.9.0)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.8.0-beta...0.9.0)
+
+**Closed issues:**
+
+- Installation of 0.8.0-beta failed [\#235](https://github.com/icanos/hassio-plejd/issues/235)
+- CTR-01 switches no longer come up in HA [\#205](https://github.com/icanos/hassio-plejd/issues/205)
+- Resetting entire addon in 1 minute [\#200](https://github.com/icanos/hassio-plejd/issues/200)
+- CTR-01 not switching [\#196](https://github.com/icanos/hassio-plejd/issues/196)
+
+**Merged pull requests:**
+
+- fix build issue with latest hassio version [\#236](https://github.com/icanos/hassio-plejd/pull/236) ([richardsorensson](https://github.com/richardsorensson))
+- Update README.md [\#178](https://github.com/icanos/hassio-plejd/pull/178) ([zissou1](https://github.com/zissou1))
+
+## [0.9.0](https://github.com/icanos/hassio-plejd/tree/0.8.0-beta) (2021-06-14)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.7.1...0.8.0-beta)
 

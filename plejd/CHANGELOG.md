@@ -16,7 +16,7 @@
 - fix build issue with latest hassio version [\#236](https://github.com/icanos/hassio-plejd/pull/236) ([richardsorensson](https://github.com/richardsorensson))
 - Update README.md [\#178](https://github.com/icanos/hassio-plejd/pull/178) ([zissou1](https://github.com/zissou1))
 
-## [0.9.0](https://github.com/icanos/hassio-plejd/tree/0.8.0-beta) (2021-06-14)
+## [0.8.0-beta](https://github.com/icanos/hassio-plejd/tree/0.8.0-beta) (2021-06-14)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.7.1...0.8.0-beta)
 

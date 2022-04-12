@@ -1,5 +1,17 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.9.1](https://github.com/icanos/hassio-plejd/tree/0.9.1)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.0...0.9.1)
+
+**Closed issues:**
+
+- DIM-01 New FW not discovered correctly [\#215](https://github.com/icanos/hassio-plejd/issues/215)
+
+**Merged pull requests:**
+
+- Update README.md [\#229](https://github.com/icanos/hassio-plejd/pull/229) ([Wesztman](https://github.com/Wesztman))
+
 ## [0.9.0](https://github.com/icanos/hassio-plejd/tree/0.9.0) (2022-04-10)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.8.0-beta...0.9.0)

@@ -251,6 +251,7 @@ class PlejdApi {
     switch (parseInt(plejdDevice.hardwareId, 10)) {
       case 1:
       case 11:
+      case 14:
         return {
           name: 'DIM-01',
           type: 'light',
@@ -330,7 +331,6 @@ class PlejdApi {
           dimmable: false,
           broadcastClicks: false,
         };
-      case 14:
       case 15:
       case 16:
         // Unknown

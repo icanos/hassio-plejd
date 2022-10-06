@@ -428,34 +428,43 @@ class PlejdApi {
           const dimmable = device.traits === TRAITS.DIMMABLE;
           // dimmable = settings.dimCurve !== 'NonDimmable';
 
-          const { name: typeName, type: deviceType } = this._getDeviceType(plejdDevice);
-          let loadType = deviceType;
-          if (device.outputType === 'RELAY') {
-            loadType = 'switch';
-          } else if (device.outputType === 'LIGHT') {
-            loadType = 'light';
+          try {
+            const { name: typeName, type: deviceType } = this._getDeviceType(plejdDevice);
+
+            let loadType = deviceType;
+            if (device.outputType === 'RELAY') {
+              loadType = 'switch';
+            } else if (device.outputType === 'LIGHT') {
+              loadType = 'light';
+            }
+
+            const room = this.siteDetails.rooms.find((x) => x.roomId === device.roomId);
+            const roomTitle = room ? room.title : undefined;
+
+            /** @type {import('types/DeviceRegistry').OutputDevice} */
+            const outputDevice = {
+              bleOutputAddress,
+              deviceId: device.deviceId,
+              dimmable,
+              name: device.title,
+              output: deviceOutput,
+              roomId: device.roomId,
+              roomName: roomTitle,
+              state: undefined,
+              type: loadType,
+              typeName,
+              version: plejdDevice.firmware.version,
+              uniqueId: uniqueOutputId,
+            };
+
+            this.deviceRegistry.addOutputDevice(outputDevice);
+
+          } catch (error) {
+            logger.error(`Error trying to create output device: ${error}`);
+            logger.warn(`device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`);
+            logger.warn(`plejdDevice (from API response) when error happened: ${JSON.stringify(plejdDevice, null, 2)}`);
           }
 
-          const room = this.siteDetails.rooms.find((x) => x.roomId === device.roomId);
-          const roomTitle = room ? room.title : undefined;
-
-          /** @type {import('types/DeviceRegistry').OutputDevice} */
-          const outputDevice = {
-            bleOutputAddress,
-            deviceId: device.deviceId,
-            dimmable,
-            name: device.title,
-            output: deviceOutput,
-            roomId: device.roomId,
-            roomName: roomTitle,
-            state: undefined,
-            type: loadType,
-            typeName,
-            version: plejdDevice.firmware.version,
-            uniqueId: uniqueOutputId,
-          };
-
-          this.deviceRegistry.addOutputDevice(outputDevice);
         }
       } else {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
@@ -476,21 +485,28 @@ class PlejdApi {
           );
 
           const uniqueInputId = this.deviceRegistry.getUniqueInputId(device.deviceId, input.input);
-          const { name: typeName, type, broadcastClicks } = this._getDeviceType(plejdDevice);
-          if (broadcastClicks) {
-            /** @type {import('types/DeviceRegistry').InputDevice} */
-            const inputDevice = {
-              bleInputAddress,
-              deviceId: device.deviceId,
-              name: device.title,
-              input: input.input,
-              roomId: device.roomId,
-              type,
-              typeName,
-              version: plejdDevice.firmware.version,
-              uniqueId: uniqueInputId,
-            };
-            this.deviceRegistry.addInputDevice(inputDevice);
+
+          try {
+            const { name: typeName, type, broadcastClicks } = this._getDeviceType(plejdDevice);
+            if (broadcastClicks) {
+              /** @type {import('types/DeviceRegistry').InputDevice} */
+              const inputDevice = {
+                bleInputAddress,
+                deviceId: device.deviceId,
+                name: device.title,
+                input: input.input,
+                roomId: device.roomId,
+                type,
+                typeName,
+                version: plejdDevice.firmware.version,
+                uniqueId: uniqueInputId,
+              };
+              this.deviceRegistry.addInputDevice(inputDevice);
+            }
+          } catch (error) {
+            logger.error(`Error trying to create input device: ${error}`);
+            logger.warn(`device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`);
+            logger.warn(`plejdDevice (from API response) when error happened: ${JSON.stringify(plejdDevice, null, 2)}`);
           }
         });
       }

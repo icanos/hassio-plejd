@@ -250,10 +250,9 @@ class PlejdApi {
 
     switch (parseInt(plejdDevice.hardwareId, 10)) {
       case 1:
-      case 11:
-      case 14:
         return {
           name: 'DIM-01',
+          description: '1-channel dimmer LED, 300 VA',
           type: 'light',
           dimmable: true,
           broadcastClicks: false,
@@ -261,6 +260,7 @@ class PlejdApi {
       case 2:
         return {
           name: 'DIM-02',
+          description: '2-channel dimmer LED, 2*100 VA',
           type: 'light',
           dimmable: true,
           broadcastClicks: false,
@@ -268,20 +268,24 @@ class PlejdApi {
       case 3:
         return {
           name: 'CTR-01',
+          description: '1-channel relay with 0-10V output, 3500 VA',
           type: 'light',
           dimmable: false,
           broadcastClicks: false,
         };
-      case 4:
-        return {
-          name: 'GWY-01',
-          type: 'sensor',
-          dimmable: false,
-          broadcastClicks: false,
-        };
+      // Gateway doesn't show up in devices list in API response
+      // case 4:
+      //   return {
+      //     name: 'GWY-01',
+      //     description: 'Gateway to enable control via internet and integrations',
+      //     type: 'sensor',
+      //     dimmable: false,
+      //     broadcastClicks: false,
+      //   };
       case 5:
         return {
           name: 'LED-10',
+          description: '1-channel LED dimmer/driver, 10 W',
           type: 'light',
           dimmable: true,
           broadcastClicks: false,
@@ -289,60 +293,75 @@ class PlejdApi {
       case 6:
         return {
           name: 'WPH-01',
+          description: 'Wireless push button, 4 buttons. 2 channels, on and off buttons for each channel',
           type: 'device_automation',
           dimmable: false,
           broadcastClicks: true,
         };
       case 7:
+        // Unknown, pre-release (?) version, kept for backwards compatibility. See https://github.com/icanos/hassio-plejd/issues/250
         return {
           name: 'REL-01',
+          description: '1 channel relay, 3500 VA',
           type: 'switch',
           dimmable: false,
           broadcastClicks: false,
         };
       case 8:
-      case 9:
-        // Unknown
         return {
-          name: '-unknown-',
-          type: 'light',
+          name: 'SPR-01',
+          description: 'Smart plug on/off with relay, 3500 VA',
+          type: 'switch',
           dimmable: false,
           broadcastClicks: false,
         };
       case 10:
         return {
           name: 'WRT-01',
+          description: 'Wireless rotary button',
           type: 'device_automation',
           dimmable: false,
           broadcastClicks: true,
         };
-      case 12:
-        // Unknown
+      case 11:
         return {
-          name: '-unknown-',
+          name: 'DIM-01-2P',
+          description: '1-channel dimmer LED with 2-pole breaking, 300 VA',
           type: 'light',
-          dimmable: false,
+          dimmable: true,
           broadcastClicks: false,
         };
-      case 13:
+      // DAL-01 is presumably a very special device
+      // Please open a new issue if you have ideas on how to handel
+      // Below could be use as testing, but since one device can have up to 64 slaves it probably won't work
+      // case 12:
+      //   return {
+      //     name: 'DAL-01',
+      //     description: 'Dali broadcast with dimmer and tuneable white support',
+      //     type: 'light',
+      //     dimmable: true,
+      //     broadcastClicks: false,
+      //   };
+      case 14:
         return {
-          name: 'Generic',
+          name: 'DIM-01',
+          description: '1-channel dimmer LED, 300 VA ("LC" hardware/chip version)',
           type: 'light',
-          dimmable: false,
+          dimmable: true,
           broadcastClicks: false,
         };
       case 15:
-      case 16:
-        // Unknown
         return {
-          name: '-unknown-',
+          name: 'DIM-02',
+          description: '2-channel dimmer LED, 2*100 VA ("LC" hardware/chip version)',
           type: 'light',
-          dimmable: false,
+          dimmable: true,
           broadcastClicks: false,
         };
       case 17:
         return {
-          name: 'REL-01',
+          name: 'REL-01-2P',
+          description: '1-channel relay with 2-pole 3500 VA',
           type: 'switch',
           dimmable: false,
           broadcastClicks: false,
@@ -350,26 +369,29 @@ class PlejdApi {
       case 18:
         return {
           name: 'REL-02',
+          description: '2-channel relay with combined 3500 VA',
           type: 'switch',
-          dimmable: false,
-          broadcastClicks: false,
-        };
-      case 19:
-        // Unknown
-        return {
-          name: '-unknown-',
-          type: 'light',
           dimmable: false,
           broadcastClicks: false,
         };
       case 20:
         return {
+          // Unknown, pre-release (?) version, kept for backwards compatibility. See https://github.com/icanos/hassio-plejd/issues/250
           name: 'SPR-01',
-          type: 'switch',
+          description: 'Smart plug on/off with relay, 3500 VA',
+          type: 'device_automation',
           dimmable: false,
           broadcastClicks: false,
         };
-      default:
+      case 36:
+        return {
+          name: 'LED-75',
+          description: '1-channel LED dimmer/driver with tuneable white, 10 W',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
+        default:
         throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
     }
   }

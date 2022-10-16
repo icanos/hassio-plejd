@@ -19,7 +19,7 @@ And `Configuration Parameters` on the same page.
 The only parameters needing a value are
 
 - site
-- username
+- username (typically email address)
 - password
 - mqttUsername e.g. `mqtt-api-user`
 - mqttPassword
@@ -28,7 +28,7 @@ Now you can start the Plejd add-on
 
 ## Where are the lights?
 
-Head over to [Configuration -> Integrations](http://homeassistant.local:8123/config/integrations) and click Configure on MQTT  
+Head over to [Configuration -> Integrations](http://homeassistant.local:8123/config/integrations) and click Configure on MQTT
 After this step a new `Mosquito broker` should appear on the same page. If everything was setup correctly. It will list your lights under
 `1 entity`/`n entities`
 

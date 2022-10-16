@@ -451,9 +451,9 @@ class PlejdApi {
           // dimmable = settings.dimCurve !== 'NonDimmable';
 
           try {
-            const { name: typeName, type: deviceType } = this._getDeviceType(plejdDevice);
+            const decodedDeviceType = this._getDeviceType(plejdDevice);
 
-            let loadType = deviceType;
+            let loadType = decodedDeviceType.type;
             if (device.outputType === 'RELAY') {
               loadType = 'switch';
             } else if (device.outputType === 'LIGHT') {
@@ -474,7 +474,8 @@ class PlejdApi {
               roomName: roomTitle,
               state: undefined,
               type: loadType,
-              typeName,
+              typeDescription: decodedDeviceType.description,
+              typeName: decodedDeviceType.name,
               version: plejdDevice.firmware.version,
               uniqueId: uniqueOutputId,
             };
@@ -509,8 +510,9 @@ class PlejdApi {
           const uniqueInputId = this.deviceRegistry.getUniqueInputId(device.deviceId, input.input);
 
           try {
-            const { name: typeName, type, broadcastClicks } = this._getDeviceType(plejdDevice);
-            if (broadcastClicks) {
+            const decodedDeviceType = this._getDeviceType(plejdDevice);
+
+            if (decodedDeviceType.broadcastClicks) {
               /** @type {import('types/DeviceRegistry').InputDevice} */
               const inputDevice = {
                 bleInputAddress,
@@ -518,8 +520,9 @@ class PlejdApi {
                 name: device.title,
                 input: input.input,
                 roomId: device.roomId,
-                type,
-                typeName,
+                type: decodedDeviceType.type,
+                typeDescription: decodedDeviceType.description,
+                typeName: decodedDeviceType.name,
                 version: plejdDevice.firmware.version,
                 uniqueId: uniqueInputId,
               };
@@ -560,6 +563,7 @@ class PlejdApi {
           roomName: undefined,
           state: undefined,
           type: 'light',
+          typeDescription: 'A Plejd room',
           typeName: 'Room',
           uniqueId: roomId,
           version: undefined,
@@ -589,6 +593,7 @@ class PlejdApi {
         roomName: undefined,
         state: false,
         type: 'scene',
+        typeDescription: 'A Plejd scene',
         typeName: 'Scene',
         version: undefined,
         uniqueId: scene.sceneId,

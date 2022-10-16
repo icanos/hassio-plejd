@@ -30,7 +30,7 @@ export interface ApiSite {
   outputGroups: { [key: string]: OutputGroup };
   roomAddress: { [key: string]: number };
   sceneIndex: { [key: string]: number };
-  images: Images;
+  images: string;
   deviceLimit: number;
 }
 
@@ -106,7 +106,7 @@ export interface Hardware {
   predefinedLoad: PredefinedLoad;
   supportedFirmware: PredefinedLoad;
   ACL: AstroEventACL;
-  objectId: HardwareObjectID;
+  objectId: string;
   __type: AstroEventType;
   className: HardwareClassName;
 }
@@ -132,7 +132,7 @@ export enum ImageType {
 export interface PlejdMeshClass {
   __type: InstallerType;
   className: SiteClassName;
-  objectId: ObjectID;
+  objectId: string;
 }
 
 export enum InstallerType {
@@ -148,26 +148,9 @@ export enum SiteClassName {
   UserProfile = 'UserProfile',
 }
 
-export enum ObjectID {
-  BBBJO2Cufm = 'BBBJO2cufm',
-  D4Dw87Hq21 = 'D4DW87HQ21',
-  FCrrS1NJHH = 'FCrrS1nJHH',
-  GX1W4P06QS = 'gX1W4p06QS',
-  Ndlvzgh4Df = 'ndlvzgh4df',
-  UHoKQLuXqZ = 'uHoKQLuXqZ',
-  VfHiawBPA8 = 'vfHiawBPA8',
-  WgAFPloWjK = 'wgAfPloWjK',
-  YkyNDotBNa = 'YkyNDotBNa',
-}
-
 export enum Name {
   Ctr01 = 'CTR-01',
   Dim01 = 'DIM-01',
-}
-
-export enum HardwareObjectID {
-  R3Gfd6ACAu = 'R3gfd6ACAu',
-  XjslOltgvi = 'xjslOltgvi',
 }
 
 export interface PredefinedLoad {
@@ -204,7 +187,7 @@ export interface Gateway {
   deviceId: string;
   siteId: string;
   hardwareId: string;
-  installer: ObjectID;
+  installer: string;
   firmware: number;
   firmwareObject: Firmware;
   dirtyInstall: boolean;
@@ -220,45 +203,18 @@ export interface Gateway {
 }
 
 export interface Firmware {
-  notes: Notes;
+  notes: string;
   createdAt: Date;
   updatedAt: Date;
   data: Image;
   metaData: Image;
-  version: Version;
+  version: string;
   buildTime: number;
   firmwareApi: string;
   ACL: AstroEventACL;
-  objectId: FirmwareObjectObjectID;
+  objectId: string;
   __type: AstroEventType;
   className: SiteClassName;
-}
-
-export enum Notes {
-  Ctr01 = 'CTR-01',
-  Ctr20ReleaseCandidate1 = 'Ctr 2.0 Release candidate 1',
-  Dim20ReleaseCandidate1 = 'Dim 2.0 Release candidate 1',
-  Dim221ReleaseCandidate = 'Dim 2.2.1 Release Candidate',
-  GWY10ReleaseCandidate = 'GWY 1.0 Release Candidate',
-}
-
-export enum FirmwareObjectObjectID {
-  BBBJO2Cufm = 'BBBJO2cufm',
-  E6YxfREDuF = 'E6yxfREDuF',
-  JYSZ0EvyCU = 'JYSZ0EvyCU',
-  Ndlvzgh4Df = 'ndlvzgh4df',
-  RlglTfVHDe = 'rlglTfVHDe',
-}
-
-export enum Version {
-  The12 = '1.2',
-  The20 = '2.0',
-  The221 = '2.2.1',
-  The304 = '3.0.4',
-}
-
-export interface Images {
-  '2afc6c6e-7a26-466a-b8ec-febbca90f5f7': string;
 }
 
 export interface InputSetting {
@@ -472,7 +428,7 @@ export interface PlejdMesh {
   updatedAt: Date;
   site: PlejdMeshClass;
   ACL: AstroEventACL;
-  objectId: ObjectID;
+  objectId: string;
   __type: AstroEventType;
   className: SiteClassName;
 }
@@ -549,7 +505,7 @@ export interface Scene {
 }
 
 export interface SiteDetailsSite {
-  installers: ObjectID[];
+  installers: string[];
   title: string;
   siteId: string;
   version: number;
@@ -564,7 +520,7 @@ export interface SiteDetailsSite {
   country: string;
   previousOwners: string[];
   ACL: AstroEventACL;
-  objectId: ObjectID;
+  objectId: string;
   __type: AstroEventType;
   className: SiteClassName;
 }
@@ -581,7 +537,7 @@ export interface DeviceAstroTable {
 
 export interface SitePermission {
   siteId: string;
-  userId: ObjectID;
+  userId: string;
   user: User;
   isOwner: boolean;
   isInstaller: boolean;
@@ -608,7 +564,7 @@ export interface User {
   _failed_login_count: number;
   hasIntegration: boolean;
   ACL: UserACL;
-  objectId: ObjectID;
+  objectId: string;
   __type: AstroEventType;
   className: SiteClassName;
 }

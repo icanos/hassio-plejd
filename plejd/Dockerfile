@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Copy data for add-on
 COPY ./*.js /plejd/
-COPY ./config.json /plejd/
+COPY ./config.yaml /plejd/
 COPY ./package.json /plejd/
 
 ARG BUILD_ARCH
@@ -65,4 +65,4 @@ LABEL \
   org.label-schema.usage="https://github.com/icanos/hassio-plejd/tree/master/README.md" \
   org.label-schema.vcs-ref=${BUILD_REF} \
   org.label-schema.vcs-url="https://github.com/icanos/hassio-plejd"
-  
+

@@ -57,7 +57,7 @@ Recommendations to minimize impact
 - WPH-01 buttons to trigger generic automations in HA [\#172](https://github.com/icanos/hassio-plejd/issues/172)
 - Scene id and device id can overlap meaning mqtt commands overlap [\#161](https://github.com/icanos/hassio-plejd/issues/161)
 - Add to "Tested on" section [\#122](https://github.com/icanos/hassio-plejd/issues/122)
-- USB Bluetooth adapter  [\#101](https://github.com/icanos/hassio-plejd/issues/101)
+- USB Bluetooth adapter [\#101](https://github.com/icanos/hassio-plejd/issues/101)
 - Ignores devices if they have same name [\#91](https://github.com/icanos/hassio-plejd/issues/91)
 - Scene does not change state [\#85](https://github.com/icanos/hassio-plejd/issues/85)
 
@@ -65,9 +65,9 @@ Recommendations to minimize impact
 
 - Release 0.8.0-beta [\#204](https://github.com/icanos/hassio-plejd/pull/204) ([SweVictor](https://github.com/SweVictor))
 - Added more documentation to install steps [\#201](https://github.com/icanos/hassio-plejd/pull/201) ([polyzois](https://github.com/polyzois))
-- Fix for issue discussed in \#198.  [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
+- Fix for issue discussed in \#198. [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
 - Suggested Area and fix for \#189 [\#192](https://github.com/icanos/hassio-plejd/pull/192) ([faanskit](https://github.com/faanskit))
-- Support for WPH-01 and WRT-01 added.  [\#188](https://github.com/icanos/hassio-plejd/pull/188) ([faanskit](https://github.com/faanskit))
+- Support for WPH-01 and WRT-01 added. [\#188](https://github.com/icanos/hassio-plejd/pull/188) ([faanskit](https://github.com/faanskit))
 - Refactor unique id handling throughout the addon [\#179](https://github.com/icanos/hassio-plejd/pull/179) ([SweVictor](https://github.com/SweVictor))
 - Update README.md [\#178](https://github.com/icanos/hassio-plejd/pull/178) ([zissou1](https://github.com/zissou1))
 
@@ -80,6 +80,7 @@ Recommendations to minimize impact
 - Can't connect to device: TypeError: Cannot read property 'dimmable' [\#175](https://github.com/icanos/hassio-plejd/issues/175)
 
 **Merged pull requests:**
+
 - Release 0.7.1 [\#177](https://github.com/icanos/hassio-plejd/pull/177) ([SweVictor](https://github.com/SweVictor))
 
 ## [0.7.0](https://github.com/icanos/hassio-plejd/tree/0.7.0) (2021-03-23)

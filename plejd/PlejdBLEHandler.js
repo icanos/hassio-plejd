@@ -17,6 +17,7 @@ const DATA_UUID = `31ba0004-${BLE_UUID_SUFFIX}`;
 const LAST_DATA_UUID = `31ba0005-${BLE_UUID_SUFFIX}`;
 const AUTH_UUID = `31ba0009-${BLE_UUID_SUFFIX}`;
 const PING_UUID = `31ba000a-${BLE_UUID_SUFFIX}`;
+const PLEJD_LIGHTLEVEL_UUID = `31ba0003-${BLE_UUID_SUFFIX}`;
 
 const BLE_CMD_DIM_CHANGE = 0x00c8;
 const BLE_CMD_DIM2_CHANGE = 0x0098;
@@ -69,6 +70,7 @@ class PlejBLEHandler extends EventEmitter {
     commandReceived: 'commandReceived',
     writeFailed: 'writeFailed',
     writeSuccess: 'writeSuccess',
+    currentState: 'currentState',
   };
 
   constructor(deviceRegistry) {
@@ -86,6 +88,8 @@ class PlejBLEHandler extends EventEmitter {
       lastDataProperties: null,
       auth: null,
       ping: null,
+      lightLevel: null,
+      lightLevelProperties: null,
     };
 
     this.bus = dbus.systemBus();
@@ -107,6 +111,9 @@ class PlejBLEHandler extends EventEmitter {
     }
     if (this.characteristics.lastDataProperties) {
       this.characteristics.lastDataProperties.removeAllListeners('PropertiesChanged');
+    }
+    if (this.characteristics.lightLevelProperties) {
+      this.characteristics.lightLevelProperties.removeAllListeners('PropertiesChanged');
     }
     if (this.objectManager) {
       this.objectManager.removeAllListeners('InterfacesAdded');
@@ -147,6 +154,8 @@ class PlejBLEHandler extends EventEmitter {
       lastDataProperties: null,
       auth: null,
       ping: null,
+      lightLevel: null,
+      lightLevelProperties: null,
     };
 
     await this._getInterface();
@@ -302,6 +311,16 @@ class PlejBLEHandler extends EventEmitter {
         // invalidated (third param),
       ) => this._onLastDataUpdated(iface, properties));
       this.characteristics.lastData.StartNotify();
+
+      this.characteristics.lightLevelProperties.on('PropertiesChanged', (
+        iface,
+        properties,
+        // invalidated (third param),
+      ) => this._handlePlejdUpdate(iface, properties));
+      this.characteristics.lightLevel.StartNotify();
+
+      await this._plejdUpdate();
+
       this.consecutiveReconnectAttempts = 0;
       this.emit(PlejBLEHandler.EVENTS.connected);
 
@@ -313,6 +332,56 @@ class PlejBLEHandler extends EventEmitter {
       logger.debug(`Starting reconnect loop due to ${err.message}`);
       this.startReconnectPeriodicallyLoop();
     }
+  }
+
+  async _handlePlejdUpdate(iface, properties) {
+    if (iface !== GATT_CHRC_ID) {
+      return;
+    }
+
+    const changedKeys = Object.keys(properties);
+    if (changedKeys.length === 0) {
+      return;
+    }
+
+    let value = await properties.Value;
+    if (!value) {
+      return;
+    }
+
+    value = value.value;
+    if (value.length !== 20 && value.length !== 10) {
+      logger.debug(`Unknown length data received for lightlevel: ${value}`);
+      return;
+    }
+
+    let msgs = [value.slice(0, 10)];
+    if (value.length === 20) {
+      msgs.push(value.slice(10, 20));
+    }
+
+    for (let m of msgs) {
+      const bleOutputAddress = m.readUInt8(0);
+      const device = this.deviceRegistry.getOutputDeviceByBleOutputAddress(bleOutputAddress);
+      if (!device) return;
+      const outputUniqueId = device ? device.uniqueId : null;
+      const deviceName = device ? device.name : 'Unknown';
+      const dim = m.readUInt8(6);
+      const state = m.readUInt8(1) === 1 ? true : false;
+
+      logger.verbose(
+        `Decoded: Device ${outputUniqueId} (BLE address ${bleOutputAddress}), name: ${deviceName} state: ${state}, dim: ${dim}`,
+      );
+      // An event should fire here, which updates the current state of all devices.
+      // A problem that occurs is that the writeQueue in PlejdDeviceCommunication still
+      // has has elements event though the device registry is updated.
+      // this.deviceRegistry.setOutputState(device.uniqueId, state, dim);
+      // this.emit(PlejBLEHandler.EVENTS.currentState);
+    }
+  }
+
+  async _plejdUpdate() {
+    await this.characteristics.lightLevel.WriteValue([0x01], {});
   }
 
   async _getInterface() {
@@ -414,7 +483,9 @@ class PlejBLEHandler extends EventEmitter {
 
   async _startGetPlejdDevice() {
     logger.verbose('Setting up interfacesAdded subscription and discovery filter');
-    this.objectManager.on('InterfacesAdded', (path, interfaces) => this._onInterfacesAdded(path, interfaces));
+    this.objectManager.on('InterfacesAdded', (path, interfaces) =>
+      this._onInterfacesAdded(path, interfaces),
+    );
 
     this.adapter.SetDiscoveryFilter({
       UUIDs: new dbus.Variant('as', [PLEJD_SERVICE]),
@@ -708,6 +779,10 @@ class PlejBLEHandler extends EventEmitter {
       } else if (chUuid === PING_UUID) {
         logger.verbose('found PING characteristic.');
         this.characteristics.ping = ch;
+      } else if (chUuid === PLEJD_LIGHTLEVEL_UUID) {
+        logger.verbose('found LIGHTLEVEL characteristic.');
+        this.characteristics.lightLevel = ch;
+        this.characteristics.lightLevelProperties = prop;
       }
       /* eslint-eslint no-await-in-loop */
     }
@@ -873,9 +948,9 @@ class PlejBLEHandler extends EventEmitter {
       const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
       const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
       if (
-        bleOutputAddress !== BLE_BROADCAST_DEVICE_ID
-        || Logger.shouldLog('verbose')
-        || Math.abs(diffSeconds) > 60
+        bleOutputAddress !== BLE_BROADCAST_DEVICE_ID ||
+        Logger.shouldLog('verbose') ||
+        Math.abs(diffSeconds) > 60
       ) {
         const plejdTime = new Date(plejdTimestampUTC);
         logger.debug(

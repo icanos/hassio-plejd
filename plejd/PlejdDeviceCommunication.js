@@ -40,6 +40,7 @@ class PlejdDeviceCommunication extends EventEmitter {
     Object.values(this.bleOutputTransitionTimers).forEach((t) => clearTimeout(t));
     this.plejdBleHandler.cleanup();
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.commandReceived);
+    this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.currentState);
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.connected);
     this.plejdBleHandler.removeAllListeners(PlejBLEHandler.EVENTS.reconnecting);
   }
@@ -54,6 +55,9 @@ class PlejdDeviceCommunication extends EventEmitter {
         (uniqueOutputId, command, data) => this._bleCommandReceived(uniqueOutputId, command, data),
       );
 
+      this.plejdBleHandler.on(PlejBLEHandler.EVENTS.currentState, () => {
+        this.writeQueue = [];
+      });
       this.plejdBleHandler.on(PlejBLEHandler.EVENTS.connected, () => {
         logger.info('Bluetooth connected. Plejd BLE up and running!');
         logger.verbose(`Starting writeQueue loop. Write queue length: ${this.writeQueue.length}`);
@@ -140,11 +144,11 @@ class PlejdDeviceCommunication extends EventEmitter {
     const isDimmable = this.deviceRegistry.getOutputDevice(uniqueOutputId).dimmable;
 
     if (
-      transition > 1
-      && isDimmable
-      && (initialBrightness || initialBrightness === 0)
-      && (targetBrightness || targetBrightness === 0)
-      && targetBrightness !== initialBrightness
+      transition > 1 &&
+      isDimmable &&
+      (initialBrightness || initialBrightness === 0) &&
+      (targetBrightness || targetBrightness === 0) &&
+      targetBrightness !== initialBrightness
     ) {
       // Transition time set, known initial and target brightness
       // Calculate transition interval time based on delta brightness and max steps per second
@@ -269,8 +273,8 @@ class PlejdDeviceCommunication extends EventEmitter {
 
         if (this.writeQueue.some((item) => item.uniqueOutputId === queueItem.uniqueOutputId)) {
           logger.verbose(
-            `Skipping ${device.name} (${queueItem.uniqueOutputId}) `
-              + `${queueItem.command} due to more recent command in queue.`,
+            `Skipping ${device.name} (${queueItem.uniqueOutputId}) ` +
+              `${queueItem.command} due to more recent command in queue.`,
           );
           // Skip commands if new ones exist for the same uniqueOutputId
           // still process all messages in order

@@ -27,8 +27,7 @@ const TOPIC_TYPES = {
   COMMAND: 'set',
 };
 
-const getBaseTopic = (/** @type { string } */ uniqueId, /** @type { string } */ mqttDeviceType) =>
-  `${discoveryPrefix}/${mqttDeviceType}/${nodeId}/${uniqueId}`;
+const getBaseTopic = (/** @type { string } */ uniqueId, /** @type { string } */ mqttDeviceType) => `${discoveryPrefix}/${mqttDeviceType}/${nodeId}/${uniqueId}`;
 
 const getTopicName = (
   /** @type { string } */ uniqueId,
@@ -36,11 +35,9 @@ const getTopicName = (
   /** @type { import('./types/Mqtt').TopicType } */ topicType,
 ) => `${getBaseTopic(uniqueId, mqttDeviceType)}/${topicType}`;
 
-const getButtonEventTopic = (/** @type {string} */ deviceId) =>
-  `${getTopicName(deviceId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
+const getButtonEventTopic = (/** @type {string} */ deviceId) => `${getTopicName(deviceId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getTriggerUniqueId = (/** @type { string } */ uniqueId) => `${uniqueId}_trig`;
-const getSceneEventTopic = (/** @type {string} */ sceneId) =>
-  `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
+const getSceneEventTopic = (/** @type {string} */ sceneId) => `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 
 const decodeTopicRegexp = new RegExp(

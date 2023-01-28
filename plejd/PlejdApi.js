@@ -506,9 +506,8 @@ class PlejdApi {
 
         const deviceIdsByRoom = this.deviceRegistry.getOutputDeviceIdsByRoomId(roomId);
 
-        const dimmable =
-          deviceIdsByRoom &&
-          deviceIdsByRoom.some(
+        const dimmable = deviceIdsByRoom
+          && deviceIdsByRoom.some(
             (deviceId) => this.deviceRegistry.getOutputDevice(deviceId).dimmable,
           );
 

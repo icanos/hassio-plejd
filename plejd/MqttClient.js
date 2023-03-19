@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-const fs = require('fs');
 const mqtt = require('mqtt');
 
 const Configuration = require('./Configuration');
@@ -11,8 +10,6 @@ const logger = Logger.getLogger('plejd-mqtt');
 
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
-
-const SYSTEM_ID = fs.readFileSync('/sys/class/dmi/id/board_serial').toString();
 
 /** @type {import('./types/Mqtt').MQTT_TYPES} */
 const MQTT_TYPES = {
@@ -155,7 +152,7 @@ class MqttClient extends EventEmitter {
     logger.info('Initializing MQTT connection for Plejd addon');
 
     this.client = mqtt.connect(this.config.mqttBroker, {
-      clientId: `hassio-plejd_${SYSTEM_ID}`,
+      clientId: `hassio-plejd_${Math.random().toString(16).substr(2, 8)}`,
       password: this.config.mqttPassword,
       protocolVersion: 4, // v5 not supported by HassIO Mosquitto
       queueQoSZero: true,

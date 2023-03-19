@@ -146,6 +146,7 @@ class MqttClient extends EventEmitter {
 
     this.config = Configuration.getOptions();
     this.deviceRegistry = deviceRegistry;
+    this.discoveryOngoing = false;
   }
 
   init() {
@@ -200,65 +201,71 @@ class MqttClient extends EventEmitter {
         if (startTopics.includes(topic)) {
           logger.info('Home Assistant has started. lets do discovery.');
           this.emit(MqttClient.EVENTS.connected);
+        } else if (!this.discoveryOngoing) {
+          this.processMessage(topic, message);
         } else {
-          logger.verbose(`Received mqtt message on ${topic}`);
-          const decodedTopic = decodeTopic(topic);
-          if (decodedTopic) {
-            /** @type {import('types/DeviceRegistry').OutputDevice} */
-            let device;
-
-            if (decodedTopic.type === MQTT_TYPES.SCENE) {
-              logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
-              device = this.deviceRegistry.getScene(decodedTopic.id);
-            } else {
-              logger.verbose(`Getting device ${decodedTopic.id} from registry`);
-              device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
-            }
-
-            const messageString = message.toString();
-            const isJsonMessage = messageString.startsWith('{');
-            const command = isJsonMessage ? JSON.parse(messageString) : messageString;
-
-            const deviceName = device ? device.name : '';
-
-            switch (decodedTopic.command) {
-              case 'set':
-                logger.verbose(
-                  `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
-                );
-
-                if (device) {
-                  this.emit(MqttClient.EVENTS.stateChanged, device, command);
-                } else {
-                  logger.warn(
-                    `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
-                  );
-                }
-                break;
-              case 'state':
-              case 'config':
-              case 'availability':
-                logger.verbose(
-                  `Sent mqtt ${decodedTopic.command} command for ${
-                    decodedTopic.type
-                  }, ${deviceName} (${decodedTopic.id}). ${
-                    decodedTopic.command === 'availability' ? messageString : ''
-                  }`,
-                );
-                break;
-              default:
-                logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
-            }
-          } else {
-            logger.verbose(
-              `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
-            );
-          }
+          logger.verbose(`Ignoring message on topic ${topic} since discovery is ongoing`);
         }
       } catch (err) {
         logger.error(`Error processing mqtt message on topic ${topic}`, err);
       }
     });
+  }
+
+  processMessage(topic, message) {
+    logger.verbose(`Received mqtt message on ${topic}`);
+    const decodedTopic = decodeTopic(topic);
+    if (decodedTopic) {
+      /** @type {import('types/DeviceRegistry').OutputDevice} */
+      let device;
+
+      if (decodedTopic.type === MQTT_TYPES.SCENE) {
+        logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
+        device = this.deviceRegistry.getScene(decodedTopic.id);
+      } else {
+        logger.verbose(`Getting device ${decodedTopic.id} from registry`);
+        device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
+      }
+
+      const messageString = message.toString();
+      const isJsonMessage = messageString.startsWith('{');
+      const command = isJsonMessage ? JSON.parse(messageString) : messageString;
+
+      const deviceName = device ? device.name : '';
+
+      switch (decodedTopic.command) {
+        case 'set':
+          logger.verbose(
+            `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
+          );
+
+          if (device) {
+            this.emit(MqttClient.EVENTS.stateChanged, device, command);
+          } else {
+            logger.warn(
+              `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+            );
+          }
+          break;
+        case 'state':
+        case 'config':
+        case 'availability':
+          logger.verbose(
+            `Sent mqtt ${decodedTopic.command} command for ${
+              decodedTopic.type
+            }, ${deviceName} (${decodedTopic.id}). ${
+              decodedTopic.command === 'availability' ? messageString : ''
+            }`,
+          );
+          break;
+        default:
+          logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
+      }
+    } else {
+      logger.verbose(
+        `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
+      );
+    }
   }
 
   reconnect() {
@@ -298,6 +305,12 @@ class MqttClient extends EventEmitter {
   }
 
   sendDiscoveryToHomeAssistant() {
+    if (this.discoveryOngoing) {
+      logger.warn('Send discovery called while one is already ongoing, aborting discovery');
+      return;
+    }
+
+    this.discoveryOngoing = true;
     const allOutputDevices = this.deviceRegistry.getAllOutputDevices();
     logger.info(`Sending discovery for ${allOutputDevices.length} Plejd output devices`);
     allOutputDevices.forEach((outputDevice) => {
@@ -400,6 +413,11 @@ class MqttClient extends EventEmitter {
         );
       }, 2000);
     });
+
+    setTimeout(() => {
+      logger.debug('Discovery done');
+      this.discoveryOngoing = false;
+    }, 3000);
   }
 
   /**

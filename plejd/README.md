@@ -39,11 +39,9 @@ Supported Plejd devices are detailed in a specific "Plejd devices" section below
 
 ### Easy Installation
 
-Browse to your Home Assistant installation in a web browser and click on `Supervisor` in the navigation bar to the left.
-
-- Open the Home Assistant web console and click `Configuration` in the menu on the left side.
-- Click on `Add-ons, Backups & Supervisor`
-- Click on `Add-on Store` in the bottom left of that page.
+- Browse to your Home Assistant installation in a web browser and click on `Settings` in the navigation bar to the left.
+- Click on `Add-ons`
+- Click on `Add-on Store` in the bottom right corner of that page.
 - Click on the three vertical dots to the far right and chose `Repositories`
 - Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
@@ -54,12 +52,13 @@ Browse to your Home Assistant installation in a web browser and click on `Superv
 
 Browse your Home Assistant installation using a tool that allows you to manage files, for eg. SCP, SMB, SFTP client, etc.
 
-- Open the `/addon` directory
+- Open the `/addons` directory
 - Create a new folder named `hassio-plejd`
-- Copy all files from this repository into that newly created one.
-- Open the Home Assistant web console and click `Supervisor` in the menu on the left side.
-- Click on `Add-on Store` in the top navigation bar of that page.
-- Click on the refresh button in the upper right corner.
+- Copy all files from the `plejd` subdirectory of the add-on repository (not the top-level which contains `repository.json`) into that newly created one.
+- Browse to your Home Assistant installation in a web browser and click on `Settings` in the navigation bar to the left.
+- Click on `Add-ons`
+- Click on `Add-on Store` in the bottom right corner of that page.
+- Click on the three vertical dots to the far right and chose `Check for updates`
 - A new Local Add-on should appear named Plejd. Open that and install.
 - Enjoy!
 
@@ -69,7 +68,7 @@ To install older versions, follow the "Manual Installation" instructions above, 
 
 ### More details regarding installation
 
-Please look at [The details](./Details.md) separate document for more detailed instructions regarding Home Asssistant, Mosquitto, etc.
+Please see the separate document [Details](./Details.md) for more detailed instructions regarding Home Asssistant, Mosquitto, etc.
 
 ### Startup error message
 
@@ -274,7 +273,7 @@ Out of the box you can for example view elapsed time by selecting multiple lines
 ## License
 
 ```
-Copyright 2019 Marcus Westin <marcus@sekurbit.se>
+Copyright 2023 Marcus Westin <marcus@sekurbit.se>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

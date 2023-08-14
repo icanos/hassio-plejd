@@ -1,0 +1,42 @@
+name: Plejd
+version: 0.9.1
+slug: plejd
+description: Adds support for the Swedish home automation devices from Plejd.
+url: https://github.com/icanos/hassio-plejd/
+arch:
+- armhf
+- armv7
+- aarch64
+- amd64
+- i386
+startup: application
+boot: auto
+host_network: true
+host_dbus: true
+apparmor: false
+options:
+  site: Default Site
+  username: ''
+  password: ''
+  mqttBroker: mqtt://
+  mqttUsername: ''
+  mqttPassword: ''
+  includeRoomsAsLights: false
+  preferCachedApiResponse: false
+  updatePlejdClock: false
+  logLevel: info
+  connectionTimeout: 2
+  writeQueueWaitTime: 400
+schema:
+  site: str
+  username: str
+  password: str
+  mqttBroker: str
+  mqttUsername: str
+  mqttPassword: str
+  includeRoomsAsLights: bool
+  preferCachedApiResponse: bool
+  updatePlejdClock: bool
+  logLevel: list(error|warn|info|debug|verbose|silly)
+  connectionTimeout: int
+  writeQueueWaitTime: int

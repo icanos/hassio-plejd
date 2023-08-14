@@ -25,9 +25,13 @@ class Configuration {
   static _hydrateCache() {
     const rawData = fs.readFileSync('/data/options.json');
     const config = JSON.parse(rawData.toString());
-
-    const defaultRawData = fs.readFileSync('/plejd/config.json');
-    const defaultConfig = JSON.parse(defaultRawData.toString());
+    var defaultConfig
+    try {
+      const defaultRawData = fs.readFileSync('/plejd/config.json');
+      defaultConfig = JSON.parse(defaultRawData.toString());
+    } catch (err) { // {
+      defaultConfig = JSON.parse('{ "version": "0.9.1+magicus" }');
+    }
 
     Configuration._options = { ...defaultConfig.options, ...config };
     Configuration._addonInfo = {

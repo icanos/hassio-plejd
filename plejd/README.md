@@ -131,28 +131,30 @@ The plugin needs you to configure some settings before working. You find these o
 
 Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
 
-| Device | Plejd Configuration | Home Assistant Role | Comment                                                               |
-| ------ | ------------------- | ------------------- | --------------------------------------------------------------------- |
-| CTR-01 | Relay, Light        | Light               |                                                                       |
-| CTR-01 | Relay, Other        | Switch              |                                                                       |
-| REL-01 | Relay, Light        | Light               |                                                                       |
-| REL-01 | Relay, Other        | Switch              |                                                                       |
-| REL-02 | Relay, Light        | Light               |                                                                       |
-| REL-02 | Relay, Other        | Switch              |                                                                       |
-| SPR-01 | Relay, Light        | Light               | Not tested, not supported                                             |
-| SPR-01 | Relay, Other        | Switch              | Not tested, not supported                                             |
-| DIM-01 | -                   | Light               |                                                                       |
-| DIM-02 | -                   | Light               |                                                                       |
-| LED-10 | -                   | Light               |                                                                       |
-| DAL-01 | -                   | -                   | Not tested, not supported                                             |
-| WPH-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
-| WRT-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
-| GWY-01 | -                   | -                   |                                                                       |
-| RTR-01 | -                   | -                   |                                                                       |
-| Scene  | -                   | Scene               |                                                                       |
-| Scene  | -                   | Device Automation   | type:scene, subtype:trigger                                           |
-| Room   | -                   | Area                | Can be changed by Home Assistant                                      |
-| Room   | -                   | Light               | If includeRoomsAsLights is set to true                                |
+| Device    | Plejd Configuration | Home Assistant Role | Comment                                                               |
+| ------    | ------------------- | ------------------- | --------------------------------------------------------------------- |
+| CTR-01    | Relay, Light        | Light               |                                                                       |
+| CTR-01    | Relay, Other        | Switch              |                                                                       |
+| REL-01    | Relay, Light        | Light               |                                                                       |
+| REL-01    | Relay, Other        | Switch              |                                                                       |
+| REL-02    | Relay, Light        | Light               |                                                                       |
+| REL-02    | Relay, Other        | Switch              |                                                                       |
+| SPR-01    | Relay, Light        | Light               |                                                                       |
+| SPR-01    | Relay, Other        | Switch              |                                                                       |
+| DIM-01    | -                   | Light               |                                                                       |
+| DIM-01-2P | -                   | Light               |                                                                       |
+| DIM-02    | -                   | Light               |                                                                       |
+| LED-10    | -                   | Light               |                                                                       |
+| LED-75    | -                   | Light               |                                                                       |
+| DAL-01    | -                   | -                   | Not tested, not supported                                             |
+| WPH-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
+| WRT-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
+| GWY-01    | -                   | -                   |                                                                       |
+| RTR-01    | -                   | -                   |                                                                       |
+| Scene     | -                   | Scene               |                                                                       |
+| Scene     | -                   | Device Automation   | type:scene, subtype:trigger                                           |
+| Room      | -                   | Area                | Can be changed by Home Assistant                                      |
+| Room      | -                   | Light               | If includeRoomsAsLights is set to true                                |
 
 ## Transitions
 

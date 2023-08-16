@@ -8,10 +8,8 @@ Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 Disclaimer:
 I am in no way affiliated with Plejd and am solely doing this as a hobby project.
 
-**Did you like this? Consider helping me continue the development:**  
+**Did you like this? Consider helping me continue the development:**
 [Buy me a coffee](https://www.buymeacoffee.com/w1ANTUb)
-
-[![Gitter](https://badges.gitter.im/hassio-plejd/community.svg)](https://gitter.im/hassio-plejd/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Getting started
 
@@ -85,8 +83,8 @@ However, the add-on still works as expected and this is something I'm looking in
 
 ### Simple MQTT Configurations
 
-When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.  
-Create a user in [Configuration -> Users](http://homeassistant.local:8123/config/users) named e.g. mqtt-api-user
+When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.
+Create a user in [Configuration -&gt; Users](https://my.home-assistant.io/redirect/users/) named e.g. mqtt-api-user
 
 | Parameter    | Value                                            |
 | ------------ | ------------------------------------------------ |
@@ -116,7 +114,7 @@ The plugin needs you to configure some settings before working. You find these o
 | Parameter            | Value                                                                                                                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                               |
-| username             | Email/username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
+| username             | Email/username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                               |
 | password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
 | mqttBroker           | URL of the MQTT Broker, eg. mqtt://                                                                                                                                                      |
 | mqttUsername         | Username of the MQTT broker                                                                                                                                                              |
@@ -132,7 +130,7 @@ The plugin needs you to configure some settings before working. You find these o
 Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
 
 | Device    | Plejd Configuration | Home Assistant Role | Comment                                                               |
-| ------    | ------------------- | ------------------- | --------------------------------------------------------------------- |
+| --------- | ------------------- | ------------------- | --------------------------------------------------------------------- |
 | CTR-01    | Relay, Light        | Light               |                                                                       |
 | CTR-01    | Relay, Other        | Switch              |                                                                       |
 | REL-01    | Relay, Light        | Light               |                                                                       |

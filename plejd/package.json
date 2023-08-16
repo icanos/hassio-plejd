@@ -21,8 +21,8 @@
   "scripts": {
     "lint": "npm run lint:prettier & npm run lint:scripts",
     "lint:fix": "npm run lint:prettier:fix & npm run lint:scripts:fix",
-    "lint:prettier": "prettier --check \"**/*.{js*,md}\"",
-    "lint:prettier:fix": "prettier --check --write \"**/*.{js*,md}\"",
+    "lint:prettier": "prettier --check --config ../.prettierrc.js \"**/*.{js*,md}\"",
+    "lint:prettier:fix": "prettier --check --config ../.prettierrc.js --write \"**/*.{js*,md}\"",
     "lint:scripts": "eslint --config ./.eslintrc.js \"**/*.js\"",
     "lint:scripts:fix": "eslint --config ./.eslintrc.js --fix \"**/*.js\""
   }

@@ -1,8 +1,6 @@
 const winston = require('winston');
 
-const {
-  colorize, combine, label, printf, timestamp,
-} = winston.format;
+const { colorize, combine, label, printf, timestamp } = winston.format;
 
 const Configuration = require('./Configuration');
 
@@ -34,15 +32,17 @@ class Logger {
   static getLogLevel() {
     const config = Configuration.getOptions();
     // eslint-disable-next-line max-len
-    const level = (config.logLevel && LEVELS.find((l) => l.startsWith(config.logLevel[0].toLowerCase())))
-      || 'info';
+    const level =
+      (config.logLevel && LEVELS.find((l) => l.startsWith(config.logLevel[0].toLowerCase()))) ||
+      'info';
     return level;
   }
 
   static shouldLog(logLevel) {
     if (!Logger.shouldLogLookup[logLevel]) {
       // eslint-disable-next-line max-len
-      Logger.shouldLogLookup[logLevel] = Logger.logLevels().levels[logLevel] <= Logger.logLevels().levels[Logger.getLogLevel()];
+      Logger.shouldLogLookup[logLevel] =
+        Logger.logLevels().levels[logLevel] <= Logger.logLevels().levels[Logger.getLogLevel()];
     }
     return Logger.shouldLogLookup[logLevel];
   }

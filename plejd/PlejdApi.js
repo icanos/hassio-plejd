@@ -293,7 +293,8 @@ class PlejdApi {
       case 6:
         return {
           name: 'WPH-01',
-          description: 'Wireless push button, 4 buttons. 2 channels, on and off buttons for each channel',
+          description:
+            'Wireless push button, 4 buttons. 2 channels, on and off buttons for each channel',
           type: 'device_automation',
           dimmable: false,
           broadcastClicks: true,
@@ -391,7 +392,7 @@ class PlejdApi {
           dimmable: true,
           broadcastClicks: false,
         };
-        default:
+      default:
         throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
     }
   }
@@ -481,13 +482,19 @@ class PlejdApi {
             };
 
             this.deviceRegistry.addOutputDevice(outputDevice);
-
           } catch (error) {
             logger.error(`Error trying to create output device: ${error}`);
-            logger.warn(`device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`);
-            logger.warn(`plejdDevice (from API response) when error happened: ${JSON.stringify(plejdDevice, null, 2)}`);
+            logger.warn(
+              `device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`,
+            );
+            logger.warn(
+              `plejdDevice (from API response) when error happened: ${JSON.stringify(
+                plejdDevice,
+                null,
+                2,
+              )}`,
+            );
           }
-
         }
       } else {
         // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
@@ -530,8 +537,16 @@ class PlejdApi {
             }
           } catch (error) {
             logger.error(`Error trying to create input device: ${error}`);
-            logger.warn(`device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`);
-            logger.warn(`plejdDevice (from API response) when error happened: ${JSON.stringify(plejdDevice, null, 2)}`);
+            logger.warn(
+              `device (from API response) when error happened: ${JSON.stringify(device, null, 2)}`,
+            );
+            logger.warn(
+              `plejdDevice (from API response) when error happened: ${JSON.stringify(
+                plejdDevice,
+                null,
+                2,
+              )}`,
+            );
           }
         });
       }
@@ -547,8 +562,9 @@ class PlejdApi {
 
         const deviceIdsByRoom = this.deviceRegistry.getOutputDeviceIdsByRoomId(roomId);
 
-        const dimmable = deviceIdsByRoom
-          && deviceIdsByRoom.some(
+        const dimmable =
+          deviceIdsByRoom &&
+          deviceIdsByRoom.some(
             (deviceId) => this.deviceRegistry.getOutputDevice(deviceId).dimmable,
           );
 

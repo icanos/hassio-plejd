@@ -19,12 +19,13 @@
     "prettier": "~2.2.1"
   },
   "scripts": {
-    "lint": "prettier \"../*.{js*,md}\" --check & eslint **/*.js",
-    "lint:fix": "prettier .. --check --write & eslint **/*.js --fix",
-    "lint:prettier:fix": "npm run lint:prettier --write",
+    "lint": "npm run lint:prettier & npm run lint:scripts",
+    "lint:fix": "npm run lint:prettier:fix & npm run lint:scripts:fix",
     "lint:errors": "npm run lint:prettier & npm run lint:styles --quiet & npm run lint:types & npm run lint:scripts --quiet",
-    "lint:errors:fix": "npm run lint:prettier --write & npm run lint:scripts --quiet --fix",
-    "lint:prettier": "prettier --check \"**/*.js\"",
-    "lint:scripts": "eslint --config ./.eslintrc.js \"**/*.js\""
+    "lint:errors:fix": "npm run lint:prettier:fix & npm run lint:scripts --quiet --fix",
+    "lint:prettier": "prettier --check \"**/*.{js*,md}\"",
+    "lint:prettier:fix": "prettier --check --write \"**/*.{js*,md}\"",
+    "lint:scripts": "eslint --config ./.eslintrc.js \"**/*.js\"",
+    "lint:scripts:fix": "eslint --config ./.eslintrc.js --fix \"**/*.js\""
   }
 }

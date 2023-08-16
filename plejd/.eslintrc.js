@@ -13,6 +13,7 @@ module.exports = {
   root: true,
   extends: [
     'airbnb-base',
+    'eslint-config-prettier', // Prefers Prettier's formatting
     // 'prettier',
     // 'plugin:prettier/recommended'
   ],

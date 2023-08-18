@@ -58,7 +58,7 @@ const decodeTopic = (topic) => {
 const getOutputDeviceDiscoveryPayload = (
   /** @type {import('./types/DeviceRegistry').OutputDevice} */ device,
 ) => ({
-  name: device.name,
+  name: null,
   unique_id: device.uniqueId,
   '~': getBaseTopic(device.uniqueId, device.type),
   state_topic: `~/${TOPIC_TYPES.STATE}`,

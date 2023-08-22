@@ -34,6 +34,7 @@
 
 **Merged pull requests:**
 
+- Release 0.10.0 [\#280](https://github.com/icanos/hassio-plejd/pull/280) ([SweVictor](https://github.com/SweVictor))
 - Update installation instructions for newer HA/clarify manual install [\#272](https://github.com/icanos/hassio-plejd/pull/272) ([timjackson](https://github.com/timjackson))
 
 ## [0.9.1](https://github.com/icanos/hassio-plejd/tree/0.9.1)

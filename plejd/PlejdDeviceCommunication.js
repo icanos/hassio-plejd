@@ -140,11 +140,11 @@ class PlejdDeviceCommunication extends EventEmitter {
     const isDimmable = this.deviceRegistry.getOutputDevice(uniqueOutputId).dimmable;
 
     if (
-      transition > 1
-      && isDimmable
-      && (initialBrightness || initialBrightness === 0)
-      && (targetBrightness || targetBrightness === 0)
-      && targetBrightness !== initialBrightness
+      transition > 1 &&
+      isDimmable &&
+      (initialBrightness || initialBrightness === 0) &&
+      (targetBrightness || targetBrightness === 0) &&
+      targetBrightness !== initialBrightness
     ) {
       // Transition time set, known initial and target brightness
       // Calculate transition interval time based on delta brightness and max steps per second
@@ -269,8 +269,8 @@ class PlejdDeviceCommunication extends EventEmitter {
 
         if (this.writeQueue.some((item) => item.uniqueOutputId === queueItem.uniqueOutputId)) {
           logger.verbose(
-            `Skipping ${device.name} (${queueItem.uniqueOutputId}) `
-              + `${queueItem.command} due to more recent command in queue.`,
+            `Skipping ${device.name} (${queueItem.uniqueOutputId}) ` +
+              `${queueItem.command} due to more recent command in queue.`,
           );
           // Skip commands if new ones exist for the same uniqueOutputId
           // still process all messages in order

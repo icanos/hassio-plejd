@@ -414,7 +414,9 @@ class PlejBLEHandler extends EventEmitter {
 
   async _startGetPlejdDevice() {
     logger.verbose('Setting up interfacesAdded subscription and discovery filter');
-    this.objectManager.on('InterfacesAdded', (path, interfaces) => this._onInterfacesAdded(path, interfaces));
+    this.objectManager.on('InterfacesAdded', (path, interfaces) =>
+      this._onInterfacesAdded(path, interfaces),
+    );
 
     this.adapter.SetDiscoveryFilter({
       UUIDs: new dbus.Variant('as', [PLEJD_SERVICE]),
@@ -873,9 +875,9 @@ class PlejBLEHandler extends EventEmitter {
       const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
       const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
       if (
-        bleOutputAddress !== BLE_BROADCAST_DEVICE_ID
-        || Logger.shouldLog('verbose')
-        || Math.abs(diffSeconds) > 60
+        bleOutputAddress !== BLE_BROADCAST_DEVICE_ID ||
+        Logger.shouldLog('verbose') ||
+        Math.abs(diffSeconds) > 60
       ) {
         const plejdTime = new Date(plejdTimestampUTC);
         logger.debug(

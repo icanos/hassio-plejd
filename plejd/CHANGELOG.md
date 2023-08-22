@@ -1,5 +1,41 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.10.0](https://github.com/icanos/hassio-plejd/tree/0.10.0)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.1...0.10.0)
+
+**Closed issues:**
+
+- Names doubled in 2023.8 [\#277](https://github.com/icanos/hassio-plejd/issues/277)
+- HA Configuration failed [\#276](https://github.com/icanos/hassio-plejd/issues/276)
+- Unable to find correct BT characteristics [\#273](https://github.com/icanos/hassio-plejd/issues/273)
+- LED 75 [\#271](https://github.com/icanos/hassio-plejd/issues/271)
+- \[plejd-mqtt\] Initializing MQTT connection for Plejd addon [\#262](https://github.com/icanos/hassio-plejd/issues/262)
+- Problem starting up Plejd Addon [\#258](https://github.com/icanos/hassio-plejd/issues/258)
+- \[installation\] Repository not showing up in Add-on Store [\#256](https://github.com/icanos/hassio-plejd/issues/256)
+- Help needed [\#251](https://github.com/icanos/hassio-plejd/issues/251)
+- LED-75 causes addon to fail [\#250](https://github.com/icanos/hassio-plejd/issues/250)
+- Errors reported in the log. [\#249](https://github.com/icanos/hassio-plejd/issues/249)
+- Devices not added as entities [\#248](https://github.com/icanos/hassio-plejd/issues/248)
+- New devices [\#246](https://github.com/icanos/hassio-plejd/issues/246)
+- site name [\#242](https://github.com/icanos/hassio-plejd/issues/242)
+- 404 from cloud login [\#241](https://github.com/icanos/hassio-plejd/issues/241)
+- Stuck in Reconnecting BLE [\#240](https://github.com/icanos/hassio-plejd/issues/240)
+- BLE Connection lost after some time and can't be reestablished. [\#239](https://github.com/icanos/hassio-plejd/issues/239)
+- Getting a couple off error version with the latest [\#238](https://github.com/icanos/hassio-plejd/issues/238)
+- Log hardwareId of unknown devices at a lower verbosity level [\#237](https://github.com/icanos/hassio-plejd/issues/237)
+- Unable to find a bluetooth adapter that is compatible [\#234](https://github.com/icanos/hassio-plejd/issues/234)
+- Scences become "unavailable" at random instances [\#233](https://github.com/icanos/hassio-plejd/issues/233)
+- SPR-01 dont work [\#232](https://github.com/icanos/hassio-plejd/issues/232)
+- Brightness control missing for one of my devices \(DIM-01\) [\#230](https://github.com/icanos/hassio-plejd/issues/230)
+- Dosn´t work after latest Hassio update [\#223](https://github.com/icanos/hassio-plejd/issues/223)
+- New devices [\#220](https://github.com/icanos/hassio-plejd/issues/220)
+- Unknown output id null [\#219](https://github.com/icanos/hassio-plejd/issues/219)
+
+**Merged pull requests:**
+
+- Update installation instructions for newer HA/clarify manual install [\#272](https://github.com/icanos/hassio-plejd/pull/272) ([timjackson](https://github.com/timjackson))
+
 ## [0.9.1](https://github.com/icanos/hassio-plejd/tree/0.9.1)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.0...0.9.1)
@@ -57,7 +93,7 @@ Recommendations to minimize impact
 - WPH-01 buttons to trigger generic automations in HA [\#172](https://github.com/icanos/hassio-plejd/issues/172)
 - Scene id and device id can overlap meaning mqtt commands overlap [\#161](https://github.com/icanos/hassio-plejd/issues/161)
 - Add to "Tested on" section [\#122](https://github.com/icanos/hassio-plejd/issues/122)
-- USB Bluetooth adapter  [\#101](https://github.com/icanos/hassio-plejd/issues/101)
+- USB Bluetooth adapter [\#101](https://github.com/icanos/hassio-plejd/issues/101)
 - Ignores devices if they have same name [\#91](https://github.com/icanos/hassio-plejd/issues/91)
 - Scene does not change state [\#85](https://github.com/icanos/hassio-plejd/issues/85)
 
@@ -65,9 +101,9 @@ Recommendations to minimize impact
 
 - Release 0.8.0-beta [\#204](https://github.com/icanos/hassio-plejd/pull/204) ([SweVictor](https://github.com/SweVictor))
 - Added more documentation to install steps [\#201](https://github.com/icanos/hassio-plejd/pull/201) ([polyzois](https://github.com/polyzois))
-- Fix for issue discussed in \#198.  [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
+- Fix for issue discussed in \#198. [\#199](https://github.com/icanos/hassio-plejd/pull/199) ([faanskit](https://github.com/faanskit))
 - Suggested Area and fix for \#189 [\#192](https://github.com/icanos/hassio-plejd/pull/192) ([faanskit](https://github.com/faanskit))
-- Support for WPH-01 and WRT-01 added.  [\#188](https://github.com/icanos/hassio-plejd/pull/188) ([faanskit](https://github.com/faanskit))
+- Support for WPH-01 and WRT-01 added. [\#188](https://github.com/icanos/hassio-plejd/pull/188) ([faanskit](https://github.com/faanskit))
 - Refactor unique id handling throughout the addon [\#179](https://github.com/icanos/hassio-plejd/pull/179) ([SweVictor](https://github.com/SweVictor))
 - Update README.md [\#178](https://github.com/icanos/hassio-plejd/pull/178) ([zissou1](https://github.com/zissou1))
 
@@ -80,6 +116,7 @@ Recommendations to minimize impact
 - Can't connect to device: TypeError: Cannot read property 'dimmable' [\#175](https://github.com/icanos/hassio-plejd/issues/175)
 
 **Merged pull requests:**
+
 - Release 0.7.1 [\#177](https://github.com/icanos/hassio-plejd/pull/177) ([SweVictor](https://github.com/SweVictor))
 
 ## [0.7.0](https://github.com/icanos/hassio-plejd/tree/0.7.0) (2021-03-23)

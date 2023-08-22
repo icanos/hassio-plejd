@@ -1,5 +1,41 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.10.0](https://github.com/icanos/hassio-plejd/tree/0.10.0)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.1...0.10.0)
+
+**Closed issues:**
+
+- Names doubled in 2023.8 [\#277](https://github.com/icanos/hassio-plejd/issues/277)
+- HA Configuration failed [\#276](https://github.com/icanos/hassio-plejd/issues/276)
+- Unable to find correct BT characteristics [\#273](https://github.com/icanos/hassio-plejd/issues/273)
+- LED 75 [\#271](https://github.com/icanos/hassio-plejd/issues/271)
+- \[plejd-mqtt\] Initializing MQTT connection for Plejd addon [\#262](https://github.com/icanos/hassio-plejd/issues/262)
+- Problem starting up Plejd Addon [\#258](https://github.com/icanos/hassio-plejd/issues/258)
+- \[installation\] Repository not showing up in Add-on Store [\#256](https://github.com/icanos/hassio-plejd/issues/256)
+- Help needed [\#251](https://github.com/icanos/hassio-plejd/issues/251)
+- LED-75 causes addon to fail [\#250](https://github.com/icanos/hassio-plejd/issues/250)
+- Errors reported in the log. [\#249](https://github.com/icanos/hassio-plejd/issues/249)
+- Devices not added as entities [\#248](https://github.com/icanos/hassio-plejd/issues/248)
+- New devices [\#246](https://github.com/icanos/hassio-plejd/issues/246)
+- site name [\#242](https://github.com/icanos/hassio-plejd/issues/242)
+- 404 from cloud login [\#241](https://github.com/icanos/hassio-plejd/issues/241)
+- Stuck in Reconnecting BLE [\#240](https://github.com/icanos/hassio-plejd/issues/240)
+- BLE Connection lost after some time and can't be reestablished. [\#239](https://github.com/icanos/hassio-plejd/issues/239)
+- Getting a couple off error version with the latest [\#238](https://github.com/icanos/hassio-plejd/issues/238)
+- Log hardwareId of unknown devices at a lower verbosity level [\#237](https://github.com/icanos/hassio-plejd/issues/237)
+- Unable to find a bluetooth adapter that is compatible [\#234](https://github.com/icanos/hassio-plejd/issues/234)
+- Scences become "unavailable" at random instances [\#233](https://github.com/icanos/hassio-plejd/issues/233)
+- SPR-01 dont work [\#232](https://github.com/icanos/hassio-plejd/issues/232)
+- Brightness control missing for one of my devices \(DIM-01\) [\#230](https://github.com/icanos/hassio-plejd/issues/230)
+- Dosn´t work after latest Hassio update [\#223](https://github.com/icanos/hassio-plejd/issues/223)
+- New devices [\#220](https://github.com/icanos/hassio-plejd/issues/220)
+- Unknown output id null [\#219](https://github.com/icanos/hassio-plejd/issues/219)
+
+**Merged pull requests:**
+
+- Update installation instructions for newer HA/clarify manual install [\#272](https://github.com/icanos/hassio-plejd/pull/272) ([timjackson](https://github.com/timjackson))
+
 ## [0.9.1](https://github.com/icanos/hassio-plejd/tree/0.9.1)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.0...0.9.1)

@@ -389,8 +389,33 @@ class PlejdApi {
           dimmable: true,
           broadcastClicks: false,
         };
+      case 167:
+        return {
+          name: 'DWN-01',
+          description: 'Smart tunable downlight with a built-in dimmer function, 8W',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
+      // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
+      // case 
+      //   return {
+      //     name: 'DWN-02',
+      //     description: 'Smart tunable downlight with a built-in dimmer function, 8W',
+      //     type: 'light',
+      //     dimmable: true,
+      //     broadcastClicks: false,
+      //   };
+      // case 
+      //   return {
+      //     name: 'OUT-01',
+      //     description: 'Outdoor wall light with built-in LED, 2x5W',
+      //     type: 'light',
+      //     dimmable: true,
+      //     broadcastClicks: false,
+      //   };
       default:
-        throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
+        throw new Error(`Unknown device type with hardware id ${plejdDevice.hardwareId}. --- PLEASE POST THIS AND THE NEXT LOG ROWS to https://github.com/icanos/hassio-plejd/issues/ --- `);
     }
   }
 

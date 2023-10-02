@@ -66,7 +66,7 @@ const getOutputDeviceDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
-  retain: true,
+  retain: true, // Discovery messages should be retained to account for HA restarts
   device: {
     identifiers: `${device.uniqueId}`,
     manufacturer: 'Plejd',
@@ -88,7 +88,7 @@ const getSceneDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   payload_on: 'ON',
   qos: 1,
-  retain: false,
+  retain: true,  // Discovery messages should be retained to account for HA restarts
 });
 
 const getInputDeviceTriggerDiscoveryPayload = (
@@ -98,9 +98,10 @@ const getInputDeviceTriggerDiscoveryPayload = (
   payload: `${inputDevice.input}`,
   '~': getBaseTopic(inputDevice.deviceId, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
+  retain: true,  // Discovery messages should be retained to account for HA restarts
+  subtype: `button_${inputDevice.input + 1}`,
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'button_short_press',
-  subtype: `button_${inputDevice.input + 1}`,
   device: {
     identifiers: `${inputDevice.deviceId}`,
     manufacturer: 'Plejd',
@@ -115,6 +116,7 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
   automation_type: 'trigger',
   '~': getBaseTopic(`${sceneDevice.uniqueId}_trig`, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
+  retain: true,  // Discovery messages should be retained to account for HA restarts
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'scene',
   subtype: 'trigger',
@@ -152,9 +154,13 @@ class MqttClient extends EventEmitter {
     logger.info('Initializing MQTT connection for Plejd addon');
 
     this.client = mqtt.connect(this.config.mqttBroker, {
+      clean: true, // We're moving not saving mqtt messages
       clientId: `hassio-plejd_${Math.random().toString(16).substr(2, 8)}`,
       password: this.config.mqttPassword,
-      protocolVersion: 4, // v5 not supported by HassIO Mosquitto
+      properties: {
+        sessionExpiryInterval: 120, // 2 minutes sessions for the QoS, after that old messages are discarded
+      },
+      protocolVersion: 5,
       queueQoSZero: true,
       username: this.config.mqttUsername,
     });
@@ -168,12 +174,12 @@ class MqttClient extends EventEmitter {
 
       this.client.subscribe(
         startTopics,
-        // Add below when mqtt v5 is supported in Mosquitto 1.6 or 2.0 and forward
-        // {
-        //   qos: 1,
-        //   nl: true,  // don't echo back messages sent
-        //   rap: true, // retain as published - don't force retain = 0
-        // },
+        {
+          qos: 1,
+          nl: true,  // don't echo back messages sent
+          rap: true, // retain as published - don't force retain = 0
+          rh: 0, // Retain handling 0 presumably ignores retained messages
+        },
         (err) => {
           if (err) {
             logger.error('Unable to subscribe to status topics', err);
@@ -183,7 +189,15 @@ class MqttClient extends EventEmitter {
         },
       );
 
-      this.client.subscribe(getSubscribePath(), (err) => {
+      this.client.subscribe(
+        getSubscribePath(), 
+        {
+          qos: 1,
+          nl: true,  // don't echo back messages sent
+          rap: true, // retain as published - don't force retain = 0
+          rh: 0, // Retain handling 0 presumably ignores retained messages
+        },
+        (err) => {
         if (err) {
           logger.error('Unable to subscribe to control topics');
         }
@@ -313,7 +327,7 @@ class MqttClient extends EventEmitter {
         getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.CONFIG),
         JSON.stringify(configPayload),
         {
-          retain: true,
+          retain: true,  // Discovery messages should be retained to account for HA restarts
           qos: 1,
         },
       );
@@ -322,7 +336,7 @@ class MqttClient extends EventEmitter {
           getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
           AVAILABLILITY.ONLINE,
           {
-            retain: true,
+            retain: true,  // Discovery messages should be retained to account for HA restarts
             qos: 1,
           },
         );
@@ -349,7 +363,7 @@ class MqttClient extends EventEmitter {
         getTopicName(inputDevice.uniqueId, MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.CONFIG),
         JSON.stringify(inputInputPayload),
         {
-          retain: true,
+          retain: true, // Discovery messages should be retained to account for HA restarts
           qos: 1,
         },
       );
@@ -369,7 +383,7 @@ class MqttClient extends EventEmitter {
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.CONFIG),
         JSON.stringify(sceneConfigPayload),
         {
-          retain: true,
+          retain: true, // Discovery messages should be retained to account for HA restarts
           qos: 1,
         },
       );
@@ -384,7 +398,7 @@ class MqttClient extends EventEmitter {
         ),
         JSON.stringify(sceneTriggerConfigPayload),
         {
-          retain: true,
+          retain: true, // Discovery messages should be retained to account for HA restarts
           qos: 1,
         },
       );
@@ -394,7 +408,7 @@ class MqttClient extends EventEmitter {
           getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
           AVAILABLILITY.ONLINE,
           {
-            retain: true,
+            retain: true, // Discovery messages should be retained to account for HA restarts
             qos: 1,
           },
         );
@@ -440,13 +454,13 @@ class MqttClient extends EventEmitter {
 
     const mqttType = device.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
     this.client.publish(getTopicName(device.uniqueId, mqttType, TOPIC_TYPES.STATE), payload, {
-      retain: true,
+      retain: false,
       qos: 1,
     });
     // this.client.publish(
     //   getTopicName(device.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
     //   AVAILABLILITY.ONLINE,
-    //   { retain: true, qos: 1 },
+    //   { retain: false, qos: 1 },
     // );
   }
 
@@ -456,7 +470,10 @@ class MqttClient extends EventEmitter {
    */
   buttonPressed(deviceId, deviceInput) {
     logger.verbose(`Button ${deviceInput} pressed for deviceId ${deviceId}`);
-    this.client.publish(getButtonEventTopic(deviceId), `${deviceInput}`, { qos: 1 });
+    this.client.publish(getButtonEventTopic(deviceId), `${deviceInput}`, { 
+      retain: false,
+      qos: 1, 
+    });
   }
 
   /**
@@ -464,7 +481,10 @@ class MqttClient extends EventEmitter {
    */
   sceneTriggered(sceneId) {
     logger.verbose(`Scene triggered: ${sceneId}`);
-    this.client.publish(getSceneEventTopic(sceneId), '', { qos: 1 });
+    this.client.publish(getSceneEventTopic(sceneId), '', { 
+      qos: 1,
+      retain: false,
+    });
   }
 }
 

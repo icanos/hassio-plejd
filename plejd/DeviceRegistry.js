@@ -49,6 +49,14 @@ class DeviceRegistry {
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
   addOutputDevice(outputDevice) {
+    const alreadyExistingBLEDevice = this.getOutputDeviceByBleOutputAddress(outputDevice.bleOutputAddress);
+    if (alreadyExistingBLEDevice) {
+      logger.warn(`Device with output id ${outputDevice.bleOutputAddress} already exists named ${alreadyExistingBLEDevice.name}. These two devices are probably grouped in the Plejd app. If this seems to be an error, please log a GitHub issue.`);
+      logger.info(`NOT adding ${outputDevice.name} to device registry`);
+      logger.verbose(`Details of device NOT added: ${JSON.stringify(outputDevice)}`);
+      return;
+    }
+
     this.outputDevices = {
       ...this.outputDevices,
       [outputDevice.uniqueId]: outputDevice,

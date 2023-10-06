@@ -39,6 +39,9 @@ const BLUEZ_DEVICE_ID = 'org.bluez.Device1';
 const GATT_SERVICE_ID = 'org.bluez.GattService1';
 const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
+const PAYLOAD_POSITION_OFFSET = 5;
+const DIM_LEVEL_POSITION_OFFSET = 7;
+
 const delay = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 class PlejBLEHandler extends EventEmitter {
@@ -804,7 +807,7 @@ class PlejBLEHandler extends EventEmitter {
     const encryptedData = value.value;
     const decoded = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, encryptedData);
 
-    if (decoded.length < 5) {
+    if (decoded.length < PAYLOAD_POSITION_OFFSET) {
       if (Logger.shouldLog('debug')) {
         // decoded.toString() could potentially be expensive
         logger.verbose(`Too short raw event ignored: ${decoded.toString('hex')}`);
@@ -817,13 +820,13 @@ class PlejBLEHandler extends EventEmitter {
     // Bytes 2-3 is Command/Request
     const cmd = decoded.readUInt16BE(3);
 
-    const state = decoded.length > 5 ? decoded.readUInt8(5) : 0;
+    const state = decoded.length > PAYLOAD_POSITION_OFFSET ? decoded.readUInt8(PAYLOAD_POSITION_OFFSET) : 0;
 
-    const dim = decoded.length > 7 ? decoded.readUInt8(7) : 0;
+    const dim = decoded.length > DIM_LEVEL_POSITION_OFFSET ? decoded.readUInt8(DIM_LEVEL_POSITION_OFFSET) : 0;
 
     if (Logger.shouldLog('silly')) {
       // Full dim level is 2 bytes, we could potentially use this
-      const dimFull = decoded.length > 7 ? decoded.readUInt16LE(6) : 0;
+      const dimFull = decoded.length > DIM_LEVEL_POSITION_OFFSET ? decoded.readUInt16LE(DIM_LEVEL_POSITION_OFFSET - 1) : 0;
       logger.silly(`Dim: ${dim.toString(16)}, full precision: ${dimFull.toString(16)}`);
     }
 
@@ -874,12 +877,22 @@ class PlejBLEHandler extends EventEmitter {
       data = { sceneId: scene.uniqueId };
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
+
+      if (decoded.length < PAYLOAD_POSITION_OFFSET + 4) {
+        if (Logger.shouldLog('debug')) {
+          // decoded.toString() could potentially be expensive
+          logger.verbose(`Too short time update event ignored: ${decoded.toString('hex')}`);
+        }
+        // ignore the notification since too small
+        return;
+      }
+  
       const now = new Date();
       // Guess Plejd timezone based on HA time zone
       const offsetSecondsGuess = now.getTimezoneOffset() * 60 + 250; // Todo: 4 min off
 
       // Plejd reports local unix timestamp adjust to local time zone
-      const plejdTimestampUTC = (decoded.readInt32LE(5) + offsetSecondsGuess) * 1000;
+      const plejdTimestampUTC = (decoded.readInt32LE(PAYLOAD_POSITION_OFFSET) + offsetSecondsGuess) * 1000;
       const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
       if (
         bleOutputAddress !== BLE_BROADCAST_DEVICE_ID ||
@@ -902,7 +915,7 @@ class PlejBLEHandler extends EventEmitter {
               this.connectedDeviceId,
               BLE_CMD_TIME_UPDATE,
               10,
-              (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), 5),
+              (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), PAYLOAD_POSITION_OFFSET),
             );
             try {
               this._write(payload);
@@ -954,8 +967,8 @@ class PlejBLEHandler extends EventEmitter {
     return this._createPayload(
       bleOutputAddress,
       command,
-      5 + Math.ceil(hexDataString.length / 2),
-      (payload) => payload.write(hexDataString, 5, 'hex'),
+      PAYLOAD_POSITION_OFFSET + Math.ceil(hexDataString.length / 2),
+      (payload) => payload.write(hexDataString, PAYLOAD_POSITION_OFFSET, 'hex'),
       requestResponseCommand,
     );
   }

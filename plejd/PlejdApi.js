@@ -332,17 +332,14 @@ class PlejdApi {
           dimmable: true,
           broadcastClicks: false,
         };
-      // DAL-01 is presumably a very special device
-      // Please open a new issue if you have ideas on how to handel
-      // Below could be use as testing, but since one device can have up to 64 slaves it probably won't work
-      // case 12:
-      //   return {
-      //     name: 'DAL-01',
-      //     description: 'Dali broadcast with dimmer and tuneable white support',
-      //     type: 'light',
-      //     dimmable: true,
-      //     broadcastClicks: false,
-      //   };
+      case 12:
+        return {
+          name: 'DAL-01',
+          description: 'Dali broadcast with dimmer and tuneable white support',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 14:
         return {
           name: 'DIM-01',
@@ -392,8 +389,35 @@ class PlejdApi {
           dimmable: true,
           broadcastClicks: false,
         };
+      case 167:
+        return {
+          name: 'DWN-01',
+          description: 'Smart tunable downlight with a built-in dimmer function, 8W',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
+      // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
+      // case
+      //   return {
+      //     name: 'DWN-02',
+      //     description: 'Smart tunable downlight with a built-in dimmer function, 8W',
+      //     type: 'light',
+      //     dimmable: true,
+      //     broadcastClicks: false,
+      //   };
+      // case
+      //   return {
+      //     name: 'OUT-01',
+      //     description: 'Outdoor wall light with built-in LED, 2x5W',
+      //     type: 'light',
+      //     dimmable: true,
+      //     broadcastClicks: false,
+      //   };
       default:
-        throw new Error(`Unknown device type with id ${plejdDevice.hardwareId}`);
+        throw new Error(
+          `Unknown device type with hardware id ${plejdDevice.hardwareId}. --- PLEASE POST THIS AND THE NEXT LOG ROWS to https://github.com/icanos/hassio-plejd/issues/ --- `,
+        );
     }
   }
 

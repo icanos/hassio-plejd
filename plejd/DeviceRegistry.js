@@ -7,6 +7,8 @@ class DeviceRegistry {
 
   /** @private @type {Object.<string, import('types/ApiSite').Device>} */
   devices = {};
+  /** @private @type {Object.<string, number>} */
+  mainBleIdByDeviceId = {};
   /** @private @type {Object.<string, string[]>} */
   outputDeviceUniqueIdsByRoomId = {};
   /** @private @type {Object.<number, string>} */
@@ -45,10 +47,26 @@ class DeviceRegistry {
     this.outputUniqueIdByBleOutputAddress[
       this.getUniqueBLEId(inputDevice.bleInputAddress, inputDevice.input)
     ] = inputDevice.uniqueId;
+
+    if (!this.mainBleIdByDeviceId[inputDevice.deviceId]) {
+      this.mainBleIdByDeviceId[inputDevice.deviceId] = inputDevice.bleInputAddress;
+    }
   }
 
   /** @param outputDevice {import('types/DeviceRegistry').OutputDevice} */
   addOutputDevice(outputDevice) {
+    const alreadyExistingBLEDevice = this.getOutputDeviceByBleOutputAddress(
+      outputDevice.bleOutputAddress,
+    );
+    if (alreadyExistingBLEDevice) {
+      logger.warn(
+        `Device with output id ${outputDevice.bleOutputAddress} already exists named ${alreadyExistingBLEDevice.name}. These two devices are probably grouped in the Plejd app. If this seems to be an error, please log a GitHub issue.`,
+      );
+      logger.info(`NOT adding ${outputDevice.name} to device registry`);
+      logger.verbose(`Details of device NOT added: ${JSON.stringify(outputDevice)}`);
+      return;
+    }
+
     this.outputDevices = {
       ...this.outputDevices,
       [outputDevice.uniqueId]: outputDevice,
@@ -61,6 +79,9 @@ class DeviceRegistry {
     );
 
     this.outputUniqueIdByBleOutputAddress[outputDevice.bleOutputAddress] = outputDevice.uniqueId;
+    if (!this.mainBleIdByDeviceId[outputDevice.deviceId]) {
+      this.mainBleIdByDeviceId[outputDevice.deviceId] = outputDevice.bleOutputAddress;
+    }
 
     if (!this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId]) {
       this.outputDeviceUniqueIdsByRoomId[outputDevice.roomId] = [];
@@ -169,6 +190,13 @@ class DeviceRegistry {
 
   getInputDeviceName(uniqueInputId) {
     return (this.inputDevices[uniqueInputId] || {}).name;
+  }
+
+  /**
+   * @param {string} deviceId
+   */
+  getMainBleIdByDeviceId(deviceId) {
+    return this.mainBleIdByDeviceId[deviceId];
   }
 
   /**

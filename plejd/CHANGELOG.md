@@ -1,6 +1,25 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## [0.10.0](https://github.com/icanos/hassio-plejd/tree/0.10.0)
+## [0.11.0](https://github.com/icanos/hassio-plejd/tree/0.11.0) (2023-10-06)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.10.0...0.11.0)
+
+**Closed issues:**
+
+- DWN-01 [\#287](https://github.com/icanos/hassio-plejd/issues/287)
+- Lights detected but cannot control them via HA. Going to unknown / unavailable in MQTT logbook [\#285](https://github.com/icanos/hassio-plejd/issues/285)
+- 0.10.0 breaks DAL-01 [\#284](https://github.com/icanos/hassio-plejd/issues/284)
+- Seems to just be looping [\#283](https://github.com/icanos/hassio-plejd/issues/283)
+- Failed to start discovery. Operation already in progress [\#282](https://github.com/icanos/hassio-plejd/issues/282)
+- Warning after HASS upgrade to 2023.8 [\#279](https://github.com/icanos/hassio-plejd/issues/279)
+- Discovery timeout because of gateway [\#278](https://github.com/icanos/hassio-plejd/issues/278)
+- Non-existing fields of connectedDevice are accessed in PlejdBLEHandler.js breaking time sync [\#265](https://github.com/icanos/hassio-plejd/issues/265)
+- Unable to retrieve session token response: Request failed with status code 404 [\#264](https://github.com/icanos/hassio-plejd/issues/264)
+- Used to work, can't find suitable bt device [\#263](https://github.com/icanos/hassio-plejd/issues/263)
+- Reconnecting loop keeps going after devices found, this makes them unavailable. [\#261](https://github.com/icanos/hassio-plejd/issues/261)
+- disconnecting after a few days [\#252](https://github.com/icanos/hassio-plejd/issues/252)
+
+## [0.10.0](https://github.com/icanos/hassio-plejd/tree/0.10.0) (2023-08-22)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.1...0.10.0)
 

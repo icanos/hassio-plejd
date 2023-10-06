@@ -47,7 +47,10 @@ class PlejBLEHandler extends EventEmitter {
   config;
   bleDevices = [];
   bus = null;
+  /** @type {import('types/ApiSite').Device} */
   connectedDevice = null;
+  /** @type Number? */
+  connectedDeviceId = null;
   consecutiveWriteFails;
   consecutiveReconnectAttempts = 0;
   /** @type {import('./DeviceRegistry')} */
@@ -140,6 +143,7 @@ class PlejBLEHandler extends EventEmitter {
 
     this.bleDevices = [];
     this.connectedDevice = null;
+    this.connectedDeviceId = null;
 
     this.characteristics = {
       data: null,
@@ -244,8 +248,8 @@ class PlejBLEHandler extends EventEmitter {
             await delay(this.config.connectionTimeout * 1000);
 
             // eslint-disable-next-line no-await-in-loop
-            const connectedPlejdDevice = await this._onDeviceConnected(plejd);
-            if (connectedPlejdDevice) {
+            const deviceWasConnected = await this._onDeviceConnected(plejd);
+            if (deviceWasConnected) {
               break;
             }
           }
@@ -284,7 +288,7 @@ class PlejBLEHandler extends EventEmitter {
         throw new Error('Could not connect to any Plejd device');
       }
 
-      logger.info(`BLE Connected to ${this.connectedDevice.name}`);
+      logger.info(`BLE Connected to ${this.connectedDevice.title}`);
 
       // Connected and authenticated, request current time and start ping
       if (this.config.updatePlejdClock) {
@@ -770,9 +774,12 @@ class PlejBLEHandler extends EventEmitter {
       return null;
     }
 
-    logger.info('Connected device is a Plejd device with the right characteristics.');
-
     this.connectedDevice = device.device;
+    this.connectedDeviceId = this.deviceRegistry.getMainBleIdByDeviceId(this.connectedDevice.deviceId);
+
+    logger.verbose('The connected Plejd device has the right charecteristics!');
+    logger.info(`Connected to Plejd device ${this.connectedDevice.title} (${this.connectedDevice.deviceId}, BLE id ${this.connectedDeviceId}).`);
+
     await this._authenticate();
 
     return this.connectedDevice;
@@ -887,12 +894,12 @@ class PlejBLEHandler extends EventEmitter {
           logger.warn(
             `Plejd clock time off by more than 1 minute. Reported time: ${plejdTime.toString()}, diff ${diffSeconds} seconds. Time will be set hourly.`,
           );
-          if (this.connectedDevice && bleOutputAddress === this.connectedDevice.id) {
+          if (this.connectedDevice && bleOutputAddress === this.connectedDeviceId) {
             // Requested time sync by us
             const newLocalTimestamp = now.getTime() / 1000 - offsetSecondsGuess;
             logger.info(`Setting time to ${now.toString()}`);
             const payload = this._createPayload(
-              this.connectedDevice.id,
+              this.connectedDeviceId,
               BLE_CMD_TIME_UPDATE,
               10,
               (pl) => pl.writeInt32LE(Math.trunc(newLocalTimestamp), 5),

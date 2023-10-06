@@ -778,10 +778,14 @@ class PlejBLEHandler extends EventEmitter {
     }
 
     this.connectedDevice = device.device;
-    this.connectedDeviceId = this.deviceRegistry.getMainBleIdByDeviceId(this.connectedDevice.deviceId);
+    this.connectedDeviceId = this.deviceRegistry.getMainBleIdByDeviceId(
+      this.connectedDevice.deviceId,
+    );
 
     logger.verbose('The connected Plejd device has the right charecteristics!');
-    logger.info(`Connected to Plejd device ${this.connectedDevice.title} (${this.connectedDevice.deviceId}, BLE id ${this.connectedDeviceId}).`);
+    logger.info(
+      `Connected to Plejd device ${this.connectedDevice.title} (${this.connectedDevice.deviceId}, BLE id ${this.connectedDeviceId}).`,
+    );
 
     await this._authenticate();
 
@@ -820,13 +824,18 @@ class PlejBLEHandler extends EventEmitter {
     // Bytes 2-3 is Command/Request
     const cmd = decoded.readUInt16BE(3);
 
-    const state = decoded.length > PAYLOAD_POSITION_OFFSET ? decoded.readUInt8(PAYLOAD_POSITION_OFFSET) : 0;
+    const state =
+      decoded.length > PAYLOAD_POSITION_OFFSET ? decoded.readUInt8(PAYLOAD_POSITION_OFFSET) : 0;
 
-    const dim = decoded.length > DIM_LEVEL_POSITION_OFFSET ? decoded.readUInt8(DIM_LEVEL_POSITION_OFFSET) : 0;
+    const dim =
+      decoded.length > DIM_LEVEL_POSITION_OFFSET ? decoded.readUInt8(DIM_LEVEL_POSITION_OFFSET) : 0;
 
     if (Logger.shouldLog('silly')) {
       // Full dim level is 2 bytes, we could potentially use this
-      const dimFull = decoded.length > DIM_LEVEL_POSITION_OFFSET ? decoded.readUInt16LE(DIM_LEVEL_POSITION_OFFSET - 1) : 0;
+      const dimFull =
+        decoded.length > DIM_LEVEL_POSITION_OFFSET
+          ? decoded.readUInt16LE(DIM_LEVEL_POSITION_OFFSET - 1)
+          : 0;
       logger.silly(`Dim: ${dim.toString(16)}, full precision: ${dimFull.toString(16)}`);
     }
 
@@ -877,7 +886,6 @@ class PlejBLEHandler extends EventEmitter {
       data = { sceneId: scene.uniqueId };
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_TIME_UPDATE) {
-
       if (decoded.length < PAYLOAD_POSITION_OFFSET + 4) {
         if (Logger.shouldLog('debug')) {
           // decoded.toString() could potentially be expensive
@@ -886,13 +894,14 @@ class PlejBLEHandler extends EventEmitter {
         // ignore the notification since too small
         return;
       }
-  
+
       const now = new Date();
       // Guess Plejd timezone based on HA time zone
       const offsetSecondsGuess = now.getTimezoneOffset() * 60 + 250; // Todo: 4 min off
 
       // Plejd reports local unix timestamp adjust to local time zone
-      const plejdTimestampUTC = (decoded.readInt32LE(PAYLOAD_POSITION_OFFSET) + offsetSecondsGuess) * 1000;
+      const plejdTimestampUTC =
+        (decoded.readInt32LE(PAYLOAD_POSITION_OFFSET) + offsetSecondsGuess) * 1000;
       const diffSeconds = Math.round((plejdTimestampUTC - now.getTime()) / 1000);
       if (
         bleOutputAddress !== BLE_BROADCAST_DEVICE_ID ||

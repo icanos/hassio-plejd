@@ -398,7 +398,7 @@ class PlejdApi {
           broadcastClicks: false,
         };
       // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
-      // case 
+      // case
       //   return {
       //     name: 'DWN-02',
       //     description: 'Smart tunable downlight with a built-in dimmer function, 8W',
@@ -406,7 +406,7 @@ class PlejdApi {
       //     dimmable: true,
       //     broadcastClicks: false,
       //   };
-      // case 
+      // case
       //   return {
       //     name: 'OUT-01',
       //     description: 'Outdoor wall light with built-in LED, 2x5W',
@@ -415,7 +415,9 @@ class PlejdApi {
       //     broadcastClicks: false,
       //   };
       default:
-        throw new Error(`Unknown device type with hardware id ${plejdDevice.hardwareId}. --- PLEASE POST THIS AND THE NEXT LOG ROWS to https://github.com/icanos/hassio-plejd/issues/ --- `);
+        throw new Error(
+          `Unknown device type with hardware id ${plejdDevice.hardwareId}. --- PLEASE POST THIS AND THE NEXT LOG ROWS to https://github.com/icanos/hassio-plejd/issues/ --- `,
+        );
     }
   }
 

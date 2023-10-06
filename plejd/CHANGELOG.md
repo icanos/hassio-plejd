@@ -19,6 +19,10 @@
 - Reconnecting loop keeps going after devices found, this makes them unavailable. [\#261](https://github.com/icanos/hassio-plejd/issues/261)
 - disconnecting after a few days [\#252](https://github.com/icanos/hassio-plejd/issues/252)
 
+**Merged pull requests:**
+
+- Release 0.11.0 [\#290](https://github.com/icanos/hassio-plejd/pull/290) ([SweVictor](https://github.com/SweVictor))
+
 ## [0.10.0](https://github.com/icanos/hassio-plejd/tree/0.10.0) (2023-08-22)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.9.1...0.10.0)

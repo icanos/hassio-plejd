@@ -397,15 +397,15 @@ class PlejdApi {
           dimmable: true,
           broadcastClicks: false,
         };
+      case 199:
+        return {
+          name: 'DWN-02',
+          description: 'Smart tunable downlight with a built-in dimmer function, 8W',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
-      // case
-      //   return {
-      //     name: 'DWN-02',
-      //     description: 'Smart tunable downlight with a built-in dimmer function, 8W',
-      //     type: 'light',
-      //     dimmable: true,
-      //     broadcastClicks: false,
-      //   };
       // case
       //   return {
       //     name: 'OUT-01',

@@ -4,7 +4,7 @@ const mqtt = require('mqtt');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
-const startTopics = ['hass/status', 'homeassistant/status'];
+// const startTopics = ['hass/status', 'homeassistant/status'];
 
 const logger = Logger.getLogger('plejd-mqtt');
 
@@ -171,37 +171,25 @@ class MqttClient extends EventEmitter {
     this.client.on('connect', () => {
       logger.info('Connected to MQTT.');
 
-      this.client.subscribe(
-        startTopics,
-        {
-          qos: 1,
-          nl: true, // don't echo back messages sent
-          rap: true, // retain as published - don't force retain = 0
-          rh: 0, // Retain handling 0 presumably ignores retained messages
-        },
-        (err) => {
-          if (err) {
-            logger.error('Unable to subscribe to status topics', err);
-          }
+      this.emit(MqttClient.EVENTS.connected);
 
-          this.emit(MqttClient.EVENTS.connected);
-        },
-      );
+      // Testing to skip listening to HA birth messages all together
+      // this.client.subscribe(
+      //   startTopics,
+      //   {
+      //     qos: 1,
+      //     nl: true, // don't echo back messages sent
+      //     rap: true, // retain as published - don't force retain = 0
+      //     rh: 0, // Retain handling 0 presumably ignores retained messages
+      //   },
+      //   (err) => {
+      //     if (err) {
+      //       logger.error('Unable to subscribe to status topics', err);
+      //     }
 
-      this.client.subscribe(
-        getSubscribePath(),
-        {
-          qos: 1,
-          nl: true, // don't echo back messages sent
-          rap: true, // retain as published - don't force retain = 0
-          rh: 0, // Retain handling 0 presumably ignores retained messages
-        },
-        (err) => {
-          if (err) {
-            logger.error('Unable to subscribe to control topics');
-          }
-        },
-      );
+      //     this.emit(MqttClient.EVENTS.connected);
+      //   },
+      // );
     });
 
     this.client.on('close', () => {
@@ -211,64 +199,63 @@ class MqttClient extends EventEmitter {
 
     this.client.on('message', (topic, message) => {
       try {
-        if (startTopics.includes(topic)) {
-          logger.info('Home Assistant has started. lets do discovery.');
-          this.emit(MqttClient.EVENTS.connected);
-        } else {
-          logger.verbose(`Received mqtt message on ${topic}`);
-          const decodedTopic = decodeTopic(topic);
-          if (decodedTopic) {
-            /** @type {import('types/DeviceRegistry').OutputDevice} */
-            let device;
+        // if (startTopics.includes(topic)) {
+        //   logger.info('Home Assistant has started. lets do discovery.');
+        // } else {
+        logger.verbose(`Received mqtt message on ${topic}`);
+        const decodedTopic = decodeTopic(topic);
+        if (decodedTopic) {
+          /** @type {import('types/DeviceRegistry').OutputDevice} */
+          let device;
 
-            if (decodedTopic.type === MQTT_TYPES.SCENE) {
-              logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
-              device = this.deviceRegistry.getScene(decodedTopic.id);
-            } else {
-              logger.verbose(`Getting device ${decodedTopic.id} from registry`);
-              device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
-            }
-
-            const messageString = message.toString();
-            const isJsonMessage = messageString.startsWith('{');
-            const command = isJsonMessage ? JSON.parse(messageString) : messageString;
-
-            const deviceName = device ? device.name : '';
-
-            switch (decodedTopic.command) {
-              case 'set':
-                logger.verbose(
-                  `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
-                );
-
-                if (device) {
-                  this.emit(MqttClient.EVENTS.stateChanged, device, command);
-                } else {
-                  logger.warn(
-                    `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
-                  );
-                }
-                break;
-              case 'state':
-              case 'config':
-              case 'availability':
-                logger.verbose(
-                  `Sent mqtt ${decodedTopic.command} command for ${
-                    decodedTopic.type
-                  }, ${deviceName} (${decodedTopic.id}). ${
-                    decodedTopic.command === 'availability' ? messageString : ''
-                  }`,
-                );
-                break;
-              default:
-                logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
-            }
+          if (decodedTopic.type === MQTT_TYPES.SCENE) {
+            logger.verbose(`Getting scene ${decodedTopic.id} from registry`);
+            device = this.deviceRegistry.getScene(decodedTopic.id);
           } else {
-            logger.verbose(
-              `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
-            );
+            logger.verbose(`Getting device ${decodedTopic.id} from registry`);
+            device = this.deviceRegistry.getOutputDevice(decodedTopic.id);
           }
+
+          const messageString = message.toString();
+          const isJsonMessage = messageString.startsWith('{');
+          const command = isJsonMessage ? JSON.parse(messageString) : messageString;
+
+          const deviceName = device ? device.name : '';
+
+          switch (decodedTopic.command) {
+            case 'set':
+              logger.verbose(
+                `Got mqtt SET command for ${decodedTopic.type}, ${deviceName} (${decodedTopic.id}): ${messageString}`,
+              );
+
+              if (device) {
+                this.emit(MqttClient.EVENTS.stateChanged, device, command);
+              } else {
+                logger.warn(
+                  `Device for topic ${topic} not found! Can happen if HA calls previously existing devices.`,
+                );
+              }
+              break;
+            case 'state':
+            case 'config':
+            case 'availability':
+              logger.verbose(
+                `Sent mqtt ${decodedTopic.command} command for ${
+                  decodedTopic.type
+                }, ${deviceName} (${decodedTopic.id}). ${
+                  decodedTopic.command === 'availability' ? messageString : ''
+                }`,
+              );
+              break;
+            default:
+              logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
+          }
+        } else {
+          logger.verbose(
+            `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
+          );
         }
+        // }
       } catch (err) {
         logger.error(`Error processing mqtt message on topic ${topic}`, err);
       }
@@ -433,17 +420,32 @@ class MqttClient extends EventEmitter {
         },
       );
 
-      setTimeout(() => {
-        this.client.publish(
-          getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
-          AVAILABLITY.ONLINE,
-          {
-            retain: true, // Discovery messages should be retained to account for HA restarts
-            qos: 1,
-          },
-        );
-      }, 2000);
+      // setTimeout(() => {
+      this.client.publish(
+        getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
+        AVAILABLITY.ONLINE,
+        {
+          retain: true, // Discovery messages should be retained to account for HA restarts
+          qos: 1,
+        },
+      );
+      // }, 2000);
     });
+
+    this.client.subscribe(
+      getSubscribePath(),
+      {
+        qos: 1,
+        nl: true, // don't echo back messages sent
+        rap: true, // retain as published - don't force retain = 0
+        rh: 0, // Retain handling 0 presumably ignores retained messages
+      },
+      (err) => {
+        if (err) {
+          logger.error('Unable to subscribe to control topics');
+        }
+      },
+    );
   }
 
   /**

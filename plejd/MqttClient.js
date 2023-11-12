@@ -43,9 +43,8 @@ const getSceneEventTopic = (/** @type {string} */ sceneId) =>
   `${getTopicName(getTriggerUniqueId(sceneId), MQTT_TYPES.DEVICE_AUTOMATION, TOPIC_TYPES.STATE)}`;
 const getSubscribePath = () => `${discoveryPrefix}/+/${nodeId}/#`;
 
-const decodeTopicRegexp = new RegExp(
-  /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/,
-);
+const decodeTopicRegexp =
+  /(?<prefix>[^[]+)\/(?<type>.+)\/plejd\/(?<id>.+)\/(?<command>config|state|availability|set|scene)/;
 
 const decodeTopic = (topic) => {
   const matches = decodeTopicRegexp.exec(topic);

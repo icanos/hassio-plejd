@@ -42,7 +42,10 @@ const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 const PAYLOAD_POSITION_OFFSET = 5;
 const DIM_LEVEL_POSITION_OFFSET = 7;
 
-const delay = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
+const delay = (timeout) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, timeout);
+  });
 
 class PlejBLEHandler extends EventEmitter {
   adapter;
@@ -303,11 +306,14 @@ class PlejBLEHandler extends EventEmitter {
 
       // After we've authenticated, we need to hook up the event listener
       // for changes to lastData.
-      this.characteristics.lastDataProperties.on('PropertiesChanged', (
-        iface,
-        properties,
-        // invalidated (third param),
-      ) => this._onLastDataUpdated(iface, properties));
+      this.characteristics.lastDataProperties.on(
+        'PropertiesChanged',
+        (
+          iface,
+          properties,
+          // invalidated (third param),
+        ) => this._onLastDataUpdated(iface, properties),
+      );
       this.characteristics.lastData.StartNotify();
       this.consecutiveReconnectAttempts = 0;
       this.emit(PlejBLEHandler.EVENTS.connected);

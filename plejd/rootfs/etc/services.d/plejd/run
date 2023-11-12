@@ -5,6 +5,7 @@
 # ==============================================================================
 
 bashio::log.info 'Starting the Plejd service...'
+bashio::log.info 'Docker env updated 2023-10-17...'
 
 # Change working directory
 cd /plejd || bashio::exit.nok 'Unable to change working directory'

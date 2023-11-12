@@ -24,7 +24,7 @@ const TOPIC_TYPES = {
   CONFIG: 'config',
   STATE: 'state',
   AVAILABILITY: 'availability',
-  COMMAND: 'set',
+  SET: 'set',
 };
 
 const getBaseTopic = (/** @type { string } */ uniqueId, /** @type { string } */ mqttDeviceType) =>
@@ -61,7 +61,7 @@ const getOutputDeviceDiscoveryPayload = (
   unique_id: device.uniqueId,
   '~': getBaseTopic(device.uniqueId, device.type),
   state_topic: `~/${TOPIC_TYPES.STATE}`,
-  command_topic: `~/${TOPIC_TYPES.COMMAND}`,
+  command_topic: `~/${TOPIC_TYPES.SET}`,
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
@@ -83,11 +83,11 @@ const getSceneDiscoveryPayload = (
   name: sceneDevice.name,
   unique_id: sceneDevice.uniqueId,
   '~': getBaseTopic(sceneDevice.uniqueId, MQTT_TYPES.SCENE),
-  command_topic: `~/${TOPIC_TYPES.COMMAND}`,
+  command_topic: `~/${TOPIC_TYPES.SET}`,
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   payload_on: 'ON',
   qos: 1,
-  retain: true,  // Discovery messages should be retained to account for HA restarts
+  retain: true, // Discovery messages should be retained to account for HA restarts
 });
 
 const getInputDeviceTriggerDiscoveryPayload = (
@@ -97,7 +97,7 @@ const getInputDeviceTriggerDiscoveryPayload = (
   payload: `${inputDevice.input}`,
   '~': getBaseTopic(inputDevice.deviceId, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
-  retain: true,  // Discovery messages should be retained to account for HA restarts
+  retain: true, // Discovery messages should be retained to account for HA restarts
   subtype: `button_${inputDevice.input + 1}`,
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'button_short_press',
@@ -115,7 +115,7 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
   automation_type: 'trigger',
   '~': getBaseTopic(`${sceneDevice.uniqueId}_trig`, MQTT_TYPES.DEVICE_AUTOMATION),
   qos: 1,
-  retain: true,  // Discovery messages should be retained to account for HA restarts
+  retain: true, // Discovery messages should be retained to account for HA restarts
   topic: `~/${TOPIC_TYPES.STATE}`,
   type: 'scene',
   subtype: 'trigger',
@@ -128,7 +128,7 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
 });
 
 const getMqttStateString = (/** @type {boolean} */ state) => (state ? 'ON' : 'OFF');
-const AVAILABLILITY = { ONLINE: 'online', OFFLINE: 'offline' };
+const AVAILABLITY = { ONLINE: 'online', OFFLINE: 'offline' };
 
 class MqttClient extends EventEmitter {
   /** @type {import('DeviceRegistry')} */
@@ -153,7 +153,7 @@ class MqttClient extends EventEmitter {
     logger.info('Initializing MQTT connection for Plejd addon');
 
     this.client = mqtt.connect(this.config.mqttBroker, {
-      clean: true, // We're moving not saving mqtt messages
+      clean: true, // We're moving to not saving mqtt messages
       clientId: `hassio-plejd_${Math.random().toString(16).substr(2, 8)}`,
       password: this.config.mqttPassword,
       properties: {
@@ -175,7 +175,7 @@ class MqttClient extends EventEmitter {
         startTopics,
         {
           qos: 1,
-          nl: true,  // don't echo back messages sent
+          nl: true, // don't echo back messages sent
           rap: true, // retain as published - don't force retain = 0
           rh: 0, // Retain handling 0 presumably ignores retained messages
         },
@@ -189,18 +189,19 @@ class MqttClient extends EventEmitter {
       );
 
       this.client.subscribe(
-        getSubscribePath(), 
+        getSubscribePath(),
         {
           qos: 1,
-          nl: true,  // don't echo back messages sent
+          nl: true, // don't echo back messages sent
           rap: true, // retain as published - don't force retain = 0
           rh: 0, // Retain handling 0 presumably ignores retained messages
         },
         (err) => {
-        if (err) {
-          logger.error('Unable to subscribe to control topics');
-        }
-      });
+          if (err) {
+            logger.error('Unable to subscribe to control topics');
+          }
+        },
+      );
     });
 
     this.client.on('close', () => {
@@ -288,7 +289,7 @@ class MqttClient extends EventEmitter {
       const mqttType = outputDevice.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
       this.client.publish(
         getTopicName(outputDevice.uniqueId, mqttType, 'availability'),
-        AVAILABLILITY.OFFLINE,
+        AVAILABLITY.OFFLINE,
         {
           retain: true,
           qos: 1,
@@ -300,7 +301,7 @@ class MqttClient extends EventEmitter {
     allSceneDevices.forEach((sceneDevice) => {
       this.client.publish(
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
-        AVAILABLILITY.OFFLINE,
+        AVAILABLITY.OFFLINE,
         {
           retain: true,
           qos: 1,
@@ -317,29 +318,59 @@ class MqttClient extends EventEmitter {
       logger.debug(`Sending discovery for ${outputDevice.name}`);
 
       const configPayload = getOutputDeviceDiscoveryPayload(outputDevice);
-      logger.info(
-        `Discovered ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
-      );
-
+      // Publish mqtt CONFIG message which will create the device in Home Assistant
       const mqttType = outputDevice.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
       this.client.publish(
         getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.CONFIG),
         JSON.stringify(configPayload),
         {
-          retain: true,  // Discovery messages should be retained to account for HA restarts
+          retain: true, // Discovery messages should be retained to account for HA and MQTT broker restarts
           qos: 1,
         },
       );
-      setTimeout(() => {
-        this.client.publish(
-          getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
-          AVAILABLILITY.ONLINE,
-          {
-            retain: true,  // Discovery messages should be retained to account for HA restarts
-            qos: 1,
-          },
-        );
-      }, 2000);
+
+      logger.info(
+        `Sent discovery message for ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
+      );
+
+      logger.debug(
+        `Forcefully removing any retained SET, STATE, and AVAILABILITY messages for ${outputDevice.name}`,
+      );
+
+      // Forcefully remove retained (from Home Assistant) SET messages (wanted state from HA)
+      this.client.publish(getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.SET), null, {
+        retain: true, // Retain true to remove previously retained message
+        qos: 1,
+      });
+
+      // Forcefully remove retained (from us, v0.11 and before) STATE messages
+      this.client.publish(getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.STATE), null, {
+        retain: true, // Retain true to remove previously retained message
+        qos: 1,
+      });
+
+      // Forcefully remove retained (from us, v0.11 and before) AVAILABILITY messages
+      this.client.publish(
+        getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABLILITY),
+        null,
+        {
+          retain: true, // Retain true to remove previously retained message
+          qos: 1,
+        },
+      );
+
+      logger.debug(`Removal messages sent for ${outputDevice.name}`);
+
+      logger.debug(`Setting device as AVAILABILITY = ONLINE: ${outputDevice.name}`);
+
+      this.client.publish(
+        getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
+        AVAILABLITY.ONLINE,
+        {
+          retain: false, // Availability messages should NOT be retained
+          qos: 1,
+        },
+      );
     });
 
     const allInputDevices = this.deviceRegistry.getAllInputDevices();
@@ -405,7 +436,7 @@ class MqttClient extends EventEmitter {
       setTimeout(() => {
         this.client.publish(
           getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
-          AVAILABLILITY.ONLINE,
+          AVAILABLITY.ONLINE,
           {
             retain: true, // Discovery messages should be retained to account for HA restarts
             qos: 1,
@@ -458,7 +489,7 @@ class MqttClient extends EventEmitter {
     });
     // this.client.publish(
     //   getTopicName(device.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
-    //   AVAILABLILITY.ONLINE,
+    //   AVAILABILITY.ONLINE,
     //   { retain: false, qos: 1 },
     // );
   }
@@ -469,9 +500,9 @@ class MqttClient extends EventEmitter {
    */
   buttonPressed(deviceId, deviceInput) {
     logger.verbose(`Button ${deviceInput} pressed for deviceId ${deviceId}`);
-    this.client.publish(getButtonEventTopic(deviceId), `${deviceInput}`, { 
+    this.client.publish(getButtonEventTopic(deviceId), `${deviceInput}`, {
       retain: false,
-      qos: 1, 
+      qos: 1,
     });
   }
 
@@ -480,7 +511,7 @@ class MqttClient extends EventEmitter {
    */
   sceneTriggered(sceneId) {
     logger.verbose(`Scene triggered: ${sceneId}`);
-    this.client.publish(getSceneEventTopic(sceneId), '', { 
+    this.client.publish(getSceneEventTopic(sceneId), '', {
       qos: 1,
       retain: false,
     });

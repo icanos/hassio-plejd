@@ -663,7 +663,7 @@ class PlejBLEHandler extends EventEmitter {
     logger.info('Requesting current Plejd time...');
 
     const payload = this._createHexPayload(
-      this.connectedDevice.id,
+      this.connectedDeviceId,
       BLE_CMD_TIME_UPDATE,
       '',
       BLE_REQUEST_RESPONSE,

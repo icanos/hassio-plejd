@@ -75,12 +75,14 @@ const getOutputDeviceDiscoveryPayload = (
     sw_version: device.version,
   },
   ...(device.type === MQTT_TYPES.LIGHT ? { brightness: device.dimmable, schema: 'json' } : {}),
-  ...(device.type === MQTT_TYPES.LIGHT && device.colorTempSettings?.behavior === "adjustable" ? {
-    color_mode: true,
-    min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,
-    max_mireds: 1000000 / device.colorTempSettings.maxTemperatureLimit,
-    supported_color_modes: ["color_temp"],
-  } : {}),
+  ...(device.type === MQTT_TYPES.LIGHT && device.colorTempSettings?.behavior === 'adjustable'
+    ? {
+        color_mode: true,
+        min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,
+        max_mireds: 1000000 / device.colorTempSettings.maxTemperatureLimit,
+        supported_color_modes: ['color_temp'],
+      }
+    : {}),
 });
 
 const getSceneDiscoveryPayload = (

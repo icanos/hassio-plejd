@@ -11,10 +11,10 @@ const API_SITE_LIST_URL = 'functions/getSiteList';
 const API_SITE_DETAILS_URL = 'functions/getSiteById';
 
 const TRAITS = {
-  NO_LOAD: 0,
-  NON_DIMMABLE: 9,
-  DIMMABLE: 11,
-  DIMMABLE_COLORTEMP: 15,
+  NO_LOAD: 0,              // 0b0000
+  NON_DIMMABLE: 9,         // 0b1001
+  DIMMABLE: 11,            // 0b1011
+  DIMMABLE_COLORTEMP: 15,  // 0b1111
 };
 
 const logger = Logger.getLogger('plejd-api');

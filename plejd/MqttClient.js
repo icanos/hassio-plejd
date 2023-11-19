@@ -4,7 +4,7 @@ const mqtt = require('mqtt');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
-// const startTopics = ['hass/status', 'homeassistant/status'];
+const startTopics = ['hass/status', 'homeassistant/status'];
 
 const logger = Logger.getLogger('plejd-mqtt');
 
@@ -171,25 +171,27 @@ class MqttClient extends EventEmitter {
     this.client.on('connect', () => {
       logger.info('Connected to MQTT.');
 
+      // Emit MQTT CONNECTED internally and send discovery messages
       this.emit(MqttClient.EVENTS.connected);
 
-      // Testing to skip listening to HA birth messages all together
-      // this.client.subscribe(
-      //   startTopics,
-      //   {
-      //     qos: 1,
-      //     nl: true, // don't echo back messages sent
-      //     rap: true, // retain as published - don't force retain = 0
-      //     rh: 0, // Retain handling 0 presumably ignores retained messages
-      //   },
-      //   (err) => {
-      //     if (err) {
-      //       logger.error('Unable to subscribe to status topics', err);
-      //     }
+      // Whenever Home Assistant sends birth messages
+      // Emit MQTT CONNECTED internally and re-send discovery messages
+      this.client.subscribe(
+        startTopics,
+        {
+          qos: 1,
+          nl: true, // don't echo back messages sent
+          rap: true, // retain as published - don't force retain = 0
+          rh: 0, // Retain handling 0 presumably ignores retained messages
+        },
+        (err) => {
+          if (err) {
+            logger.error('Unable to subscribe to status topics', err);
+          }
 
-      //     this.emit(MqttClient.EVENTS.connected);
-      //   },
-      // );
+          this.emit(MqttClient.EVENTS.connected);
+        },
+      );
     });
 
     this.client.on('close', () => {
@@ -278,7 +280,7 @@ class MqttClient extends EventEmitter {
         getTopicName(outputDevice.uniqueId, mqttType, 'availability'),
         AVAILABLITY.OFFLINE,
         {
-          retain: true,
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
@@ -290,7 +292,7 @@ class MqttClient extends EventEmitter {
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
         AVAILABLITY.OFFLINE,
         {
-          retain: true,
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
@@ -420,16 +422,15 @@ class MqttClient extends EventEmitter {
         },
       );
 
-      // setTimeout(() => {
       this.client.publish(
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
         AVAILABLITY.ONLINE,
         {
-          retain: true, // Discovery messages should be retained to account for HA restarts
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
-      // }, 2000);
+      
     });
 
     this.client.subscribe(

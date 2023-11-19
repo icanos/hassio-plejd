@@ -14,6 +14,7 @@ const TRAITS = {
   NO_LOAD: 0,
   NON_DIMMABLE: 9,
   DIMMABLE: 11,
+  DIMMABLE_COLORTEMP: 15,
 };
 
 const logger = Logger.getLogger('plejd-api');
@@ -480,8 +481,15 @@ class PlejdApi {
             (x) => x.deviceId === device.deviceId,
           );
 
-          const dimmable = device.traits === TRAITS.DIMMABLE;
-          // dimmable = settings.dimCurve !== 'NonDimmable';
+          const dimmable =
+            device.traits === TRAITS.DIMMABLE || device.traits === TRAITS.DIMMABLE_COLORTEMP;
+
+          // Alternate approach looks at outputSettings.dimCurve and outputSettings.predefinedLoad
+          // 1. outputSettings.dimCurve === null: Not dimmable
+          // 2. outputSettings.dimCurve NOT IN ["NonDimmable", "RelayNormal"]: Dimmable
+          // 3. outputSettings.predefinedLoad !== null && outputSettings.predefinedLoad.loadType === "DWN": Dimmable
+
+          const colorTemp = outputSettings.colorTemperature?.behavior === 'adjustable';
 
           try {
             const decodedDeviceType = this._getDeviceType(plejdDevice);

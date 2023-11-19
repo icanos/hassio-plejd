@@ -494,7 +494,9 @@ class PlejdApi {
           // 2. outputSettings.dimCurve NOT IN ["NonDimmable", "RelayNormal"]: Dimmable
           // 3. outputSettings.predefinedLoad !== null && outputSettings.predefinedLoad.loadType === "DWN": Dimmable
 
-          const colorTemp = outputSettings.colorTemperature?.behavior === 'adjustable';
+          const colorTemp =
+            outputSettings.colorTemperature &&
+            outputSettings.colorTemperature.behavior === 'adjustable';
 
           try {
             const decodedDeviceType = this._getDeviceType(plejdDevice);

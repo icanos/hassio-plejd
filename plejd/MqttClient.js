@@ -75,7 +75,9 @@ const getOutputDeviceDiscoveryPayload = (
     sw_version: device.version,
   },
   ...(device.type === MQTT_TYPES.LIGHT ? { brightness: device.dimmable, schema: 'json' } : {}),
-  ...(device.type === MQTT_TYPES.LIGHT && device.colorTempSettings?.behavior === 'adjustable'
+  ...(device.type === MQTT_TYPES.LIGHT &&
+  device.colorTempSettings &&
+  device.colorTempSettings.behavior === 'adjustable'
     ? {
         color_mode: true,
         min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,

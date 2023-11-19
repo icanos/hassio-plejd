@@ -339,8 +339,10 @@ class PlejdApi {
           description: 'Dali broadcast with dimmer and tuneable white support',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
+      // 13: Non-dimmable generic light
       case 14:
         return {
           name: 'DIM-01',
@@ -388,6 +390,7 @@ class PlejdApi {
           description: '1-channel LED dimmer/driver with tuneable white, 10 W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       case 167:
@@ -396,6 +399,7 @@ class PlejdApi {
           description: 'Smart tunable downlight with a built-in dimmer function, 8W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       case 199:
@@ -404,6 +408,7 @@ class PlejdApi {
           description: 'Smart tunable downlight with a built-in dimmer function, 8W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
@@ -499,6 +504,8 @@ class PlejdApi {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             const outputDevice = {
               bleOutputAddress,
+              colorTemp,
+              colorTempSettings: outputSettings.colorTemperature,
               deviceId: device.deviceId,
               dimmable,
               name: device.title,
@@ -604,6 +611,7 @@ class PlejdApi {
         const newDevice = {
           bleOutputAddress: roomAddress,
           deviceId: null,
+          colorTemp: false,
           dimmable,
           name: room.title,
           output: undefined,
@@ -633,6 +641,7 @@ class PlejdApi {
       /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
         bleOutputAddress: sceneNum,
+        colorTemp: false,
         deviceId: undefined,
         dimmable: false,
         name: scene.title,

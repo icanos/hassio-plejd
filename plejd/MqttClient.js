@@ -65,7 +65,7 @@ const getOutputDeviceDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
-  retain: true, // Discovery messages should be retained to account for HA restarts
+  retain: false, // State update messages from HA should not be retained
   device: {
     identifiers: `${device.uniqueId}`,
     manufacturer: 'Plejd',
@@ -87,7 +87,7 @@ const getSceneDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   payload_on: 'ON',
   qos: 1,
-  retain: true, // Discovery messages should be retained to account for HA restarts
+  retain: false, // State update messages from HA should not be retained
 });
 
 const getInputDeviceTriggerDiscoveryPayload = (
@@ -199,9 +199,6 @@ class MqttClient extends EventEmitter {
 
     this.client.on('message', (topic, message) => {
       try {
-        // if (startTopics.includes(topic)) {
-        //   logger.info('Home Assistant has started. lets do discovery.');
-        // } else {
         logger.verbose(`Received mqtt message on ${topic}`);
         const decodedTopic = decodeTopic(topic);
         if (decodedTopic) {
@@ -299,6 +296,8 @@ class MqttClient extends EventEmitter {
   }
 
   sendDiscoveryToHomeAssistant() {
+    // -------- DISCOVERY FOR OUTPUT DEVICES -------------
+
     const allOutputDevices = this.deviceRegistry.getAllOutputDevices();
     logger.info(`Sending discovery for ${allOutputDevices.length} Plejd output devices`);
     allOutputDevices.forEach((outputDevice) => {
@@ -319,6 +318,11 @@ class MqttClient extends EventEmitter {
       logger.info(
         `Sent discovery message for ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
       );
+
+
+      
+    
+      // -------- CLEANUP RETAINED MESSAGES FOR OUTPUT DEVICES -------------
 
       logger.debug(
         `Forcefully removing any retained SET, STATE, and AVAILABILITY messages for ${outputDevice.name}`,
@@ -348,6 +352,7 @@ class MqttClient extends EventEmitter {
 
       logger.debug(`Removal messages sent for ${outputDevice.name}`);
 
+      
       logger.debug(`Setting device as AVAILABILITY = ONLINE: ${outputDevice.name}`);
 
       this.client.publish(
@@ -359,6 +364,8 @@ class MqttClient extends EventEmitter {
         },
       );
     });
+
+    // -------- DISCOVERY FOR INPUT DEVICES -------------
 
     const allInputDevices = this.deviceRegistry.getAllInputDevices();
     logger.info(`Sending discovery for ${allInputDevices.length} Plejd input devices`);
@@ -385,6 +392,8 @@ class MqttClient extends EventEmitter {
         },
       );
     });
+
+    // -------- DISCOVERY FOR SCENE DEVICES -------------
 
     const allSceneDevices = this.deviceRegistry.getAllSceneDevices();
     logger.info(`Sending discovery for ${allSceneDevices.length} Plejd scene devices`);
@@ -431,6 +440,10 @@ class MqttClient extends EventEmitter {
       );
       // }, 2000);
     });
+
+
+    
+    // -------- SUBSCRIBE TO INCOMING MESSAGES -------------
 
     this.client.subscribe(
       getSubscribePath(),

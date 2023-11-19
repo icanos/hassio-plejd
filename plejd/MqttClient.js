@@ -75,6 +75,12 @@ const getOutputDeviceDiscoveryPayload = (
     sw_version: device.version,
   },
   ...(device.type === MQTT_TYPES.LIGHT ? { brightness: device.dimmable, schema: 'json' } : {}),
+  ...(device.type === MQTT_TYPES.LIGHT && device.colorTempSettings?.behavior === "adjustable" ? {
+    color_mode: true,
+    min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,
+    max_mireds: 1000000 / device.colorTempSettings.maxTemperatureLimit,
+    supported_color_modes: ["color_temp"],
+  } : {}),
 });
 
 const getSceneDiscoveryPayload = (
@@ -319,9 +325,6 @@ class MqttClient extends EventEmitter {
         `Sent discovery message for ${outputDevice.typeName} (${outputDevice.type}) named ${outputDevice.name} (${outputDevice.bleOutputAddress} : ${outputDevice.uniqueId}).`,
       );
 
-
-      
-    
       // -------- CLEANUP RETAINED MESSAGES FOR OUTPUT DEVICES -------------
 
       logger.debug(
@@ -352,7 +355,6 @@ class MqttClient extends EventEmitter {
 
       logger.debug(`Removal messages sent for ${outputDevice.name}`);
 
-      
       logger.debug(`Setting device as AVAILABILITY = ONLINE: ${outputDevice.name}`);
 
       this.client.publish(
@@ -441,8 +443,6 @@ class MqttClient extends EventEmitter {
       // }, 2000);
     });
 
-
-    
     // -------- SUBSCRIBE TO INCOMING MESSAGES -------------
 
     this.client.subscribe(

@@ -487,6 +487,7 @@ class PlejdApi {
           // 3. outputSettings.predefinedLoad !== null && outputSettings.predefinedLoad.loadType === "DWN": Dimmable
 
           const colorTemp =
+            outputSettings &&
             outputSettings.colorTemperature &&
             outputSettings.colorTemperature.behavior === 'adjustable';
 
@@ -507,7 +508,7 @@ class PlejdApi {
             const outputDevice = {
               bleOutputAddress,
               colorTemp,
-              colorTempSettings: outputSettings.colorTemperature,
+              colorTempSettings: outputSettings ? outputSettings.colorTemperature : null,
               deviceId: device.deviceId,
               dimmable,
               name: device.title,

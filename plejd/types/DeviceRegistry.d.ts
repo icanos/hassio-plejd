@@ -1,9 +1,13 @@
 /* eslint-disable no-use-before-define */
 
+import { OutputSettingColorTemperature } from "./ApiSite";
+
 export type OutputDevices = { [deviceIdAndOutput: string]: OutputDevice };
 
 export interface OutputDevice {
   bleOutputAddress: number;
+  colorTemp: boolean;
+  colorTempSettings?: OutputSettingColorTemperature
   deviceId: string;
   dim?: number;
   dimmable: boolean;

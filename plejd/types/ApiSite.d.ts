@@ -260,6 +260,7 @@ export interface OutputSetting {
   deviceParseId: string;
   siteId: string;
   predefinedLoad: OutputSettingPredefinedLoad;
+  colorTemperature: OutputSettingColorTemperature;
   createdAt: Date;
   updatedAt: Date;
   dimMin: number;
@@ -320,6 +321,16 @@ export interface OutputSettingPredefinedLoad {
   className: PredefinedLoadClassName;
   supportMessage?: SupportMessage;
   filters?: Filters;
+}
+
+export interface OutputSettingColorTemperature {
+  "minTemperature": number,
+  "maxTemperature": number,
+  "slewRate": number,
+  "minTemperatureLimit": number,
+  "maxTemperatureLimit": number,
+  "behavior": "adjustable" | "UNKNOWN", // Todo: Fill with alternate values after finding more site jsons. UNKNOWN is placeholder for now.
+  "startTemperature": number
 }
 
 export interface PredefinedLoadACL {

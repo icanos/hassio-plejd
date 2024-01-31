@@ -13,6 +13,7 @@ export interface OutputDevice {
   roomName: string | undefined;
   state: boolean | undefined;
   type: string;
+  typeDescription: string;
   typeName: string;
   version: string;
   uniqueId: string;
@@ -27,6 +28,7 @@ export interface InputDevice {
   input: number;
   roomId: string;
   type: string;
+  typeDescription: string;
   typeName: string;
   version: string;
   uniqueId: string;

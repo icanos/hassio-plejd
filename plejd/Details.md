@@ -1,25 +1,21 @@
 # Details regarding installation
 
-If you can reach your Home Assistant at [http://homeassistant.local:8123](http://homeassistant.local:8123) the links below should work.
-
 ## Mosquitto
 
-Head over to Supervisor -> Add-on Store and search for `mosquitto broker`.  
-Install it and then start [mosquito addon link](http://homeassistant.local:8123/hassio/addon/core_mosquitto/info)
+Head over to [Supervisor -> Add-on Store](https://my.home-assistant.io/redirect/supervisor_store/) and find the `Mosquitto broker`.
+Install and start it.
 
-## Add api user for Mosquito
+## Add api user for Mosquitto
 
-Add a Home Assistant user for the Plejd addon to be able to connect to Mosquito [Configuration -> Users](http://homeassistant.local:8123/config/users)  
+Add a Home Assistant user for the Plejd addon to be able to connect to Mosquitto [Configuration -> Users](https://my.home-assistant.io/redirect/users/)
 Call the user e.g. `mqtt-api-user`, set a password and save
 
 ## Plejd
 
-Follow the `Easy Installation` in [README.MD](plejd/README.md)  
-And `Configuration Parameters` on the same page.  
-The only parameters needing a value are
+Follow the `Easy Installation` in [README.MD](./README.md)And `Configuration Parameters` on the same page.The only parameters needing a value are
 
 - site
-- username
+- username (typically email address)
 - password
 - mqttUsername e.g. `mqtt-api-user`
 - mqttPassword
@@ -28,9 +24,8 @@ Now you can start the Plejd add-on
 
 ## Where are the lights?
 
-Head over to [Configuration -> Integrations](http://homeassistant.local:8123/config/integrations) and click Configure on MQTT  
-After this step a new `Mosquito broker` should appear on the same page. If everything was setup correctly. It will list your lights under
-`1 entity`/`n entities`
+Head over to [Configuration -> Integrations](https://my.home-assistant.io/redirect/integrations/) and the [Configure MQTT](https://my.home-assistant.io/redirect/config_mqtt/).
+After this step a new Mosquitto broker `core-mosquitto` should appear on the [MQTT Page](https://my.home-assistant.io/redirect/integration/?domain=mqtt). If everything was setup correctly. It will list your lights under devices/entities subheading.
 
 ## Running the Plejd add-on in VirtualBox on Windows
 

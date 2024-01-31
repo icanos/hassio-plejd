@@ -8,10 +8,8 @@ Thanks to [ha-plejd](https://github.com/klali/ha-plejd) for inspiration.
 Disclaimer:
 I am in no way affiliated with Plejd and am solely doing this as a hobby project.
 
-**Did you like this? Consider helping me continue the development:**  
+**Did you like this? Consider helping me continue the development:**
 [Buy me a coffee](https://www.buymeacoffee.com/w1ANTUb)
-
-[![Gitter](https://badges.gitter.im/hassio-plejd/community.svg)](https://gitter.im/hassio-plejd/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Getting started
 
@@ -39,11 +37,9 @@ Supported Plejd devices are detailed in a specific "Plejd devices" section below
 
 ### Easy Installation
 
-Browse to your Home Assistant installation in a web browser and click on `Supervisor` in the navigation bar to the left.
-
-- Open the Home Assistant web console and click `Configuration` in the menu on the left side.
-- Click on `Add-ons, Backups & Supervisor`
-- Click on `Add-on Store` in the bottom left of that page.
+- Browse to your Home Assistant installation in a web browser and click on `Settings` in the navigation bar to the left.
+- Click on `Add-ons`
+- Click on `Add-on Store` in the bottom right corner of that page.
 - Click on the three vertical dots to the far right and chose `Repositories`
 - Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
@@ -54,12 +50,13 @@ Browse to your Home Assistant installation in a web browser and click on `Superv
 
 Browse your Home Assistant installation using a tool that allows you to manage files, for eg. SCP, SMB, SFTP client, etc.
 
-- Open the `/addon` directory
+- Open the `/addons` directory
 - Create a new folder named `hassio-plejd`
-- Copy all files from this repository into that newly created one.
-- Open the Home Assistant web console and click `Supervisor` in the menu on the left side.
-- Click on `Add-on Store` in the top navigation bar of that page.
-- Click on the refresh button in the upper right corner.
+- Copy all files from the `plejd` subdirectory of the add-on repository (not the top-level which contains `repository.json`) into that newly created one.
+- Browse to your Home Assistant installation in a web browser and click on `Settings` in the navigation bar to the left.
+- Click on `Add-ons`
+- Click on `Add-on Store` in the bottom right corner of that page.
+- Click on the three vertical dots to the far right and chose `Check for updates`
 - A new Local Add-on should appear named Plejd. Open that and install.
 - Enjoy!
 
@@ -69,7 +66,7 @@ To install older versions, follow the "Manual Installation" instructions above, 
 
 ### More details regarding installation
 
-Please look at [The details](./Details.md) separate document for more detailed instructions regarding Home Asssistant, Mosquitto, etc.
+Please see the separate document [Details](./Details.md) for more detailed instructions regarding Home Asssistant, Mosquitto, etc.
 
 ### Startup error message
 
@@ -86,8 +83,8 @@ However, the add-on still works as expected and this is something I'm looking in
 
 ### Simple MQTT Configurations
 
-When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.  
-Create a user in [Configuration -> Users](http://homeassistant.local:8123/config/users) named e.g. mqtt-api-user
+When you are using the official Mosquitto Broker from Home Assistant Add-on store, minimal configuration is required.
+Create a user in [Configuration -&gt; Users](https://my.home-assistant.io/redirect/users/) named e.g. mqtt-api-user
 
 | Parameter    | Value                                            |
 | ------------ | ------------------------------------------------ |
@@ -117,7 +114,7 @@ The plugin needs you to configure some settings before working. You find these o
 | Parameter            | Value                                                                                                                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | site                 | Name of your Plejd site, the name is displayed in the Plejd app (top bar).                                                                                                               |
-| username             | Username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
+| username             | Email/username of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                               |
 | password             | Password of your Plejd account, this is used to fetch the crypto key and devices from the Plejd API.                                                                                     |
 | mqttBroker           | URL of the MQTT Broker, eg. mqtt://                                                                                                                                                      |
 | mqttUsername         | Username of the MQTT broker                                                                                                                                                              |
@@ -132,28 +129,31 @@ The plugin needs you to configure some settings before working. You find these o
 
 Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
 
-| Device | Plejd Configuration | Home Assistant Role | Comment                                                               |
-| ------ | ------------------- | ------------------- | --------------------------------------------------------------------- |
-| CTR-01 | Relay, Light        | Light               |                                                                       |
-| CTR-01 | Relay, Other        | Switch              |                                                                       |
-| REL-01 | Relay, Light        | Light               |                                                                       |
-| REL-01 | Relay, Other        | Switch              |                                                                       |
-| REL-02 | Relay, Light        | Light               |                                                                       |
-| REL-02 | Relay, Other        | Switch              |                                                                       |
-| SPR-01 | Relay, Light        | Light               | Not tested, not supported                                             |
-| SPR-01 | Relay, Other        | Switch              | Not tested, not supported                                             |
-| DIM-01 | -                   | Light               |                                                                       |
-| DIM-02 | -                   | Light               |                                                                       |
-| LED-10 | -                   | Light               |                                                                       |
-| DAL-01 | -                   | -                   | Not tested, not supported                                             |
-| WPH-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
-| WRT-01 | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
-| GWY-01 | -                   | -                   |                                                                       |
-| RTR-01 | -                   | -                   |                                                                       |
-| Scene  | -                   | Scene               |                                                                       |
-| Scene  | -                   | Device Automation   | type:scene, subtype:trigger                                           |
-| Room   | -                   | Area                | Can be changed by Home Assistant                                      |
-| Room   | -                   | Light               | If includeRoomsAsLights is set to true                                |
+| Device    | Plejd Configuration | Home Assistant Role | Comment                                                               |
+| --------- | ------------------- | ------------------- | --------------------------------------------------------------------- |
+| CTR-01    | Relay, Light        | Light               |                                                                       |
+| CTR-01    | Relay, Other        | Switch              |                                                                       |
+| REL-01    | Relay, Light        | Light               |                                                                       |
+| REL-01    | Relay, Other        | Switch              |                                                                       |
+| REL-02    | Relay, Light        | Light               |                                                                       |
+| REL-02    | Relay, Other        | Switch              |                                                                       |
+| SPR-01    | Relay, Light        | Light               |                                                                       |
+| SPR-01    | Relay, Other        | Switch              |                                                                       |
+| DIM-01    | -                   | Light               |                                                                       |
+| DIM-01-2P | -                   | Light               |                                                                       |
+| DIM-02    | -                   | Light               |                                                                       |
+| LED-10    | -                   | Light               |                                                                       |
+| LED-75    | -                   | Light               |                                                                       |
+| DAL-01    | -                   | Light               |                                                                       |
+| DWN-01    | -                   | Light               |                                                                       |
+| WPH-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
+| WRT-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
+| GWY-01    | -                   | -                   |                                                                       |
+| RTR-01    | -                   | -                   |                                                                       |
+| Scene     | -                   | Scene               |                                                                       |
+| Scene     | -                   | Device Automation   | type:scene, subtype:trigger                                           |
+| Room      | -                   | Area                | Can be changed by Home Assistant                                      |
+| Room      | -                   | Light               | If includeRoomsAsLights is set to true                                |
 
 ## Transitions
 
@@ -274,7 +274,7 @@ Out of the box you can for example view elapsed time by selecting multiple lines
 ## License
 
 ```
-Copyright 2019 Marcus Westin <marcus@sekurbit.se>
+Copyright 2023 Marcus Westin <marcus@sekurbit.se>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

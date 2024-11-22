@@ -32,6 +32,7 @@ The add-on has been tested on the following platforms:
 - Windows 10 Pro host / Oracle VirtualBox 6.1 / Home Assistant VBox image / Deltaco BT-118 with Cambridge Silicon Radio chipset / Windows + Zadig to change driver to WinUSB
 - Windows 10 host / Oracle Virtualbox 6.1 / Home Assistant VBox image / ASUS BT400
 - Mac OS Catalina 10.15.1 with Node v. 13.2.0
+- Home Assistant Yellow with RPI 4 compute module / Built-in BT
 
 Supported Plejd devices are detailed in a specific "Plejd devices" section below.
 

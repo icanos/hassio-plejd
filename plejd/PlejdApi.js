@@ -381,6 +381,14 @@ class PlejdApi {
           dimmable: false,
           broadcastClicks: false,
         };
+      case 22:
+        return {
+          name: 'DIM-01',
+          description: '1-channel dimmer LED, 300 VA ("LC" hardware/chip version)',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 36:
         return {
           name: 'LED-75',

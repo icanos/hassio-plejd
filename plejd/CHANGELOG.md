@@ -1,5 +1,23 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.12.0](https://github.com/icanos/hassio-plejd/tree/0.12.0)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.11.0...0.12.0)
+
+**Closed issues:**
+
+- New DIM-01: Unknown device type with hardware id 22 [\#317](https://github.com/icanos/hassio-plejd/issues/317)
+- Error trying to create output device: Error: Unknown device type with hardware id 22. [\#312](https://github.com/icanos/hassio-plejd/issues/312)
+- plejd to mqtt without HA [\#303](https://github.com/icanos/hassio-plejd/issues/303)
+- Problem with bluetooth connection [\#293](https://github.com/icanos/hassio-plejd/issues/293)
+- BLE issues / Disconnects started happening after update to HAOS 11 [\#292](https://github.com/icanos/hassio-plejd/issues/292)
+- Plejd addon takes up a lof of space in backups [\#216](https://github.com/icanos/hassio-plejd/issues/216)
+
+**Merged pull requests:**
+
+- Update PlejdApi.js [\#318](https://github.com/icanos/hassio-plejd/pull/318) ([TomAafloen](https://github.com/TomAafloen))
+- Added Home assistant Yellow to tested devices [\#308](https://github.com/icanos/hassio-plejd/pull/308) ([mathiasbk](https://github.com/mathiasbk))
+
 ## [0.11.0](https://github.com/icanos/hassio-plejd/tree/0.11.0) (2023-10-06)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.10.0...0.11.0)

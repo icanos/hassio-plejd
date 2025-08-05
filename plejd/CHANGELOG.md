@@ -1,5 +1,13 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.13.0](https://github.com/icanos/hassio-plejd/tree/0.13.0)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.12.0...0.13.0)
+
+**Closed issues:**
+
+- DWN-02 [\#313](https://github.com/icanos/hassio-plejd/issues/313)
+
 ## [0.12.0](https://github.com/icanos/hassio-plejd/tree/0.12.0)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.11.0...0.12.0)

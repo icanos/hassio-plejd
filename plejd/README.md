@@ -147,6 +147,7 @@ Plejd output devices typically appears as either lights or switches in Home Assi
 | LED-75    | -                   | Light               |                                                                       |
 | DAL-01    | -                   | Light               |                                                                       |
 | DWN-01    | -                   | Light               |                                                                       |
+| DWN-02    | -                   | Light               |                                                                       |
 | WPH-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
 | WRT-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
 | GWY-01    | -                   | -                   |                                                                       |

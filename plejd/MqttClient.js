@@ -79,7 +79,6 @@ const getOutputDeviceDiscoveryPayload = (
   device.colorTempSettings &&
   device.colorTempSettings.behavior === 'adjustable'
     ? {
-        color_mode: true,
         min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,
         max_mireds: 1000000 / device.colorTempSettings.maxTemperatureLimit,
         supported_color_modes: ['color_temp'],
@@ -337,12 +336,6 @@ class MqttClient extends EventEmitter {
 
       // Forcefully remove retained (from Home Assistant) SET messages (wanted state from HA)
       this.client.publish(getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.SET), null, {
-        retain: true, // Retain true to remove previously retained message
-        qos: 1,
-      });
-
-      // Forcefully remove retained (from us, v0.11 and before) STATE messages
-      this.client.publish(getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.STATE), null, {
         retain: true, // Retain true to remove previously retained message
         qos: 1,
       });

@@ -1,6 +1,33 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## [0.13.0](https://github.com/icanos/hassio-plejd/tree/0.13.0)
+## [0.14.0](https://github.com/icanos/hassio-plejd/tree/HEAD) (2025-08-05)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.13.0...0.14.0)
+
+**Implemented enhancements:**
+
+- Think through addon startup, MQTT QoS, repeated availability messages etc [\#170](https://github.com/icanos/hassio-plejd/issues/170)
+
+**Closed issues:**
+
+- Add handling for SPR-01 [\#310](https://github.com/icanos/hassio-plejd/issues/310)
+- Anyone care to update this addon? [\#307](https://github.com/icanos/hassio-plejd/issues/307)
+- Error 404 [\#306](https://github.com/icanos/hassio-plejd/issues/306)
+- Could not connect to any Plejd device. Starting reconnect loop... [\#305](https://github.com/icanos/hassio-plejd/issues/305)
+- Rpi 4B BLE setting [\#299](https://github.com/icanos/hassio-plejd/issues/299)
+- DWN-01 is not dimmable from Home Assistant [\#295](https://github.com/icanos/hassio-plejd/issues/295)
+- Light Persistence [\#294](https://github.com/icanos/hassio-plejd/issues/294)
+- Enheter växlar läge vid omstart [\#291](https://github.com/icanos/hassio-plejd/issues/291)
+- Looking for DWN-02 and OUT-01 owners! [\#289](https://github.com/icanos/hassio-plejd/issues/289)
+- Issues with connecting after restarting HA [\#274](https://github.com/icanos/hassio-plejd/issues/274)
+- Plejd Add-ons stops communicating with Bluetooth USB [\#267](https://github.com/icanos/hassio-plejd/issues/267)
+- Reboot turns on all lights. [\#218](https://github.com/icanos/hassio-plejd/issues/218)
+
+**Merged pull requests:**
+
+- Add experimental parsing for color temp support from Plejd API [\#298](https://github.com/icanos/hassio-plejd/pull/298) ([SweVictor](https://github.com/SweVictor))
+
+## [0.13.0](https://github.com/icanos/hassio-plejd/tree/0.13.0) (2025-08-05)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.12.0...0.13.0)
 
@@ -8,7 +35,7 @@
 
 - DWN-02 [\#313](https://github.com/icanos/hassio-plejd/issues/313)
 
-## [0.12.0](https://github.com/icanos/hassio-plejd/tree/0.12.0)
+## [0.12.0](https://github.com/icanos/hassio-plejd/tree/0.12.0) (2025-08-04)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.11.0...0.12.0)
 

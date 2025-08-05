@@ -11,9 +11,10 @@ const API_SITE_LIST_URL = 'functions/getSiteList';
 const API_SITE_DETAILS_URL = 'functions/getSiteById';
 
 const TRAITS = {
-  NO_LOAD: 0,
-  NON_DIMMABLE: 9,
-  DIMMABLE: 11,
+  NO_LOAD: 0, // 0b0000
+  NON_DIMMABLE: 9, // 0b1001
+  DIMMABLE: 11, // 0b1011
+  DIMMABLE_COLORTEMP: 15, // 0b1111
 };
 
 const logger = Logger.getLogger('plejd-api');
@@ -338,8 +339,10 @@ class PlejdApi {
           description: 'Dali broadcast with dimmer and tuneable white support',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
+      // 13: Non-dimmable generic light
       case 14:
         return {
           name: 'DIM-01',
@@ -395,6 +398,7 @@ class PlejdApi {
           description: '1-channel LED dimmer/driver with tuneable white, 10 W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       case 167:
@@ -403,6 +407,7 @@ class PlejdApi {
           description: 'Smart tunable downlight with a built-in dimmer function, 8W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       case 199:
@@ -411,6 +416,7 @@ class PlejdApi {
           description: 'Smart tunable downlight with a built-in dimmer function, 8W',
           type: 'light',
           dimmable: true,
+          colorTemp: true,
           broadcastClicks: false,
         };
       // PLEASE CREATE AN ISSUE WITH THE HARDWARE ID if you own one of these devices!
@@ -480,8 +486,18 @@ class PlejdApi {
             (x) => x.deviceId === device.deviceId,
           );
 
-          const dimmable = device.traits === TRAITS.DIMMABLE;
-          // dimmable = settings.dimCurve !== 'NonDimmable';
+          const dimmable =
+            device.traits === TRAITS.DIMMABLE || device.traits === TRAITS.DIMMABLE_COLORTEMP;
+
+          // Alternate approach looks at outputSettings.dimCurve and outputSettings.predefinedLoad
+          // 1. outputSettings.dimCurve === null: Not dimmable
+          // 2. outputSettings.dimCurve NOT IN ["NonDimmable", "RelayNormal"]: Dimmable
+          // 3. outputSettings.predefinedLoad !== null && outputSettings.predefinedLoad.loadType === "DWN": Dimmable
+
+          const colorTemp =
+            outputSettings &&
+            outputSettings.colorTemperature &&
+            outputSettings.colorTemperature.behavior === 'adjustable';
 
           try {
             const decodedDeviceType = this._getDeviceType(plejdDevice);
@@ -499,6 +515,8 @@ class PlejdApi {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             const outputDevice = {
               bleOutputAddress,
+              colorTemp,
+              colorTempSettings: outputSettings ? outputSettings.colorTemperature : null,
               deviceId: device.deviceId,
               dimmable,
               name: device.title,
@@ -604,6 +622,7 @@ class PlejdApi {
         const newDevice = {
           bleOutputAddress: roomAddress,
           deviceId: null,
+          colorTemp: false,
           dimmable,
           name: room.title,
           output: undefined,
@@ -633,6 +652,7 @@ class PlejdApi {
       /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
         bleOutputAddress: sceneNum,
+        colorTemp: false,
         deviceId: undefined,
         dimmable: false,
         name: scene.title,

@@ -65,7 +65,7 @@ const getOutputDeviceDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   optimistic: false,
   qos: 1,
-  retain: false, // State update messages from HA should not be retained
+  retain: true, // Discovery messages should be retained to account for HA restarts
   device: {
     identifiers: `${device.uniqueId}`,
     manufacturer: 'Plejd',
@@ -96,7 +96,7 @@ const getSceneDiscoveryPayload = (
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
   payload_on: 'ON',
   qos: 1,
-  retain: false, // State update messages from HA should not be retained
+  retain: true, // Discovery messages should be retained to account for HA restarts
 });
 
 const getInputDeviceTriggerDiscoveryPayload = (
@@ -284,7 +284,7 @@ class MqttClient extends EventEmitter {
         getTopicName(outputDevice.uniqueId, mqttType, 'availability'),
         AVAILABLITY.OFFLINE,
         {
-          retain: true,
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
@@ -296,7 +296,7 @@ class MqttClient extends EventEmitter {
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
         AVAILABLITY.OFFLINE,
         {
-          retain: true,
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
@@ -428,20 +428,17 @@ class MqttClient extends EventEmitter {
         },
       );
 
-      // setTimeout(() => {
       this.client.publish(
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
         AVAILABLITY.ONLINE,
         {
-          retain: true, // Discovery messages should be retained to account for HA restarts
+          retain: false, // Availability messages should NOT be retained
           qos: 1,
         },
       );
-      // }, 2000);
     });
 
     // -------- SUBSCRIBE TO INCOMING MESSAGES -------------
-
     this.client.subscribe(
       getSubscribePath(),
       {

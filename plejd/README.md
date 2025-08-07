@@ -43,7 +43,7 @@ Supported Plejd devices are detailed in a specific "Plejd devices" section below
 - Click on `Add-ons`
 - Click on `Add-on Store` in the bottom right corner of that page.
 - Click on the three vertical dots to the far right and chose `Repositories`
-- Paste the URL to this repo https://github.com/icanos/hassio-plejd.git in the `Add` field and hit `Add`.
+- Paste the URL to this repo <https://github.com/icanos/hassio-plejd.git> in the `Add` field and hit `Add`.
 - Scroll down and you should find a Plejd add-on that can be installed. Open that and install.
 - Configure hassio-plejd (see below).
 - Enjoy!
@@ -74,7 +74,7 @@ Please see the separate document [Details](./Details.md) for more detailed instr
 
 When starting the add-on, the log displays this message:
 
-```
+```log
 parse error: Expected string key before ':' at line 1, column 4
 [08:56:24] ERROR: Unknown HTTP error occured
 ```
@@ -98,7 +98,7 @@ Create a user in [Configuration -&gt; Users](https://my.home-assistant.io/redire
 
 For more advanced instllations, you need to add the MQTT integration to Home Assistant either by going to Configuration -> Integrations and clicking the Add Integration button, or by adding the following to your `configuration.yaml` file:
 
-```
+```yaml
 mqtt:
   broker: [point to your broker IP eg. 'mqtt://localhost']
   username: [username of mqtt broker]
@@ -193,18 +193,19 @@ If you're having issues to get the addon working, there are a few things you can
   - Plejd log will show something like `discovered light (DIM-01) named ....`
   - State change messages originate from the Plejd Bluetooth connection, so if you get those you should be able to listen to Plejd state changes as well as being able to set states!
   - Initial sync may take many minutes until all devices have the correct on/off/brightness states in HA
+- MQTT in Home Assistant will send birth and will messages that this addon listens to. If you have cases where Home Assistant sends these before this addon starts, consider reconfiguring Home Assistant MQTT to retain birth and will messages. See <https://www.home-assistant.io/integrations/mqtt/>
 - One Plejd device means max one BLE connection, meaning using the Plejd app over BT will disconnect the addon BLE connection
   - It seems you can kick yourself out (by connecting using the app) even when you have multiple devices if the app happens to connect to the same device as the addon is using
 
-## I want voice control!
+## I want voice control
 
 With the Google Home integration in Home Assistant, you can get voice control for your Plejd lights right away, check this out for more information:
-https://www.home-assistant.io/integrations/google_assistant/
+<https://www.home-assistant.io/integrations/google_assistant/>
 
-### I don't want voice, I want HomeKit!
+### I don't want voice, I want HomeKit
 
 Check this out for more information on how you can get your Plejd lights controlled using HomeKit:
-https://www.home-assistant.io/integrations/homekit/
+<https://www.home-assistant.io/integrations/homekit/>
 
 ## Developing
 
@@ -276,7 +277,7 @@ Out of the box you can for example view elapsed time by selecting multiple lines
 
 ## License
 
-```
+```text
 Copyright 2023 Marcus Westin <marcus@sekurbit.se>
 
 Licensed under the Apache License, Version 2.0 (the "License");

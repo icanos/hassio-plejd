@@ -1,6 +1,17 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## [0.14.0](https://github.com/icanos/hassio-plejd/tree/HEAD) (2025-08-05)
+## [0.15.0](https://github.com/icanos/hassio-plejd/tree/0.15.0) (2025-08-07)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.13.0...HEAD)
+
+**Closed issues:**
+
+- Out-02 listed as unknown device \(OUT02U hardware id 135.\) [\#314](https://github.com/icanos/hassio-plejd/issues/314)
+- Add handling for EXT-01 \(hardware id 19\) [\#309](https://github.com/icanos/hassio-plejd/issues/309)
+- It has been working flawlessly for several years but now ... Uh no , no Plejd device !!! [\#302](https://github.com/icanos/hassio-plejd/issues/302)
+- \[Support\] Bluetooth connectivity lost due to onWriteFailed? [\#286](https://github.com/icanos/hassio-plejd/issues/286)
+
+## [0.14.0](https://github.com/icanos/hassio-plejd/tree/0.14.0) (2025-08-05)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.13.0...0.14.0)
 

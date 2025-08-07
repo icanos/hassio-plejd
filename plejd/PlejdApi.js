@@ -401,6 +401,16 @@ class PlejdApi {
           colorTemp: true,
           broadcastClicks: false,
         };
+      case 135:
+        return {
+          name: 'OUT-02', // Specifically the hardware id is from a OUT-02-U, with outlet
+          description:
+            'OUT-02 is a smart outdoor wall luminaire with tunable white (2,200–4,000K), built-in LED and dimmer. The product is available in two versions: OUT-02-U, with built-in outlet (two sockets), and OUT-02, without outlet.',
+          type: 'light',
+          dimmable: true,
+          colorTemp: true,
+          broadcastClicks: false,
+        };
       case 167:
         return {
           name: 'DWN-01',

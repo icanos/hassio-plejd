@@ -375,6 +375,14 @@ class PlejdApi {
           dimmable: false,
           broadcastClicks: false,
         };
+      case 19:
+        return {
+          name: 'EXT-01',
+          description: 'Plejd mesh extender and battery backup',
+          type: 'extender',
+          dimmable: false,
+          broadcastClicks: false,
+        };
       case 20:
         return {
           // Unknown, pre-release (?) version, kept for backwards compatibility. See https://github.com/icanos/hassio-plejd/issues/250
@@ -557,7 +565,7 @@ class PlejdApi {
           }
         }
       } else {
-        // The device does not have an output. It can be assumed to be a WPH-01 or a WRT-01
+        // The device does not have an output. It can be assumed to be a WPH-01, WRT-01, or EXT-01
         // Filter inputSettings for available buttons
         const inputSettings = this.siteDetails.inputSettings.filter(
           (x) => x.deviceId === device.deviceId,

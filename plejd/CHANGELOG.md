@@ -1,8 +1,16 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.16.0](https://github.com/icanos/hassio-plejd/tree/0.16.0) (2025-08-07)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.15.0...0.16.0)
+
+**Merged pull requests:**
+
+- Improve MQTT retain behavior [\#321](https://github.com/icanos/hassio-plejd/pull/321) ([SweVictor](https://github.com/SweVictor))
+
 ## [0.15.0](https://github.com/icanos/hassio-plejd/tree/0.15.0) (2025-08-07)
 
-[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.13.0...HEAD)
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.14.0...0.15.0)
 
 **Closed issues:**
 

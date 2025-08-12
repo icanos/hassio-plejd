@@ -79,8 +79,9 @@ const getOutputDeviceDiscoveryPayload = (
   device.colorTempSettings &&
   device.colorTempSettings.behavior === 'adjustable'
     ? {
-        min_mireds: 1000000 / device.colorTempSettings.minTemperatureLimit,
-        max_mireds: 1000000 / device.colorTempSettings.maxTemperatureLimit,
+        color_temp_kelvin: true,
+        min_kelvin: device.colorTempSettings.minTemperatureLimit,
+        max_kelvin: device.colorTempSettings.maxTemperatureLimit,
         supported_color_modes: ['color_temp'],
       }
     : {}),
@@ -457,7 +458,7 @@ class MqttClient extends EventEmitter {
 
   /**
    * @param {string} uniqueOutputId
-   * @param {{ state: boolean; brightness?: number; }} data
+   * @param {{ state: boolean; brightness?: number; color?: number}} data
    */
   updateOutputState(uniqueOutputId, data) {
     const device = this.deviceRegistry.getOutputDevice(uniqueOutputId);
@@ -470,7 +471,7 @@ class MqttClient extends EventEmitter {
     logger.verbose(
       `Updating state for ${device.name}: ${data.state}${
         data.brightness ? `, dim: ${data.brightness}` : ''
-      }`,
+      }${data.color ? `, color: ${data.color}K` : ''}`,
     );
     let payload = null;
 
@@ -478,10 +479,19 @@ class MqttClient extends EventEmitter {
       payload = getMqttStateString(data.state);
     } else {
       if (device.dimmable) {
-        payload = {
-          state: getMqttStateString(data.state),
-          brightness: data.brightness,
-        };
+        if (data.color) {
+          payload = {
+            state: getMqttStateString(data.state),
+            brightness: data.brightness,
+            color_mode: 'color_temp',
+            color_temp: data.color,
+          };
+        } else {
+          payload = {
+            state: getMqttStateString(data.state),
+            brightness: data.brightness,
+          };
+        }
       } else {
         payload = {
           state: getMqttStateString(data.state),

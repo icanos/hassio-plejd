@@ -257,8 +257,9 @@ class DeviceRegistry {
    * @param {string} uniqueOutputId
    * @param {boolean} state
    * @param {number?} [dim]
+   * @param {number?} [color]
    */
-  setOutputState(uniqueOutputId, state, dim) {
+  setOutputState(uniqueOutputId, state, dim, color) {
     const device = this.getOutputDevice(uniqueOutputId);
     if (!device) {
       logger.warn(
@@ -270,6 +271,9 @@ class DeviceRegistry {
     device.state = state;
     if (dim && device.dimmable) {
       device.dim = dim;
+    }
+    if (color && device.colorTemp) {
+      device.colorTemp = color;
     }
     if (Logger.shouldLog('silly')) {
       logger.silly(`Updated state: ${JSON.stringify(device)}`);

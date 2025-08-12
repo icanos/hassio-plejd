@@ -18,7 +18,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   /** @type {import('./DeviceRegistry')} */
   deviceRegistry;
   // eslint-disable-next-line max-len
-  /** @type {{uniqueOutputId: string, command: string, data: any, shouldRetry: boolean, retryCount?: number}[]} */
+  /** @type {{uniqueOutputId: string, command: {command: keyof typeof COMMANDS, brightness: number?, color_temp: number? }, shouldRetry: boolean, retryCount?: number}[]} */
   writeQueue = [];
   writeQueueRef = null;
 
@@ -79,11 +79,10 @@ class PlejdDeviceCommunication extends EventEmitter {
   turnOn(uniqueOutputId, command) {
     const deviceName = this.deviceRegistry.getOutputDeviceName(uniqueOutputId);
     logger.info(
-      `Plejd got turn on command for ${deviceName} (${uniqueOutputId}), brightness ${
-        command.brightness
-      }${command.transition ? `, transition: ${command.transition}` : ''}`,
+      `Plejd got turn on command for ${deviceName} (${uniqueOutputId})${
+        JSON.stringify(command)}`,
     );
-    this._transitionTo(uniqueOutputId, command.brightness, command.transition, deviceName);
+    this._transitionTo(uniqueOutputId, command, deviceName);
   }
 
   turnOff(uniqueOutputId, command) {
@@ -93,7 +92,7 @@ class PlejdDeviceCommunication extends EventEmitter {
         command.transition ? `, transition: ${command.transition}` : ''
       }`,
     );
-    this._transitionTo(uniqueOutputId, 0, command.transition, deviceName);
+    this._transitionTo(uniqueOutputId, { ...command, brightness: 0 }, deviceName);
   }
 
   _bleCommandReceived(uniqueOutputId, command, data) {
@@ -103,6 +102,13 @@ class PlejdDeviceCommunication extends EventEmitter {
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
           state: !!data.state,
           brightness: data.dim,
+        });
+      } else if (command === COMMANDS.COLOR) {
+        this.deviceRegistry.setOutputState(uniqueOutputId, data.state, null, data.color);
+        logger.verbose(`Set color state to ${data.color}. Emitting EVENTS.stateChanged`);
+        this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
+          state: !!data.state,
+          color: data.color,
         });
       } else if (command === COMMANDS.TURN_ON) {
         this.deviceRegistry.setOutputState(uniqueOutputId, true);
@@ -132,7 +138,12 @@ class PlejdDeviceCommunication extends EventEmitter {
     }
   }
 
-  _transitionTo(uniqueOutputId, targetBrightness, transition, deviceName) {
+  /**
+   * @param {string} uniqueOutputId
+   * @param {{ transition: number, brightness: number, color_temp: number? } } command
+   * @param { string } deviceName
+   */
+  _transitionTo(uniqueOutputId, command, deviceName) {
     const device = this.deviceRegistry.getOutputDevice(uniqueOutputId);
     const initialBrightness = device ? device.state && device.dim : null;
     this._clearDeviceTransitionTimer(uniqueOutputId);
@@ -140,11 +151,11 @@ class PlejdDeviceCommunication extends EventEmitter {
     const isDimmable = this.deviceRegistry.getOutputDevice(uniqueOutputId).dimmable;
 
     if (
-      transition > 1 &&
+      command.transition > 1 &&
       isDimmable &&
       (initialBrightness || initialBrightness === 0) &&
-      (targetBrightness || targetBrightness === 0) &&
-      targetBrightness !== initialBrightness
+      (command.brightness || command.brightness === 0) &&
+      command.brightness !== initialBrightness
     ) {
       // Transition time set, known initial and target brightness
       // Calculate transition interval time based on delta brightness and max steps per second
@@ -152,16 +163,16 @@ class PlejdDeviceCommunication extends EventEmitter {
       // If transition <= 1 second, Plejd will do a better job
       // than we can in transitioning so transitioning will be skipped
 
-      const deltaBrightness = targetBrightness - initialBrightness;
+      const deltaBrightness = command.brightness - initialBrightness;
       const transitionSteps = Math.min(
         Math.abs(deltaBrightness),
-        MAX_TRANSITION_STEPS_PER_SECOND * transition,
+        MAX_TRANSITION_STEPS_PER_SECOND * command.transition,
       );
-      const transitionInterval = (transition * 1000) / transitionSteps;
+      const transitionInterval = (command.transition * 1000) / transitionSteps;
 
       logger.debug(
-        `transitioning from ${initialBrightness} to ${targetBrightness} ${
-          transition ? `in ${transition} seconds` : ''
+        `transitioning from ${initialBrightness} to ${command.brightness} ${
+          command.transition ? `in ${command.transition} seconds` : ''
         }.`,
       );
       logger.verbose(
@@ -176,68 +187,105 @@ class PlejdDeviceCommunication extends EventEmitter {
         const tElapsedMs = new Date().getTime() - dtStart.getTime();
         let tElapsed = tElapsedMs / 1000;
 
-        if (tElapsed > transition || tElapsed < 0) {
-          tElapsed = transition;
+        if (tElapsed > command.transition || tElapsed < 0) {
+          tElapsed = command.transition;
         }
 
         let newBrightness = Math.round(
-          initialBrightness + (deltaBrightness * tElapsed) / transition,
+          initialBrightness + (deltaBrightness * tElapsed) / command.transition,
         );
 
-        if (tElapsed === transition) {
+        if (tElapsed === command.transition) {
           nSteps++;
           this._clearDeviceTransitionTimer(uniqueOutputId);
-          newBrightness = targetBrightness;
+          newBrightness = command.brightness;
           logger.debug(
-            `Queueing finalize ${deviceName} (${uniqueOutputId}) transition from ${initialBrightness} to ${targetBrightness} in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${
+            `Queueing finalize ${deviceName} (${uniqueOutputId}) transition from ${initialBrightness} to ${
+              command.brightness
+            } in ${tElapsedMs}ms. Done steps ${nSteps}. Average interval ${
               tElapsedMs / (nSteps || 1)
             } ms.`,
           );
-          this._setBrightness(uniqueOutputId, newBrightness, true, deviceName);
+          this._setLightState(
+            uniqueOutputId,
+            { ...command, brightness: newBrightness },
+            true,
+            deviceName,
+          );
         } else {
           nSteps++;
           logger.verbose(
             `Queueing dim transition for ${deviceName} (${uniqueOutputId}) to ${newBrightness}. Total queue length ${this.writeQueue.length}`,
           );
-          this._setBrightness(uniqueOutputId, newBrightness, false, deviceName);
+          this._setLightState(
+            uniqueOutputId,
+            { ...command, brightness: newBrightness },
+            false,
+            deviceName,
+          );
         }
       }, transitionInterval);
     } else {
-      if (transition && isDimmable) {
+      if (command.transition && isDimmable) {
         logger.debug(
-          `Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${targetBrightness}`,
+          `Could not transition light change. Either initial value is unknown or change is too small. Requested from ${initialBrightness} to ${command.brightness}`,
         );
       }
-      this._setBrightness(uniqueOutputId, targetBrightness, true, deviceName);
+      this._setLightState(uniqueOutputId, command, true, deviceName);
     }
   }
 
-  _setBrightness(unqiueOutputId, brightness, shouldRetry, deviceName) {
-    if (!brightness && brightness !== 0) {
+  /**
+   * @param {string} uniqueOutputId
+   * @param {{ brightness: number, color_temp: number? } } command
+   * @param { boolean } shouldRetry
+   * @param { string } deviceName
+   */
+  _setLightState(uniqueOutputId, command, shouldRetry, deviceName) {
+    const lightCommand = {};
+
+    if (!command.brightness && command.brightness !== 0) {
       logger.debug(
-        `Queueing turn on ${deviceName} (${unqiueOutputId}). No brightness specified, setting DIM to previous.`,
+        `Queueing turn on ${deviceName} (${uniqueOutputId}). No brightness specified, setting DIM to previous.`,
       );
-      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.TURN_ON, null, shouldRetry);
-    } else if (brightness <= 0) {
-      logger.debug(`Queueing turn off ${unqiueOutputId}`);
-      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.TURN_OFF, null, shouldRetry);
+      lightCommand.command = COMMANDS.TURN_ON;
+    } else if (command.brightness <= 0) {
+      logger.debug(`Queueing turn off ${uniqueOutputId}`);
+      lightCommand.command = COMMANDS.TURN_OFF;
     } else {
-      if (brightness > 255) {
+      if (command.brightness > 255) {
         // eslint-disable-next-line no-param-reassign
-        brightness = 255;
+        command.brightness = 255;
       }
 
-      logger.debug(`Queueing ${unqiueOutputId} set brightness to ${brightness}`);
-      // eslint-disable-next-line no-bitwise
-      this._appendCommandToWriteQueue(unqiueOutputId, COMMANDS.DIM, brightness, shouldRetry);
+      logger.debug(`Queueing ${uniqueOutputId} set brightness to ${command.brightness}`);
+
+      lightCommand.command = COMMANDS.DIM;
+      lightCommand.brightness = command.brightness;
     }
+
+    if (command.color_temp) {
+      lightCommand.command = COMMANDS.COLOR;
+      lightCommand.color_temp = command.color_temp;
+    }
+
+    this._appendCommandToWriteQueue(
+      uniqueOutputId,
+      // @ts-ignore
+      lightCommand,
+      shouldRetry,
+    );
   }
 
-  _appendCommandToWriteQueue(uniqueOutputId, command, data, shouldRetry) {
+  /**
+   * @param {string} uniqueOutputId
+   * @param {{ command: keyof typeof COMMANDS, brightness: number?, color_temp: number? } } command
+   * @param { boolean } shouldRetry
+   */
+  _appendCommandToWriteQueue(uniqueOutputId, command, shouldRetry) {
     this.writeQueue.unshift({
       uniqueOutputId,
       command,
-      data,
       shouldRetry,
     });
   }
@@ -260,9 +308,9 @@ class PlejdDeviceCommunication extends EventEmitter {
         const device = this.deviceRegistry.getOutputDevice(queueItem.uniqueOutputId);
 
         logger.debug(
-          `Write queue: Processing ${device.name} (${queueItem.uniqueOutputId}). Command ${
-            queueItem.command
-          }${queueItem.data ? ` ${queueItem.data}` : ''}. Total queue length: ${
+          `Write queue: Processing ${device.name} (${
+            queueItem.uniqueOutputId
+          }). Command ${JSON.stringify(queueItem.command)}. Total queue length: ${
             this.writeQueue.length
           }`,
         );
@@ -278,9 +326,10 @@ class PlejdDeviceCommunication extends EventEmitter {
           /* eslint-disable no-await-in-loop */
           try {
             await this.plejdBleHandler.sendCommand(
-              queueItem.command,
+              queueItem.command.command,
               device.bleOutputAddress,
-              queueItem.data,
+              queueItem.command.brightness,
+              queueItem.command.color_temp,
             );
           } catch (err) {
             if (queueItem.shouldRetry) {

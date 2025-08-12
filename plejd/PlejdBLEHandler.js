@@ -20,6 +20,7 @@ const PING_UUID = `31ba000a-${BLE_UUID_SUFFIX}`;
 
 const BLE_CMD_DIM_CHANGE = 0x00c8;
 const BLE_CMD_DIM2_CHANGE = 0x0098;
+const BLE_CMD_COLOR_CHANGE = 0x0420;
 const BLE_CMD_STATE_CHANGE = 0x0097;
 const BLE_CMD_SCENE_TRIG = 0x0021;
 const BLE_CMD_TIME_UPDATE = 0x001b;
@@ -41,6 +42,7 @@ const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
 
 const PAYLOAD_POSITION_OFFSET = 5;
 const DIM_LEVEL_POSITION_OFFSET = 7;
+const COLOR_TEMP_POSITION_OFFSET = 9;
 
 const delay = (timeout) =>
   new Promise((resolve) => {
@@ -168,11 +170,13 @@ class PlejBLEHandler extends EventEmitter {
   /**
    * @param {string} command
    * @param {number} bleOutputAddress
-   * @param {number} data
+   * @param {number?} brightness
+   * @param {number?} colorTemp
    */
-  async sendCommand(command, bleOutputAddress, data) {
+  async sendCommand(command, bleOutputAddress, brightness, colorTemp) {
     let payload;
     let brightnessVal;
+    
     switch (command) {
       case COMMANDS.TURN_ON:
         payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '01');
@@ -182,11 +186,20 @@ class PlejBLEHandler extends EventEmitter {
         break;
       case COMMANDS.DIM:
         // eslint-disable-next-line no-bitwise
-        brightnessVal = (data << 8) | data;
+        brightnessVal = (brightness << 8) | brightness;
         payload = this._createHexPayload(
           bleOutputAddress,
           BLE_CMD_DIM2_CHANGE,
           `01${brightnessVal.toString(16).padStart(4, '0')}`,
+        );
+        break;
+      case COMMANDS.COLOR:
+        // eslint-disable-next-line no-bitwise
+        payload = this._createHexPayload(
+          bleOutputAddress,
+          BLE_CMD_COLOR_CHANGE,
+          // Not clear why 030111 is used. See https://github.com/icanos/hassio-plejd/issues/163
+          `030111${colorTemp.toString(16).padStart(4, '0')}`,
         );
         break;
       default:
@@ -850,7 +863,6 @@ class PlejBLEHandler extends EventEmitter {
     const outputUniqueId = device ? device.uniqueId : null;
 
     if (Logger.shouldLog('verbose')) {
-      // decoded.toString() could potentially be expensive
       logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
       logger.verbose(
         `Decoded: Device ${outputUniqueId} (BLE address ${bleOutputAddress}), cmd ${cmd.toString(
@@ -868,6 +880,19 @@ class PlejBLEHandler extends EventEmitter {
 
       command = COMMANDS.DIM;
       data = { state, dim };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
+    } else if (cmd === BLE_CMD_COLOR_CHANGE) {
+      const colorTempKelvin =
+        decoded.length > COLOR_TEMP_POSITION_OFFSET
+          ? decoded.readUInt16BE(COLOR_TEMP_POSITION_OFFSET - 1)
+          : 0;
+
+      logger.debug(
+        `${deviceName} (${outputUniqueId}) got state+dim+color update. S: ${state}, D: ${dim}, C: ${colorTempKelvin}K`,
+      );
+
+      command = COMMANDS.COLOR;
+      data = { state, color: colorTempKelvin };
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_STATE_CHANGE) {
       logger.debug(`${deviceName} (${outputUniqueId}) got state update. S: ${state}`);

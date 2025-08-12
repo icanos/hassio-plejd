@@ -79,8 +79,7 @@ class PlejdDeviceCommunication extends EventEmitter {
   turnOn(uniqueOutputId, command) {
     const deviceName = this.deviceRegistry.getOutputDeviceName(uniqueOutputId);
     logger.info(
-      `Plejd got turn on command for ${deviceName} (${uniqueOutputId})${
-        JSON.stringify(command)}`,
+      `Plejd got turn on command for ${deviceName} (${uniqueOutputId})${JSON.stringify(command)}`,
     );
     this._transitionTo(uniqueOutputId, command, deviceName);
   }

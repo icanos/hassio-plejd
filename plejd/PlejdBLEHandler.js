@@ -176,7 +176,7 @@ class PlejBLEHandler extends EventEmitter {
   async sendCommand(command, bleOutputAddress, brightness, colorTemp) {
     let payload;
     let brightnessVal;
-    
+
     switch (command) {
       case COMMANDS.TURN_ON:
         payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '01');

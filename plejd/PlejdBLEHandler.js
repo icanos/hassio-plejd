@@ -13,23 +13,25 @@ const logger = Logger.getLogger('plejd-ble');
 // UUIDs
 const BLE_UUID_SUFFIX = '6085-4726-be45-040c957391b5';
 const PLEJD_SERVICE = `31ba0001-${BLE_UUID_SUFFIX}`;
+const LIGHTLEVEL_UUID = `31ba0003-${BLE_UUID_SUFFIX}`;
 const DATA_UUID = `31ba0004-${BLE_UUID_SUFFIX}`;
 const LAST_DATA_UUID = `31ba0005-${BLE_UUID_SUFFIX}`;
 const AUTH_UUID = `31ba0009-${BLE_UUID_SUFFIX}`;
 const PING_UUID = `31ba000a-${BLE_UUID_SUFFIX}`;
 
-const BLE_CMD_DIM_CHANGE = 0x00c8;
-const BLE_CMD_DIM2_CHANGE = 0x0098;
-const BLE_CMD_COLOR_CHANGE = 0x0420;
-const BLE_CMD_STATE_CHANGE = 0x0097;
-const BLE_CMD_SCENE_TRIG = 0x0021;
-const BLE_CMD_TIME_UPDATE = 0x001b;
-const BLE_CMD_REMOTE_CLICK = 0x0016;
+// BLE commands
+const BLE_CMD_REMOTE_CLICK = 0x0016; // Wireless button clicked
+const BLE_CMD_TIME_UPDATE = 0x001b; // Time broadcast
+const BLE_CMD_SCENE_TRIG = 0x0021; // Scene triggered
+const BLE_CMD_STATE_CHANGE = 0x0097; // State update
+const BLE_CMD_DIM2_CHANGE = 0x0098; // Dim + state update
+const BLE_CMD_DIM_CHANGE = 0x00c8; // Dim + state update
+const BLE_CMD_COLOR_CHANGE = 0x0420; // Color temp update
 
-const BLE_BROADCAST_DEVICE_ID = 0x01;
-const BLE_REQUEST_NO_RESPONSE = 0x0110;
-const BLE_REQUEST_RESPONSE = 0x0102;
-// const BLE_REQUEST_READ_VALUE = 0x0103;
+const BLE_BROADCAST_DEVICE_ID = 0x01; // Broadcast message, time for example
+const BLE_REQUEST_NO_RESPONSE = 0x0110; // Set value, no response.
+const BLE_REQUEST_RESPONSE = 0x0102; // Request response, time for example
+// const BLE_REQUEST_READ_VALUE = 0x0103; // Read value?
 
 const BLUEZ_SERVICE_NAME = 'org.bluez';
 const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
@@ -315,10 +317,13 @@ class PlejBLEHandler extends EventEmitter {
       } else {
         logger.info('Plejd clock updates disabled in configuration.');
       }
+
+     
       this._startPing();
 
-      // After we've authenticated, we need to hook up the event listener
-      // for changes to lastData.
+      // After we've authenticated:
+
+      // Hook up the event listener for changes to lastData.
       this.characteristics.lastDataProperties.on(
         'PropertiesChanged',
         (

@@ -341,7 +341,7 @@ class MqttClient extends EventEmitter {
 
       // Forcefully remove retained (from us, v0.11 and before) AVAILABILITY messages
       this.client.publish(
-        getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABLILITY),
+        getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
         null,
         {
           retain: true, // Retain true to remove previously retained message

@@ -4,8 +4,6 @@ const mqtt = require('mqtt');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
-// const startTopics = ['hass/status', 'homeassistant/status'];
-
 const logger = Logger.getLogger('plejd-mqtt');
 
 const discoveryPrefix = 'homeassistant';
@@ -183,23 +181,23 @@ class MqttClient extends EventEmitter {
 
       this.emit(MqttClient.EVENTS.connected);
 
-      // Testing to skip listening to HA birth messages all together
-      // this.client.subscribe(
-      //   startTopics,
-      //   {
-      //     qos: 1,
-      //     nl: true, // don't echo back messages sent
-      //     rap: true, // retain as published - don't force retain = 0
-      //     rh: 0, // Retain handling 0 presumably ignores retained messages
-      //   },
-      //   (err) => {
-      //     if (err) {
-      //       logger.error('Unable to subscribe to status topics', err);
-      //     }
-
-      //     this.emit(MqttClient.EVENTS.connected);
-      //   },
-      // );
+      // Listen for Home Assistant birth messages
+      this.client.subscribe(
+        ['homeassistant/status'],
+        {
+          qos: 1,
+          nl: true, // don't echo back messages sent
+          rap: true, // retain as published - don't force retain = 0
+          rh: 0, // Retain handling 0 presumably ignores retained messages
+        },
+        (err) => {
+          if (err) {
+            logger.error('Unable to subscribe to status topic', err);
+          }
+          // Optionally, you can emit connected here if you want to wait for subscription
+          // this.emit(MqttClient.EVENTS.connected);
+        },
+      );
     });
 
     this.client.on('close', () => {

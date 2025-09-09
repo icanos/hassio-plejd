@@ -55,6 +55,15 @@ class PlejdAddon extends EventEmitter {
       process.on(signal, this.processCleanupFunc);
     });
 
+    // Eagerly send discovery as soon as possible
+    try {
+      logger.verbose('Eagerly sending discovery to Home Assistant.');
+      this.mqttClient.sendDiscoveryToHomeAssistant();
+    } catch (err) {
+      logger.error('Error in eager discovery send', err);
+    }
+
+    // Send discovery again on MQTT connect to ensure Home Assistant receives device info after reconnects or broker restarts.
     this.mqttClient.on(MqttClient.EVENTS.connected, () => {
       try {
         logger.verbose('connected to mqtt.');

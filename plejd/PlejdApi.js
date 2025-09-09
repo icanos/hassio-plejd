@@ -533,7 +533,7 @@ class PlejdApi {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             const outputDevice = {
               bleOutputAddress,
-              colorTemp,
+              colorTemp: null,
               colorTempSettings: outputSettings ? outputSettings.colorTemperature : null,
               deviceId: device.deviceId,
               dimmable,
@@ -640,7 +640,7 @@ class PlejdApi {
         const newDevice = {
           bleOutputAddress: roomAddress,
           deviceId: null,
-          colorTemp: false,
+          colorTemp: null,
           dimmable,
           name: room.title,
           output: undefined,
@@ -670,7 +670,7 @@ class PlejdApi {
       /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
         bleOutputAddress: sceneNum,
-        colorTemp: false,
+        colorTemp: null,
         deviceId: undefined,
         dimmable: false,
         name: scene.title,

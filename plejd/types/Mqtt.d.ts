@@ -3,5 +3,5 @@
 export type TopicType = 'config' | 'state' | 'availability' | 'set';
 export type TOPIC_TYPES = { [key: string]: TopicType };
 
-export type MqttType = 'light' | 'scene' | 'switch' | 'device_automation';
+export type MqttType = 'light' | 'scene' | 'switch' | 'device_automation' | 'sensor' | 'extender';
 export type MQTT_TYPES = { [key: string]: MqttType };

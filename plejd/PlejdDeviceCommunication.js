@@ -1,10 +1,9 @@
 const { EventEmitter } = require('events');
 const Configuration = require('./Configuration');
-const constants = require('./constants');
+const { COMMANDS } = require('./constants');
 const Logger = require('./Logger');
 const PlejBLEHandler = require('./PlejdBLEHandler');
 
-const { COMMANDS } = constants;
 const logger = Logger.getLogger('device-comm');
 
 const MAX_TRANSITION_STEPS_PER_SECOND = 5; // Could be made a setting
@@ -97,6 +96,9 @@ class PlejdDeviceCommunication extends EventEmitter {
   _bleCommandReceived(uniqueOutputId, command, data) {
     try {
       if (command === COMMANDS.DIM) {
+        if (data.dim === 0 && data.state === 1) {
+          data.dim = 1; // Transform BLE brightness value 0 to 1, which is the minimum MQTT brightness value
+        }
         this.deviceRegistry.setOutputState(uniqueOutputId, data.state, data.dim);
         this.emit(PlejdDeviceCommunication.EVENTS.stateChanged, uniqueOutputId, {
           state: !!data.state,

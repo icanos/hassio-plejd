@@ -1,4 +1,4 @@
-/** @type {import('./types/Mqtt').MQTT_TYPES} */
+/** @type {import('./Mqtt').MQTT_TYPES} */
 const MQTT_TYPES = {
   LIGHT: 'light',
   SCENE: 'scene',
@@ -8,16 +8,12 @@ const MQTT_TYPES = {
   EXTENDER: 'extender',
 };
 
-/** @type {import('./types/Mqtt').TOPIC_TYPES} */
+/** @type {import('./Mqtt').TOPIC_TYPES} */
 const TOPIC_TYPES = {
   CONFIG: 'config',
   STATE: 'state',
   AVAILABILITY: 'availability',
   SET: 'set',
-};
-
-const MQTT_TOPICS = {
-  STATUS: 'homeassistant/status',
 };
 
 const MQTT_STATE = {
@@ -97,6 +93,7 @@ const PLEJD_UUIDS = {
   PING_UUID: `31ba000a-${BLE.UUID_SUFFIX}`,
 };
 
+// Commands from original constants.js
 const COMMANDS = {
   TURN_ON: 'Turn on',
   TURN_OFF: 'Turn off',
@@ -110,16 +107,15 @@ module.exports = {
   MQTT_TYPES,
   TOPIC_TYPES,
   MQTT_STATE,
-  MQTT_TOPICS,
   DEVICE_TYPES,
-  OUTPUT_TYPES,
-  SCENE_STATES,
   AVAILABILITY,
   AUTOMATION_TYPES,
-  BLUEZ,
-  DBUS,
-  API,
   BLE,
   PLEJD_UUIDS,
   COMMANDS,
+  OUTPUT_TYPES,
+  SCENE_STATES,
+  BLUEZ,
+  DBUS,
+  API,
 };

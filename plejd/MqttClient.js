@@ -1,29 +1,21 @@
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 const mqtt = require('mqtt');
 
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
+const {
+  MQTT_TYPES,
+  TOPIC_TYPES,
+  MQTT_STATE,
+  DEVICE_TYPES,
+  AVAILABILITY,
+  MQTT_TOPICS,
+} = require('./constants');
 
 const logger = Logger.getLogger('plejd-mqtt');
 
 const discoveryPrefix = 'homeassistant';
 const nodeId = 'plejd';
-
-/** @type {import('./types/Mqtt').MQTT_TYPES} */
-const MQTT_TYPES = {
-  LIGHT: 'light',
-  SCENE: 'scene',
-  SWITCH: 'switch',
-  DEVICE_AUTOMATION: 'device_automation',
-};
-
-/** @type {import('./types/Mqtt').TOPIC_TYPES} */
-const TOPIC_TYPES = {
-  CONFIG: 'config',
-  STATE: 'state',
-  AVAILABILITY: 'availability',
-  SET: 'set',
-};
 
 const getBaseTopic = (/** @type { string } */ uniqueId, /** @type { string } */ mqttDeviceType) =>
   `${discoveryPrefix}/${mqttDeviceType}/${nodeId}/${uniqueId}`;
@@ -93,7 +85,7 @@ const getSceneDiscoveryPayload = (
   '~': getBaseTopic(sceneDevice.uniqueId, MQTT_TYPES.SCENE),
   command_topic: `~/${TOPIC_TYPES.SET}`,
   availability_topic: `~/${TOPIC_TYPES.AVAILABILITY}`,
-  payload_on: 'ON',
+  payload_on: MQTT_STATE.ON,
   qos: 1,
   retain: true, // Discovery messages should be retained to account for HA restarts
 });
@@ -135,12 +127,15 @@ const getSceneDeviceTriggerhDiscoveryPayload = (
   },
 });
 
-const getMqttStateString = (/** @type {boolean} */ state) => (state ? 'ON' : 'OFF');
-const AVAILABLITY = { ONLINE: 'online', OFFLINE: 'offline' };
+const getMqttStateString = (/** @type {boolean} */ state) =>
+  state ? MQTT_STATE.ON : MQTT_STATE.OFF;
 
 class MqttClient extends EventEmitter {
   /** @type {import('DeviceRegistry')} */
   deviceRegistry;
+
+  static STATE = MQTT_STATE;
+  static DEVICE_TYPES = DEVICE_TYPES;
 
   static EVENTS = {
     connected: 'connected',
@@ -179,11 +174,12 @@ class MqttClient extends EventEmitter {
     this.client.on('connect', () => {
       logger.info('Connected to MQTT.');
 
+      logger.verbose('Emitting internal MqttClient.EVENTS.connected event');
       this.emit(MqttClient.EVENTS.connected);
 
-      // Listen for Home Assistant birth messages
+      // Listen for future Home Assistant birth messages if HA is not yet started
       this.client.subscribe(
-        ['homeassistant/status'],
+        [MQTT_TOPICS.STATUS],
         {
           qos: 1,
           nl: true, // don't echo back messages sent
@@ -194,8 +190,6 @@ class MqttClient extends EventEmitter {
           if (err) {
             logger.error('Unable to subscribe to status topic', err);
           }
-          // Optionally, you can emit connected here if you want to wait for subscription
-          // this.emit(MqttClient.EVENTS.connected);
         },
       );
     });
@@ -255,6 +249,14 @@ class MqttClient extends EventEmitter {
             default:
               logger.verbose(`Warning: Unknown command ${decodedTopic.command} in decoded topic`);
           }
+        } else if (topic === MQTT_TOPICS.STATUS) {
+          const status = message.toString();
+          if (status === AVAILABILITY.ONLINE) {
+            logger.verbose(
+              'Home Assistant is online, emitting internal MqttClient.EVENTS.connected event',
+            );
+            this.emit(MqttClient.EVENTS.connected);
+          }
         } else {
           logger.verbose(
             `Warning: Got unrecognized mqtt command on '${topic}': ${message.toString()}`,
@@ -281,7 +283,7 @@ class MqttClient extends EventEmitter {
       const mqttType = outputDevice.type === 'switch' ? MQTT_TYPES.SWITCH : MQTT_TYPES.LIGHT;
       this.client.publish(
         getTopicName(outputDevice.uniqueId, mqttType, 'availability'),
-        AVAILABLITY.OFFLINE,
+        AVAILABILITY.OFFLINE,
         {
           retain: false, // Availability messages should NOT be retained
           qos: 1,
@@ -293,7 +295,7 @@ class MqttClient extends EventEmitter {
     allSceneDevices.forEach((sceneDevice) => {
       this.client.publish(
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
-        AVAILABLITY.OFFLINE,
+        AVAILABILITY.OFFLINE,
         {
           retain: false, // Availability messages should NOT be retained
           qos: 1,
@@ -355,7 +357,7 @@ class MqttClient extends EventEmitter {
 
       this.client.publish(
         getTopicName(outputDevice.uniqueId, mqttType, TOPIC_TYPES.AVAILABILITY),
-        AVAILABLITY.ONLINE,
+        AVAILABILITY.ONLINE,
         {
           retain: false, // Availability messages should NOT be retained
           qos: 1,
@@ -429,7 +431,7 @@ class MqttClient extends EventEmitter {
 
       this.client.publish(
         getTopicName(sceneDevice.uniqueId, MQTT_TYPES.SCENE, TOPIC_TYPES.AVAILABILITY),
-        AVAILABLITY.ONLINE,
+        AVAILABILITY.ONLINE,
         {
           retain: false, // Availability messages should NOT be retained
           qos: 1,

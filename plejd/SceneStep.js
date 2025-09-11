@@ -1,3 +1,5 @@
+const { SCENE_STATES } = require('./constants');
+
 class SceneStep {
   /**
    * @param {import("./types/ApiSite").SceneStep} step
@@ -6,7 +8,7 @@ class SceneStep {
     this.sceneId = step.sceneId;
     this.deviceId = step.deviceId;
     this.output = step.output;
-    this.state = step.state === 'On' ? 1 : 0;
+    this.state = step.state === SCENE_STATES.ON ? 1 : 0;
     this.brightness = step.value;
   }
 }

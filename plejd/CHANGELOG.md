@@ -1,5 +1,21 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.17.0](https://github.com/icanos/hassio-plejd/tree/0.17.0) (2025-09-10)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.16.0...0.17.0)
+
+**Implemented enhancements:**
+
+- Add working support for color temperature
+- Eagerly send HA discovery, standardize colorTemp, clean up MQTT subscribe
+- Clean up and BLE constants and prepare for lightlevel UUID
+
+**Fixed:**
+
+- Fix typo in MqttClient
+- Lint fixes
+- Fix to config json version to make it build
+
 ## [0.16.0](https://github.com/icanos/hassio-plejd/tree/0.16.0) (2025-08-07)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.15.0...0.16.0)

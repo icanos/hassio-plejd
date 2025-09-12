@@ -269,10 +269,10 @@ class DeviceRegistry {
     }
 
     device.state = state;
-    if (dim && device.dimmable) {
+    if (typeof dim === 'number' && device.dimmable) {
       device.dim = dim;
     }
-    if (color && device.colorTemp) {
+    if (typeof color === 'number' && device.colorTemp) {
       device.colorTemp = color;
     }
     if (Logger.shouldLog('silly')) {

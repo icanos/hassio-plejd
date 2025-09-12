@@ -1,29 +1,37 @@
 {
+  "name": "plejd-addon",
+  "version": "0.17.0",
+  "description": "Home Assistant Plejd add-on",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "start": "node dist/main.js",
+    "dev": "npm run build && npm run start",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@abandonware/bluetooth-hci-socket": "~0.5.3-10",
     "axios": "~1.6.1",
     "buffer-xor": "~2.0.2",
     "dbus-next": "~0.10.2",
-    "fs": "0.0.1-security",
     "jspack": "~0.0.4",
     "mqtt": "~5.1.2",
-    "winston": "~3.11.0"
+    "winston": "~3.11.0",
+    "typescript": "^5.2.0"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "~7.23.3",
-    "eslint": "~8.53.0",
-    "eslint-config-airbnb": "~19.0.4",
-    "eslint-config-prettier": "~9.0.0",
-    "eslint-plugin-import": "~2.29.0",
-    "eslint-plugin-prettier": "~5.0.1",
-    "prettier": "~3.0.3"
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.53.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.0.3"
   },
-  "scripts": {
-    "lint": "npm run lint:prettier & npm run lint:scripts",
-    "lint:fix": "npm run lint:prettier:fix & npm run lint:scripts:fix",
-    "lint:prettier": "prettier --check --config ../.prettierrc.js \"**/*.{js*,md}\"",
-    "lint:prettier:fix": "prettier --check --config ../.prettierrc.js --write \"**/*.{js*,md}\"",
-    "lint:scripts": "eslint --config ./.eslintrc.js \"**/*.js\"",
-    "lint:scripts:fix": "eslint --config ./.eslintrc.js --fix \"**/*.js\""
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

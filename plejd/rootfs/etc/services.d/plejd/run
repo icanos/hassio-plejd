@@ -1,18 +1,13 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Community Hass.io Add-ons: Plejd
+# Community Hass.io Add-ons: Plejd (TypeScript)
 # Runs the Plejd service
 # ==============================================================================
 
-bashio::log.info 'Starting the Plejd service...'
-bashio::log.info 'Docker env updated 2023-10-17...'
+bashio::log.info 'Starting the Plejd TypeScript service...'
 
-# Change working directory
-cd /plejd || bashio::exit.nok 'Unable to change working directory'
-
-# Run the Plejd service
-bashio::log.info 'Verified permissions on startup script'
+# Ensure proper permissions
 chmod +x /usr/bin/plejd.sh
 
-bashio::log.info 'Executing startup script'
+# Execute the service
 exec /usr/bin/plejd.sh

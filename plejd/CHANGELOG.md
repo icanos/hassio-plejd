@@ -1,20 +1,21 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
-## [0.17.0](https://github.com/icanos/hassio-plejd/tree/0.17.0) (2025-09-10)
+## [0.17.0](https://github.com/icanos/hassio-plejd/tree/0.17.0) (2025-09-12)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.16.0...0.17.0)
+
+**Closed issues:**
+
+- Add-on needs to be restarted after Home Assistance start [\#323](https://github.com/icanos/hassio-plejd/issues/323)
+- Endless reconnect loop [\#322](https://github.com/icanos/hassio-plejd/issues/322)
+- Possible to use multiple sites? [\#315](https://github.com/icanos/hassio-plejd/issues/315)
+
 
 **Implemented enhancements:**
 
 - Add working support for color temperature
 - Eagerly send HA discovery, standardize colorTemp, clean up MQTT subscribe
-- Clean up and BLE constants and prepare for lightlevel UUID
-
-**Fixed:**
-
-- Fix typo in MqttClient
-- Lint fixes
-- Fix to config json version to make it build
+- Clean up and refactor out all shared constants and prepare for lightlevel UUID
 
 ## [0.16.0](https://github.com/icanos/hassio-plejd/tree/0.16.0) (2025-08-07)
 

@@ -1,68 +1,46 @@
-ARG BUILD_FROM=hassioaddons/base:14.2.2
-FROM $BUILD_FROM
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-ENV LANG C.UTF-8
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    linux-headers \
+    eudev-dev
 
-# Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# Set working directory
+WORKDIR /app
 
-# Copy data for add-on
-COPY ./*.js /plejd/
-COPY ./config.json /plejd/
-COPY ./package.json /plejd/
+# Copy package files first for better caching
+COPY package*.json tsconfig.json ./
 
-ARG BUILD_ARCH
+# Install all dependencies (including dev for build)
+RUN npm ci
 
-# Install Node
-RUN apk add --no-cache jq
-RUN \
-  apk add --no-cache --virtual .build-dependencies \
-  g++ \
-  gcc \
-  libc-dev \
-  linux-headers \
-  make \
-  python3 \
-  bluez \
-  eudev-dev \
-  zlib-dev \
-  \
-  && apk add --no-cache \
-  git \
-  nodejs \
-  npm \
-  dbus-dev \
-  glib-dev \
-  \
-  && npm config set unsafe-perm true
+# Copy source code
+COPY src/ ./src/
 
-WORKDIR /plejd
-RUN npm install \
-  --no-audit \
-  --no-update-notifier \
-  --unsafe-perm
+# Build TypeScript
+RUN npm run build
 
-# Copy root filesystem
+# Remove dev dependencies and source files to reduce image size
+RUN npm prune --production && \
+    rm -rf src/ tsconfig.json node_modules/.cache
+
+# Copy addon configuration
+COPY config.json ./
+
+# Copy rootfs
 COPY rootfs /
 
-# Build arguments
-ARG BUILD_DATE
-ARG BUILD_REF
-ARG BUILD_VERSION
+# Set proper permissions
+RUN chmod a+x /etc/services.d/plejd/run /etc/services.d/plejd/finish /usr/bin/plejd.sh
 
 # Labels
 LABEL \
-  io.hass.name="Plejd" \
-  io.hass.description="Adds support for the Swedish home automation devices from Plejd." \
-  io.hass.arch="${BUILD_ARCH}" \
-  io.hass.type="addon" \
-  io.hass.version=${BUILD_VERSION} \
-  maintainer="Marcus Westin <marcus@sekurbit.se>" \
-  org.label-schema.description="Adds support for the Swedish home automation devices from Plejd." \
-  org.label-schema.build-date=${BUILD_DATE} \
-  org.label-schema.name="Plejd" \
-  org.label-schema.schema-version="1.0" \
-  org.label-schema.usage="https://github.com/icanos/hassio-plejd/tree/master/README.md" \
-  org.label-schema.vcs-ref=${BUILD_REF} \
-  org.label-schema.vcs-url="https://github.com/icanos/hassio-plejd"
-  
+    io.hass.name="Plejd" \
+    io.hass.description="Plejd integration for Home Assistant" \
+    io.hass.arch="armhf|aarch64|i386|amd64|armv7" \
+    io.hass.type="addon" \
+    io.hass.version="0.17.0"

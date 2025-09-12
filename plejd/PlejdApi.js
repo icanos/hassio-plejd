@@ -4,11 +4,16 @@ const fs = require('fs');
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
 
-const API_APP_ID = 'zHtVqXt8k4yFyk2QGmgp48D9xZr2G94xWYnF4dak';
-const API_BASE_URL = 'https://cloud.plejd.com/parse/';
-const API_LOGIN_URL = 'login';
-const API_SITE_LIST_URL = 'functions/getSiteList';
-const API_SITE_DETAILS_URL = 'functions/getSiteById';
+const {
+  API: {
+    APP_ID: API_APP_ID,
+    BASE_URL: API_BASE_URL,
+    LOGIN_URL: API_LOGIN_URL,
+    SITE_LIST_URL: API_SITE_LIST_URL,
+    SITE_DETAILS_URL: API_SITE_DETAILS_URL,
+  },
+  DEVICE_TYPES,
+} = require('./constants');
 
 const TRAITS = {
   NO_LOAD: 0, // 0b0000
@@ -305,7 +310,7 @@ class PlejdApi {
         return {
           name: 'REL-01',
           description: '1 channel relay, 3500 VA',
-          type: 'switch',
+          type: DEVICE_TYPES.SWITCH,
           dimmable: false,
           broadcastClicks: false,
         };
@@ -313,7 +318,7 @@ class PlejdApi {
         return {
           name: 'SPR-01',
           description: 'Smart plug on/off with relay, 3500 VA',
-          type: 'switch',
+          type: DEVICE_TYPES.SWITCH,
           dimmable: false,
           broadcastClicks: false,
         };
@@ -363,7 +368,7 @@ class PlejdApi {
         return {
           name: 'REL-01-2P',
           description: '1-channel relay with 2-pole 3500 VA',
-          type: 'switch',
+          type: DEVICE_TYPES.SWITCH,
           dimmable: false,
           broadcastClicks: false,
         };
@@ -371,7 +376,7 @@ class PlejdApi {
         return {
           name: 'REL-02',
           description: '2-channel relay with combined 3500 VA',
-          type: 'switch',
+          type: DEVICE_TYPES.SWITCH,
           dimmable: false,
           broadcastClicks: false,
         };
@@ -512,11 +517,6 @@ class PlejdApi {
           // 2. outputSettings.dimCurve NOT IN ["NonDimmable", "RelayNormal"]: Dimmable
           // 3. outputSettings.predefinedLoad !== null && outputSettings.predefinedLoad.loadType === "DWN": Dimmable
 
-          const colorTemp =
-            outputSettings &&
-            outputSettings.colorTemperature &&
-            outputSettings.colorTemperature.behavior === 'adjustable';
-
           try {
             const decodedDeviceType = this._getDeviceType(plejdDevice);
 
@@ -533,7 +533,7 @@ class PlejdApi {
             /** @type {import('types/DeviceRegistry').OutputDevice} */
             const outputDevice = {
               bleOutputAddress,
-              colorTemp,
+              colorTemp: null,
               colorTempSettings: outputSettings ? outputSettings.colorTemperature : null,
               deviceId: device.deviceId,
               dimmable,
@@ -640,7 +640,7 @@ class PlejdApi {
         const newDevice = {
           bleOutputAddress: roomAddress,
           deviceId: null,
-          colorTemp: false,
+          colorTemp: null,
           dimmable,
           name: room.title,
           output: undefined,
@@ -670,7 +670,7 @@ class PlejdApi {
       /** @type {import('types/DeviceRegistry').OutputDevice} */
       const newScene = {
         bleOutputAddress: sceneNum,
-        colorTemp: false,
+        colorTemp: null,
         deviceId: undefined,
         dimmable: false,
         name: scene.title,
@@ -678,9 +678,9 @@ class PlejdApi {
         roomId: undefined,
         roomName: undefined,
         state: false,
-        type: 'scene',
+        type: DEVICE_TYPES.SCENE,
         typeDescription: 'A Plejd scene',
-        typeName: 'Scene',
+        typeName: DEVICE_TYPES.SCENE,
         version: undefined,
         uniqueId: scene.sceneId,
       };

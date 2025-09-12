@@ -1,4 +1,4 @@
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
 
 const Configuration = require('./Configuration');
 const Logger = require('./Logger');
@@ -55,6 +55,15 @@ class PlejdAddon extends EventEmitter {
       process.on(signal, this.processCleanupFunc);
     });
 
+    // Eagerly send discovery as soon as possible
+    try {
+      logger.verbose('Eagerly sending discovery to Home Assistant.');
+      this.mqttClient.sendDiscoveryToHomeAssistant();
+    } catch (err) {
+      logger.error('Error in eager discovery send', err);
+    }
+
+    // Send discovery again on MQTT connect to ensure Home Assistant receives device info after reconnects or broker restarts.
     this.mqttClient.on(MqttClient.EVENTS.connected, () => {
       try {
         logger.verbose('connected to mqtt.');
@@ -72,7 +81,7 @@ class PlejdAddon extends EventEmitter {
         try {
           const { uniqueId } = device;
 
-          if (device.typeName === 'Scene') {
+          if (device.typeName === MqttClient.DEVICE_TYPES.SCENE) {
             // we're triggering a scene, lets do that and jump out.
             // since scenes aren't "real" devices.
             this.sceneManager.executeScene(uniqueId);
@@ -93,7 +102,7 @@ class PlejdAddon extends EventEmitter {
 
           if (typeof command === 'string') {
             // switch command
-            state = command === 'ON';
+            state = command === MqttClient.STATE.ON;
             commandObj = {
               state,
             };
@@ -106,7 +115,7 @@ class PlejdAddon extends EventEmitter {
             });
           } else {
             // eslint-disable-next-line prefer-destructuring
-            state = command.state === 'ON';
+            state = command.state === MqttClient.STATE.ON;
             commandObj = command;
           }
 

@@ -6,7 +6,7 @@ export type OutputDevices = { [deviceIdAndOutput: string]: OutputDevice };
 
 export interface OutputDevice {
   bleOutputAddress: number;
-  colorTemp: boolean;
+  colorTemp: number?;
   colorTempSettings?: OutputSettingColorTemperature
   deviceId: string;
   dim?: number;

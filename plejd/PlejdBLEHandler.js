@@ -4,43 +4,44 @@ const xor = require('buffer-xor');
 const { EventEmitter } = require('events');
 
 const Configuration = require('./Configuration');
-const constants = require('./constants');
+const {
+  COMMANDS,
+  BLE,
+  PLEJD_UUIDS,
+  BLUEZ: {
+    SERVICE_NAME: BLUEZ_SERVICE_NAME,
+    ADAPTER_ID: BLUEZ_ADAPTER_ID,
+    DEVICE_ID: BLUEZ_DEVICE_ID,
+    GATT_SERVICE_ID,
+    GATT_CHAR_ID: GATT_CHRC_ID,
+  },
+  DBUS: { OM_INTERFACE: DBUS_OM_INTERFACE, PROP_INTERFACE: DBUS_PROP_INTERFACE },
+} = require('./constants');
 const Logger = require('./Logger');
 
-const { COMMANDS } = constants;
 const logger = Logger.getLogger('plejd-ble');
 
-// UUIDs
-const BLE_UUID_SUFFIX = '6085-4726-be45-040c957391b5';
-const PLEJD_SERVICE = `31ba0001-${BLE_UUID_SUFFIX}`;
-const DATA_UUID = `31ba0004-${BLE_UUID_SUFFIX}`;
-const LAST_DATA_UUID = `31ba0005-${BLE_UUID_SUFFIX}`;
-const AUTH_UUID = `31ba0009-${BLE_UUID_SUFFIX}`;
-const PING_UUID = `31ba000a-${BLE_UUID_SUFFIX}`;
+const { PLEJD_SERVICE, AUTH_UUID, DATA_UUID, LAST_DATA_UUID, PING_UUID } = PLEJD_UUIDS;
+const { COMMANDS: BLE_COMMANDS, BROADCAST_DEVICE_ID: BLE_BROADCAST_DEVICE_ID } = BLE;
 
-const BLE_CMD_DIM_CHANGE = 0x00c8;
-const BLE_CMD_DIM2_CHANGE = 0x0098;
-const BLE_CMD_STATE_CHANGE = 0x0097;
-const BLE_CMD_SCENE_TRIG = 0x0021;
-const BLE_CMD_TIME_UPDATE = 0x001b;
-const BLE_CMD_REMOTE_CLICK = 0x0016;
+// BLE commands for easier access
+const {
+  REMOTE_CLICK: BLE_CMD_REMOTE_CLICK,
+  TIME_UPDATE: BLE_CMD_TIME_UPDATE,
+  SCENE_TRIGGER: BLE_CMD_SCENE_TRIG,
+  STATE_CHANGE: BLE_CMD_STATE_CHANGE,
+  DIM_CHANGE: BLE_CMD_DIM_CHANGE,
+  COLOR_CHANGE: BLE_CMD_COLOR_CHANGE,
+} = BLE_COMMANDS;
 
-const BLE_BROADCAST_DEVICE_ID = 0x01;
-const BLE_REQUEST_NO_RESPONSE = 0x0110;
-const BLE_REQUEST_RESPONSE = 0x0102;
-// const BLE_REQUEST_READ_VALUE = 0x0103;
-
-const BLUEZ_SERVICE_NAME = 'org.bluez';
-const DBUS_OM_INTERFACE = 'org.freedesktop.DBus.ObjectManager';
-const DBUS_PROP_INTERFACE = 'org.freedesktop.DBus.Properties';
-
-const BLUEZ_ADAPTER_ID = 'org.bluez.Adapter1';
-const BLUEZ_DEVICE_ID = 'org.bluez.Device1';
-const GATT_SERVICE_ID = 'org.bluez.GattService1';
-const GATT_CHRC_ID = 'org.bluez.GattCharacteristic1';
+const BLE_CMD_DIM2_CHANGE = 0x0098; // Dim + state update
+const BLE_REQUEST_NO_RESPONSE = 0x0110; // Set value, no response.
+const BLE_REQUEST_RESPONSE = 0x0102; // Request response, time for example
+// const BLE_REQUEST_READ_VALUE = 0x0103; // Read value?
 
 const PAYLOAD_POSITION_OFFSET = 5;
 const DIM_LEVEL_POSITION_OFFSET = 7;
+const COLOR_TEMP_POSITION_OFFSET = 9;
 
 const delay = (timeout) =>
   new Promise((resolve) => {
@@ -168,11 +169,13 @@ class PlejBLEHandler extends EventEmitter {
   /**
    * @param {string} command
    * @param {number} bleOutputAddress
-   * @param {number} data
+   * @param {number?} brightness
+   * @param {number?} colorTemp
    */
-  async sendCommand(command, bleOutputAddress, data) {
+  async sendCommand(command, bleOutputAddress, brightness, colorTemp) {
     let payload;
     let brightnessVal;
+
     switch (command) {
       case COMMANDS.TURN_ON:
         payload = this._createHexPayload(bleOutputAddress, BLE_CMD_STATE_CHANGE, '01');
@@ -182,18 +185,39 @@ class PlejBLEHandler extends EventEmitter {
         break;
       case COMMANDS.DIM:
         // eslint-disable-next-line no-bitwise
-        brightnessVal = (data << 8) | data;
+        brightnessVal = (brightness << 8) | brightness;
         payload = this._createHexPayload(
           bleOutputAddress,
           BLE_CMD_DIM2_CHANGE,
           `01${brightnessVal.toString(16).padStart(4, '0')}`,
         );
         break;
+      case COMMANDS.COLOR:
+        // eslint-disable-next-line no-bitwise
+        payload = this._createHexPayload(
+          bleOutputAddress,
+          BLE_CMD_COLOR_CHANGE,
+          // Not clear why 030111 is used. See https://github.com/icanos/hassio-plejd/issues/163
+          `030111${colorTemp.toString(16).padStart(4, '0')}`,
+        );
+
+        break;
       default:
         logger.error(`Unknown command ${command}`);
         throw new Error(`Unknown command ${command}`);
     }
     await this._write(payload);
+
+    if (command === COMMANDS.COLOR) {
+      // Color BLE command is not echoed back, so we manually emit the event here
+      const device = this.deviceRegistry.getOutputDeviceByBleOutputAddress(bleOutputAddress);
+      if (device) {
+        this.emit(PlejBLEHandler.EVENTS.commandReceived, device.uniqueId, command, {
+          state: 1,
+          color: colorTemp,
+        });
+      }
+    }
   }
 
   async _initDiscoveredPlejdDevice(path) {
@@ -302,10 +326,12 @@ class PlejBLEHandler extends EventEmitter {
       } else {
         logger.info('Plejd clock updates disabled in configuration.');
       }
+
       this._startPing();
 
-      // After we've authenticated, we need to hook up the event listener
-      // for changes to lastData.
+      // After we've authenticated:
+
+      // Hook up the event listener for changes to lastData.
       this.characteristics.lastDataProperties.on(
         'PropertiesChanged',
         (
@@ -577,6 +603,7 @@ class PlejBLEHandler extends EventEmitter {
       );
       const encryptedData = this._encryptDecrypt(this.cryptoKey, this.plejdService.addr, payload);
       await this.characteristics.data.WriteValue([...encryptedData], {});
+
       await this._onWriteSuccess();
     } catch (err) {
       await this._onWriteFailed(err);
@@ -850,7 +877,6 @@ class PlejBLEHandler extends EventEmitter {
     const outputUniqueId = device ? device.uniqueId : null;
 
     if (Logger.shouldLog('verbose')) {
-      // decoded.toString() could potentially be expensive
       logger.verbose(`Raw event received: ${decoded.toString('hex')}`);
       logger.verbose(
         `Decoded: Device ${outputUniqueId} (BLE address ${bleOutputAddress}), cmd ${cmd.toString(
@@ -868,6 +894,18 @@ class PlejBLEHandler extends EventEmitter {
 
       command = COMMANDS.DIM;
       data = { state, dim };
+      this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
+    } else if (cmd === BLE_CMD_COLOR_CHANGE) {
+      const colorTempKelvin =
+        decoded.length > COLOR_TEMP_POSITION_OFFSET
+          ? decoded.readUInt16BE(COLOR_TEMP_POSITION_OFFSET - 1)
+          : 0;
+
+      logger.debug(
+        `${deviceName} (${outputUniqueId}) got state+dim+color update. S: ${state}, D: ${dim}, C: ${colorTempKelvin}K`,
+      );
+
+      command = COMMANDS.COLOR;
       this.emit(PlejBLEHandler.EVENTS.commandReceived, outputUniqueId, command, data);
     } else if (cmd === BLE_CMD_STATE_CHANGE) {
       logger.debug(`${deviceName} (${outputUniqueId}) got state update. S: ${state}`);
@@ -1006,7 +1044,8 @@ class PlejBLEHandler extends EventEmitter {
 
   // eslint-disable-next-line class-methods-use-this
   _createChallengeResponse(key, challenge) {
-    const intermediate = crypto.createHash('sha256').update(xor(key, challenge)).digest();
+    const xorResult = xor(key, challenge);
+    const intermediate = crypto.createHash('sha256').update(new Uint8Array(xorResult)).digest();
     const part1 = intermediate.subarray(0, 16);
     const part2 = intermediate.subarray(16);
 
@@ -1022,7 +1061,7 @@ class PlejBLEHandler extends EventEmitter {
     const cipher = crypto.createCipheriv('aes-128-ecb', key, '');
     cipher.setAutoPadding(false);
 
-    let ct = cipher.update(buf).toString('hex');
+    let ct = cipher.update(new Uint8Array(buf)).toString('hex');
     ct += cipher.final().toString('hex');
     const ctBuf = Buffer.from(ct, 'hex');
 

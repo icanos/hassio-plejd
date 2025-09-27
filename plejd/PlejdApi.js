@@ -414,6 +414,14 @@ class PlejdApi {
           colorTemp: true,
           broadcastClicks: false,
         };
+      case 40:
+        return {
+          name: 'SPD-01',
+          description: 'Smart plug with dimming capability, trailing edge, 100w',
+          type: 'light',
+          dimmable: true,
+          broadcastClicks: false,
+        };
       case 135:
         return {
           name: 'OUT-02', // Specifically the hardware id is from a OUT-02-U, with outlet

@@ -131,32 +131,30 @@ The plugin needs you to configure some settings before working. You find these o
 
 Plejd output devices typically appears as either lights or switches in Home Assistant depending on how they are configured.
 
-| Device    | Plejd Configuration | Home Assistant Role | Comment                                                               |
-| --------- | ------------------- | ------------------- | --------------------------------------------------------------------- |
-| CTR-01    | Relay, Light        | Light               |                                                                       |
-| CTR-01    | Relay, Other        | Switch              |                                                                       |
-| REL-01    | Relay, Light        | Light               |                                                                       |
-| REL-01    | Relay, Other        | Switch              |                                                                       |
-| REL-02    | Relay, Light        | Light               |                                                                       |
-| REL-02    | Relay, Other        | Switch              |                                                                       |
-| SPR-01    | Relay, Light        | Light               |                                                                       |
-| SPR-01    | Relay, Other        | Switch              |                                                                       |
-| DIM-01    | -                   | Light               |                                                                       |
-| DIM-01-2P | -                   | Light               |                                                                       |
-| DIM-02    | -                   | Light               |                                                                       |
-| LED-10    | -                   | Light               |                                                                       |
-| LED-75    | -                   | Light               |                                                                       |
-| DAL-01    | -                   | Light               |                                                                       |
-| DWN-01    | -                   | Light               |                                                                       |
-| DWN-02    | -                   | Light               |                                                                       |
-| WPH-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
-| WRT-01    | -                   | Device Automation   | type:button_short_press, subtype:button_1                             |
-| GWY-01    | -                   | -                   |                                                                       |
-| RTR-01    | -                   | -                   |                                                                       |
-| Scene     | -                   | Scene               |                                                                       |
-| Scene     | -                   | Device Automation   | type:scene, subtype:trigger                                           |
-| Room      | -                   | Area                | Can be changed by Home Assistant                                      |
-| Room      | -                   | Light               | If includeRoomsAsLights is set to true                                |
+| Device    | Home Assistant Role      | Comment                                                                                                                                |
+| --------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| CTR-01    | Light, Switch            | 1-channel relay with 0-10V output, 3500 VA (Relay, Light, Other)                                                                       |
+| DAL-01    | Light                    | Dali broadcast with dimmer and tuneable white support                                                                                  |
+| DIM-01    | Light                    | 1-channel dimmer LED, 300 VA (Original, LC and LC2 hardware versions)                                                                  |
+| DIM-01-2P | Light                    | 1-channel dimmer LED with 2-pole breaking, 300 VA                                                                                      |
+| DIM-02    | Light                    | 2-channel dimmer LED, 2\*100 VA (Original and LC hardware versions)                                                                    |
+| DWN-01    | Light                    | Smart tunable downlight with a built-in dimmer function, 8W                                                                            |
+| DWN-02    | Light                    | Smart tunable downlight with a built-in dimmer function, 8W                                                                            |
+| EXT-01    | Extender                 | Plejd mesh extender and battery backup                                                                                                 |
+| LED-10    | Light                    | 1-channel LED dimmer/driver, 10 W                                                                                                      |
+| LED-75    | Light                    | 1-channel LED dimmer/driver with tuneable white, 10 W                                                                                  |
+| OUT-02    | Light                    | Smart outdoor wall luminaire with tunable white (2,200–4,000K)                                                                         |
+| REL-01    | Light, Switch            | 1 channel relay, 3500 VA (Relay, Light, Other)                                                                                         |
+| REL-01-2P | Light, Switch            | 1-channel relay with 2-pole 3500 VA (Relay, Light, Other)                                                                              |
+| REL-02    | Light, Switch            | 2-channel relay with combined 3500 VA (Relay, Light, Other)                                                                            |
+| RTR-01    | -                        | -                                                                                                                                      |
+| SPD-01    | Light                    | Smart plug with dimming capability, trailing edge                                                                                      |
+| SPR-01    | Light, Switch            | Smart plug on/off with relay, 3500 VA (Relay, Light, Other)                                                                            |
+| WPH-01    | Device Automation        | Wireless push button, 4 buttons. 2 channels, on/off per channel, type:button_short_press, subtype:button_1, button_2,button_3,button_4 |
+| WRT-01    | Device Automation        | Wireless rotary button, type:button_short_press, subtype:button_1                                                                      |
+| GWY-01    | Sensor                   | Gateway to enable control via internet and integrations                                                                                |
+| Scene     | Scene, Device Automation | type:scene, subtype:trigger                                                                                                            |
+| Room      | Area, Light              | Can be changed by Home Assistant, If includeRoomsAsLights is set to true                                                               |
 
 ## Transitions
 

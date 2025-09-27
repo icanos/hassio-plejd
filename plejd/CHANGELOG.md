@@ -1,5 +1,27 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.18.0](https://github.com/icanos/hassio-plejd/tree/0.18.0) (2025-09-27)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.17.1...0.18.0)
+
+**Implemented enhancements:**
+
+- Updated device documentation with complete list of supported devices and descriptions
+
+**Closed issues:**
+
+- Added support for SPD-01 dimmable plug device [\#328](https://github.com/icanos/hassio-plejd/issues/328)
+
+## [0.17.1](https://github.com/icanos/hassio-plejd/tree/0.17.1) (2025-09-12)hangelog hassio-plejd Home Assistant Plejd addon
+
+## [0.17.2](https://github.com/icanos/hassio-plejd/tree/0.17.2) (2025-09-27)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.17.1...0.17.2)
+
+**Implemented enhancements:**
+
+- Added support for SPD-01 dimmable plug device [\#328](https://github.com/icanos/hassio-plejd/issues/328)
+
 ## [0.17.1](https://github.com/icanos/hassio-plejd/tree/0.17.1) (2025-09-12)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.17.0...0.17.1)

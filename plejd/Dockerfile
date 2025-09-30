@@ -1,4 +1,4 @@
-ARG BUILD_FROM=hassioaddons/base:14.2.2
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
 ENV LANG C.UTF-8
@@ -14,7 +14,6 @@ COPY ./package.json /plejd/
 ARG BUILD_ARCH
 
 # Install Node
-RUN apk add --no-cache jq
 RUN \
   apk add --no-cache --virtual .build-dependencies \
   g++ \
@@ -32,9 +31,7 @@ RUN \
   nodejs \
   npm \
   dbus-dev \
-  glib-dev \
-  \
-  && npm config set unsafe-perm true
+  glib-dev
 
 WORKDIR /plejd
 RUN npm install \

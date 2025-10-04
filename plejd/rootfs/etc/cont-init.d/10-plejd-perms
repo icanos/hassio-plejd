@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bashio
+
+bashio::log.info 'Ensuring Plejd scripts are executable'
+chmod 0755 /etc/services.d/plejd/run /usr/bin/plejd.sh || bashio::exit.nok 'Failed to set permissions'

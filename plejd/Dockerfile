@@ -1,4 +1,6 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64:18.1.4
+# To specify the base image version, edit build.yaml
+# Specifying BUILD_FROM=image:version in this file doesn't work
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
 ENV LANG=C.UTF-8

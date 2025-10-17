@@ -1,5 +1,17 @@
 # Changelog hassio-plejd Home Assistant Plejd addon
 
+## [0.19.0](https://github.com/icanos/hassio-plejd/tree/0.19.0) (2025-10-17)
+
+[Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.18.0...0.19.0)
+
+**Closed issues:**
+
+- Fails to start with node syntax errors \(SyntaxError: Unexpected token '='\) [\#329](https://github.com/icanos/hassio-plejd/issues/329)
+
+**Merged pull requests:**
+
+- Fix \#329: Fails to start with node syntax errors [\#330](https://github.com/icanos/hassio-plejd/pull/330) ([timjackson](https://github.com/timjackson))
+
 ## [0.18.0](https://github.com/icanos/hassio-plejd/tree/0.18.0) (2025-09-27)
 
 [Full Changelog](https://github.com/icanos/hassio-plejd/compare/0.17.1...0.18.0)

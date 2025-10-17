@@ -1,7 +1,13 @@
-ARG BUILD_FROM=hassioaddons/base:14.2.2
+# To specify the base image version, edit build.yaml
+# Specifying BUILD_FROM=image:version in this file doesn't work
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
+
+# Instruct npm to run lifecycle scripts (like preinstall, install, postinstall) 
+# as the root user, instead of trying to downgrade permissions.
+ENV NPM_CONFIG_UNSAFE_PERM=true
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -14,8 +20,7 @@ COPY ./package.json /plejd/
 ARG BUILD_ARCH
 
 # Install Node
-RUN apk add --no-cache jq
-RUN \
+RUN set -eux; \
   apk add --no-cache --virtual .build-dependencies \
   g++ \
   gcc \
@@ -32,9 +37,7 @@ RUN \
   nodejs \
   npm \
   dbus-dev \
-  glib-dev \
-  \
-  && npm config set unsafe-perm true
+  glib-dev
 
 WORKDIR /plejd
 RUN npm install \
@@ -44,6 +47,9 @@ RUN npm install \
 
 # Copy root filesystem
 COPY rootfs /
+# Ensure runtime scripts remain executable even if modes were lost in the source checkout
+RUN set -eux; \
+  chmod 0755 /etc/services.d/plejd/run /etc/cont-init.d/10-plejd-perms /usr/bin/plejd.sh
 
 # Build arguments
 ARG BUILD_DATE
@@ -65,4 +71,3 @@ LABEL \
   org.label-schema.usage="https://github.com/icanos/hassio-plejd/tree/master/README.md" \
   org.label-schema.vcs-ref=${BUILD_REF} \
   org.label-schema.vcs-url="https://github.com/icanos/hassio-plejd"
-  

@@ -10,6 +10,7 @@
   "host_network": true,
   "host_dbus": true,
   "apparmor": false,
+  "init": false,
   "options": {
     "site": "Default Site",
     "username": "",
